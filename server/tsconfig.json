@@ -4,7 +4,6 @@
     "module": "ESNext",
     "lib": ["ES2020"],
     "moduleResolution": "node",
-    "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
@@ -16,7 +15,7 @@
       "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../shared/**/*"],
   "exclude": ["node_modules", "dist"]
 }
 

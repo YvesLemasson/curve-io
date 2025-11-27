@@ -180,53 +180,59 @@ Implementar comunicación cliente-servidor básica.
 #### 2.1 Servidor Básico
 **Archivo**: `server/src/index.ts`
 
-- [ ] Crear servidor Express
-- [ ] Configurar Socket.io
-- [ ] Manejar conexión de clientes
-- [ ] Manejar desconexión de clientes
-- [ ] Logging básico
+- [x] Crear servidor Express
+- [x] Configurar Socket.io
+- [x] Manejar conexión de clientes
+- [x] Manejar desconexión de clientes
+- [x] Logging básico
+- [x] Manejo de eventos del protocolo
 
-**Checkpoint**: Servidor acepta conexiones WebSocket.
+**Checkpoint**: ✅ Servidor acepta conexiones WebSocket.
 
 #### 2.2 Protocolo de Comunicación
 **Archivo**: `shared/protocol.ts`
 
 Definir eventos:
-- [ ] `connect` - Cliente se conecta
-- [ ] `disconnect` - Cliente se desconecta
-- [ ] `player:join` - Jugador se une (cliente → servidor)
-- [ ] `player:joined` - Confirmación de unión (servidor → cliente)
-- [ ] `game:input` - Input del jugador (cliente → servidor)
-- [ ] `game:state` - Estado del juego (servidor → cliente)
-- [ ] `game:start` - Inicio de partida (servidor → cliente)
-- [ ] `game:end` - Fin de partida (servidor → cliente)
-- [ ] `player:dead` - Jugador muere (servidor → cliente)
+- [x] `connect` - Cliente se conecta
+- [x] `disconnect` - Cliente se desconecta
+- [x] `player:join` - Jugador se une (cliente → servidor)
+- [x] `player:joined` - Confirmación de unión (servidor → cliente)
+- [x] `game:input` - Input del jugador (cliente → servidor)
+- [x] `game:state` - Estado del juego (servidor → cliente)
+- [x] `game:start` - Inicio de partida (servidor → cliente)
+- [x] `game:end` - Fin de partida (servidor → cliente)
+- [x] `player:dead` - Jugador muere (servidor → cliente)
+- [x] `error` - Mensajes de error
 
-**Checkpoint**: Protocolo definido y documentado.
+**Checkpoint**: ✅ Protocolo definido y documentado.
 
 #### 2.3 Cliente: Conexión con Servidor
 **Archivo**: `client/src/network/client.ts`
 
-- [ ] Clase NetworkClient:
-  - [ ] Método `connect()`: conectar a servidor
-  - [ ] Método `disconnect()`: desconectar
-  - [ ] Método `sendInput()`: enviar input al servidor
-  - [ ] Método `onGameState()`: callback para recibir estado
-  - [ ] Manejo de reconexión automática
+- [x] Clase NetworkClient:
+  - [x] Método `connect()`: conectar a servidor
+  - [x] Método `disconnect()`: desconectar
+  - [x] Método `sendInput()`: enviar input al servidor
+  - [x] Método `joinGame()`: unirse al juego
+  - [x] Método `onGameState()`: callback para recibir estado
+  - [x] Manejo de reconexión automática
+  - [x] Callbacks para eventos (connect, disconnect, error)
 
-**Checkpoint**: Cliente se conecta al servidor.
+**Checkpoint**: ✅ Cliente se conecta al servidor.
 
 #### 2.4 Servidor: Manejo de Jugadores
 **Archivo**: `server/src/game/playerManager.ts`
 
-- [ ] Clase PlayerManager:
-  - [ ] Método `addPlayer()`: agregar jugador
-  - [ ] Método `removePlayer()`: remover jugador
-  - [ ] Método `getPlayer()`: obtener jugador por ID
-  - [ ] Método `getAllPlayers()`: obtener todos los jugadores
-  - [ ] Almacenamiento en memoria (Map)
+- [x] Clase PlayerManager:
+  - [x] Método `addPlayer()`: agregar jugador
+  - [x] Método `removePlayer()`: remover jugador
+  - [x] Método `getPlayer()`: obtener jugador por ID
+  - [x] Método `getAllPlayers()`: obtener todos los jugadores
+  - [x] Método `getAlivePlayers()`: obtener jugadores vivos
+  - [x] Método `getPlayerCount()`: contar jugadores
+  - [x] Almacenamiento en memoria (Map)
 
-**Checkpoint**: Servidor gestiona jugadores conectados.
+**Checkpoint**: ✅ Servidor gestiona jugadores conectados.
 
 ---
 
@@ -473,10 +479,10 @@ Preparar el juego para producción y despliegue.
 - [x] UI básica
 
 ### Fase 2: Sistema de Red
-- [ ] Servidor básico
-- [ ] Protocolo definido
-- [ ] Cliente conecta
-- [ ] Manejo de jugadores
+- [x] Servidor básico
+- [x] Protocolo definido
+- [x] Cliente conecta
+- [x] Manejo de jugadores
 
 ### Fase 3: Multiplayer
 - [ ] Game loop servidor
