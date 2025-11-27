@@ -66,6 +66,19 @@ export class InputManager {
 
     return null;
   }
+  
+  /**
+   * Verifica si ambas teclas de giro están presionadas (para boost)
+   */
+  areBothKeysPressed(): boolean {
+    const leftKeys = ['a', 'arrowleft'];
+    const rightKeys = ['d', 'arrowright'];
+    
+    const hasLeft = leftKeys.some(key => this.keys.has(key));
+    const hasRight = rightKeys.some(key => this.keys.has(key));
+    
+    return hasLeft && hasRight;
+  }
 
   /**
    * Verifica si una tecla específica está presionada

@@ -9,7 +9,7 @@ import {
   checkTrailCollision,
   checkSelfCollision,
 } from './collision';
-import type { GameState } from '@shared/types';
+import type { GameState, Position } from '@shared/types';
 
 export class Game {
   private canvas: CanvasRenderer;
@@ -18,6 +18,7 @@ export class Game {
   private gameState: GameState;
   private animationFrameId: number | null = null;
   private isRunning: boolean = false;
+  private lastFrameTime: number = 0;
 
   constructor(canvasId: string = 'gameCanvas') {
     this.canvas = new CanvasRenderer(canvasId);
@@ -85,20 +86,39 @@ export class Game {
 
     this.gameState.tick++;
 
-    // Procesar input del jugador 0 (local) - giro continuo
+    // Procesar input del jugador 0 (local) - giro continuo y boost
+    const bothKeysPressed = this.input.areBothKeysPressed();
+    
     if (this.players.length > 0 && this.players[0].alive) {
-      const action = this.input.getCurrentAction();
-      // Aplicar rotación continua mientras se mantiene la tecla presionada
-      // Ángulo más pequeño = giro menos cerrado (radio más amplio)
-      this.players[0].applyRotation(action, Math.PI / 200);
+      // Verificar si se presionan ambos botones para boost
+      if (bothKeysPressed) {
+        this.players[0].activateBoost();
+        // No girar mientras se usa boost
+      } else {
+        // Si no se presionan ambos, procesar giro normal
+        const action = this.input.getCurrentAction();
+        // Aplicar rotación continua mientras se mantiene la tecla presionada
+        // Ángulo más pequeño = giro menos cerrado (radio más amplio)
+        this.players[0].applyRotation(action, Math.PI / 200);
+      }
     }
+
+    // Calcular deltaTime (tiempo transcurrido desde el último frame)
+    const currentTime = performance.now();
+    const deltaTime = this.lastFrameTime === 0 ? 16.67 : currentTime - this.lastFrameTime;
+    this.lastFrameTime = currentTime;
 
     // Actualizar todos los jugadores vivos
     const alivePlayers = this.players.filter(p => p.alive);
     
-    for (const player of alivePlayers) {
+    for (let i = 0; i < alivePlayers.length; i++) {
+      const player = alivePlayers[i];
       const oldPos = player.getCurrentPosition();
-      player.update();
+      
+      // Solo el jugador local (índice 0) puede usar boost
+      const isBoostRequested = i === 0 ? bothKeysPressed : false;
+      
+      player.update(deltaTime, isBoostRequested);
       const newPos = player.getCurrentPosition();
 
       // Verificar colisiones
@@ -114,7 +134,7 @@ export class Game {
       // Colisión con otros trails
       const otherTrails = this.players
         .filter(p => p.id !== player.id && p.alive)
-        .map(p => ({ trail: p.getTrail(), playerId: p.id }));
+        .map(p => ({ trail: p.getTrail() as Array<Position | null>, playerId: p.id }));
 
       const trailCollision = checkTrailCollision(
         oldPos,
@@ -129,7 +149,7 @@ export class Game {
       }
 
       // Colisión consigo mismo
-      if (checkSelfCollision(oldPos, newPos, player.getTrail())) {
+      if (checkSelfCollision(oldPos, newPos, player.getTrail() as Array<Position | null>)) {
         player.kill();
         continue;
       }
@@ -180,6 +200,7 @@ export class Game {
     
     this.isRunning = true;
     this.gameState.gameStatus = 'playing';
+    this.lastFrameTime = 0; // Resetear tiempo
     this.gameLoop();
   }
 
@@ -221,6 +242,16 @@ export class Game {
    */
   getPlayers(): Player[] {
     return [...this.players];
+  }
+  
+  /**
+   * Obtiene el estado del boost del jugador local (jugador 0)
+   */
+  getLocalPlayerBoostState(): { active: boolean; charge: number; remaining: number } | null {
+    if (this.players.length > 0) {
+      return this.players[0].getBoostState();
+    }
+    return null;
   }
 
   /**

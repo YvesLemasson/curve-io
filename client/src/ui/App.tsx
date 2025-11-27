@@ -5,8 +5,29 @@ import { useState, useEffect, useRef } from 'react';
 import { Game } from '../game/game';
 import './App.css';
 
+// Componente de barra de boost
+function BoostBar({ charge, active, remaining }: { charge: number; active: boolean; remaining: number }) {
+  const remainingSeconds = (remaining / 1000).toFixed(1);
+  
+  return (
+    <div className="boost-bar-container">
+      <div className="boost-label">BOOST</div>
+      <div className="boost-bar">
+        <div 
+          className={`boost-fill ${active ? 'boost-active' : ''}`}
+          style={{ width: `${charge}%` }}
+        />
+      </div>
+      {active && (
+        <div className="boost-timer">{remainingSeconds}s</div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [currentView, setCurrentView] = useState<'menu' | 'game' | 'matchmaking'>('menu');
+  const [boostState, setBoostState] = useState<{ active: boolean; charge: number; remaining: number } | null>(null);
   const gameRef = useRef<Game | null>(null);
 
   // Inicializar juego cuando se monta el componente
@@ -27,6 +48,20 @@ function App() {
       }
     };
   }, []);
+  
+  // Actualizar estado del boost cada frame
+  useEffect(() => {
+    if (currentView !== 'game' || !gameRef.current) return;
+    
+    const interval = setInterval(() => {
+      if (gameRef.current) {
+        const state = gameRef.current.getLocalPlayerBoostState();
+        setBoostState(state);
+      }
+    }, 16); // ~60 FPS
+    
+    return () => clearInterval(interval);
+  }, [currentView]);
 
   // Función para iniciar el juego
   const handleStartGame = () => {
@@ -89,6 +124,7 @@ function App() {
               <p>Controles:</p>
               <p>A / ← : Girar izquierda</p>
               <p>D / → : Girar derecha</p>
+              <p>A + D : Activar boost (velocidad +50%)</p>
             </div>
           </div>
         )}
@@ -114,6 +150,15 @@ function App() {
                 Reiniciar
               </button>
             </div>
+            {boostState && (
+              <div className="hud-bottom">
+                <BoostBar 
+                  charge={boostState.charge} 
+                  active={boostState.active}
+                  remaining={boostState.remaining}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

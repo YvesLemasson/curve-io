@@ -87,6 +87,59 @@
   pointer-events: auto;
 }
 
+.hud-bottom {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  pointer-events: auto;
+}
+
+.boost-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.boost-label {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #fff;
+  min-width: 50px;
+}
+
+.boost-bar {
+  width: 200px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.boost-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  transition: width 0.1s linear;
+  border-radius: 10px;
+}
+
+.boost-fill.boost-active {
+  background: linear-gradient(90deg, #FF9800, #FFC107);
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+}
+
+.boost-timer {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #FFC107;
+  min-width: 40px;
+  text-align: right;
+}
+
 .menu-button,
 .restart-button {
   padding: 10px 20px;

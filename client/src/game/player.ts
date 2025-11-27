@@ -12,6 +12,21 @@ export class Player {
   public speed: number;
   public alive: boolean;
   public trail: Position[];
+  
+  // Sistema de huecos en el trail
+  private trailTimer: number = 0; // Tiempo acumulado desde el inicio
+  private readonly gapInterval: number = 3000; // 3 segundos en ms
+  private readonly gapDuration: number = 500; // 0.5 segundos en ms
+  private shouldDrawTrail: boolean = true;
+  private wasDrawingTrail: boolean = true; // Estado anterior para detectar cambios
+  
+  // Sistema de boost
+  private boostActive: boolean = false;
+  private boostRemaining: number = 0; // Tiempo restante de boost en ms
+  private boostCharge: number = 100; // Carga del boost (0-100)
+  private readonly boostDuration: number = 5000; // 5 segundos en ms
+  private readonly boostSpeedMultiplier: number = 1.5; // 50% más rápido
+  private readonly boostRechargeRate: number = 100 / 20000; // Porcentaje por ms (20 segundos para recargar completamente)
 
   constructor(
     id: string,
@@ -29,24 +44,133 @@ export class Player {
     this.speed = speed;
     this.alive = true;
     this.trail = [{ ...startPosition }];
+    this.trailTimer = 0;
+    this.shouldDrawTrail = true;
+    this.wasDrawingTrail = true;
+    this.boostActive = false;
+    this.boostRemaining = 0;
+    this.boostCharge = 100;
   }
 
   /**
    * Actualiza la posición del jugador según su ángulo y velocidad
+   * @param deltaTime - Tiempo transcurrido desde el último frame en ms
+   * @param isBoostRequested - Si el jugador está presionando ambas teclas para boost
    */
-  update(): void {
+  update(deltaTime: number = 16.67, isBoostRequested: boolean = false): void {
     if (!this.alive) return;
 
-    // Calcular nueva posición
-    const newX = this.position.x + Math.cos(this.angle) * this.speed;
-    const newY = this.position.y + Math.sin(this.angle) * this.speed;
+    // Actualizar sistema de boost
+    this.updateBoost(deltaTime, isBoostRequested);
 
-    // Guardar posición anterior en el trail
-    this.trail.push({ ...this.position });
+    // Actualizar timer del trail
+    this.trailTimer += deltaTime;
+    
+    // Calcular si estamos en un período de hueco
+    const timeInCycle = this.trailTimer % this.gapInterval;
+    this.shouldDrawTrail = timeInCycle >= this.gapDuration;
+
+    // Calcular velocidad actual (con boost si está activo)
+    const currentSpeed = this.boostActive ? this.speed * this.boostSpeedMultiplier : this.speed;
+
+    // Calcular nueva posición
+    const newX = this.position.x + Math.cos(this.angle) * currentSpeed;
+    const newY = this.position.y + Math.sin(this.angle) * currentSpeed;
+
+    // Si acabamos de entrar en un hueco, agregar un marcador de break
+    if (this.wasDrawingTrail && !this.shouldDrawTrail) {
+      // Agregar un punto null para marcar el break (usaremos null como marcador)
+      this.trail.push(null as any);
+    }
+    
+    // Solo agregar al trail si no estamos en período de hueco
+    if (this.shouldDrawTrail) {
+      this.trail.push({ ...this.position });
+    }
+
+    // Actualizar estado anterior
+    this.wasDrawingTrail = this.shouldDrawTrail;
 
     // Actualizar posición
     this.position.x = newX;
     this.position.y = newY;
+  }
+  
+  /**
+   * Actualiza el sistema de boost
+   * @param isBoostRequested - Si el jugador está presionando ambas teclas
+   */
+  updateBoost(deltaTime: number, isBoostRequested: boolean): void {
+    if (this.boostActive) {
+      // Si el boost está activo pero no se están presionando ambas teclas, desactivarlo
+      if (!isBoostRequested) {
+        this.boostActive = false;
+        this.boostRemaining = 0;
+        // No consumir toda la carga, solo la que se usó
+      } else {
+        // Consumir carga mientras está activo
+        const chargeConsumed = (100 / this.boostDuration) * deltaTime;
+        this.boostCharge = Math.max(0, this.boostCharge - chargeConsumed);
+        this.boostRemaining -= deltaTime;
+        
+        // Si se agotó la carga o el tiempo, desactivarlo
+        if (this.boostRemaining <= 0 || this.boostCharge <= 0) {
+          this.boostActive = false;
+          this.boostRemaining = 0;
+          this.boostCharge = 0;
+        }
+      }
+    } else {
+      // Si no está activo, recargar lentamente
+      if (this.boostCharge < 100) {
+        this.boostCharge = Math.min(100, this.boostCharge + (this.boostRechargeRate * deltaTime));
+      }
+    }
+  }
+  
+  /**
+   * Intenta activar el boost
+   * @returns true si se activó, false si no hay suficiente carga
+   */
+  activateBoost(): boolean {
+    if (this.boostActive) {
+      return true; // Ya está activo
+    }
+    
+    // Necesita al menos algo de carga para activar (puede ser menos del 100%)
+    if (this.boostCharge > 0) {
+      this.boostActive = true;
+      this.boostRemaining = this.boostDuration;
+      return true;
+    }
+    
+    return false; // No hay suficiente carga
+  }
+  
+  /**
+   * Desactiva el boost manualmente
+   */
+  deactivateBoost(): void {
+    this.boostActive = false;
+    this.boostRemaining = 0;
+  }
+  
+  /**
+   * Obtiene el estado del boost
+   */
+  getBoostState(): { active: boolean; charge: number; remaining: number } {
+    return {
+      active: this.boostActive,
+      charge: this.boostCharge,
+      remaining: this.boostRemaining
+    };
+  }
+  
+  /**
+   * Verifica si actualmente se debe dibujar el trail
+   */
+  isDrawingTrail(): boolean {
+    return this.shouldDrawTrail;
   }
 
   /**

@@ -100,7 +100,7 @@ export function checkLineLineCollision(
 export function checkTrailCollision(
   currentPos: Position,
   newPos: Position,
-  trails: Array<{ trail: Position[]; playerId: string }>,
+  trails: Array<{ trail: Array<Position | null>; playerId: string }>,
   excludePlayerId?: string
 ): { collided: boolean; collidedWith?: string } {
   // Verificar colisión con cada trail
@@ -110,10 +110,15 @@ export function checkTrailCollision(
       continue;
     }
 
-    // Verificar colisión con cada segmento del trail
+    // Verificar colisión con cada segmento del trail (saltando breaks/null)
     for (let i = 0; i < trail.length - 1; i++) {
       const segmentStart = trail[i];
       const segmentEnd = trail[i + 1];
+
+      // Saltar si alguno de los puntos es null (break en el trail)
+      if (!segmentStart || !segmentEnd) {
+        continue;
+      }
 
       // Verificar si el nuevo segmento intersecta con este segmento del trail
       if (
@@ -138,7 +143,7 @@ export function checkTrailCollision(
 export function checkSelfCollision(
   currentPos: Position,
   newPos: Position,
-  ownTrail: Position[]
+  ownTrail: Array<Position | null>
 ): boolean {
   // Necesitamos al menos 10 puntos en el trail para evitar colisiones inmediatas
   if (ownTrail.length < 10) {
@@ -151,6 +156,11 @@ export function checkSelfCollision(
   for (let i = 0; i < ownTrail.length - skipPoints - 1; i++) {
     const segmentStart = ownTrail[i];
     const segmentEnd = ownTrail[i + 1];
+
+    // Saltar si alguno de los puntos es null (break en el trail)
+    if (!segmentStart || !segmentEnd) {
+      continue;
+    }
 
     if (
       checkLineLineCollision(

@@ -82,45 +82,48 @@ Implementar el juego funcionando localmente sin red, con múltiples jugadores si
 #### 1.1 Sistema de Renderizado
 **Archivo**: `client/src/render/canvas.ts`
 
-- [ ] Crear canvas y contexto 2D
-- [ ] Implementar función de limpieza de pantalla
-- [ ] Implementar función de dibujo de línea
-- [ ] Implementar función de dibujo de jugador (línea con color)
-- [ ] Sistema de cámara/viewport (si necesario)
+- [x] Crear canvas y contexto 2D
+- [x] Implementar función de limpieza de pantalla
+- [x] Implementar función de dibujo de línea
+- [x] Implementar función de dibujo de jugador (línea con color)
+- [x] Sistema de dibujo de trail con breaks (huecos)
 
-**Checkpoint**: Canvas renderiza correctamente, se puede dibujar.
+**Checkpoint**: ✅ Canvas renderiza correctamente, se puede dibujar.
 
 #### 1.2 Sistema de Input
 **Archivo**: `client/src/game/input.ts`
 
-- [ ] Capturar teclado (Arrow keys, WASD)
-- [ ] Mapear teclas a acciones (izquierda/derecha)
-- [ ] Sistema de eventos de input
-- [ ] Throttling de inputs (evitar spam)
+- [x] Capturar teclado (Arrow keys, WASD)
+- [x] Mapear teclas a acciones (izquierda/derecha)
+- [x] Sistema de eventos de input
+- [x] Detección de ambas teclas para boost
 
-**Checkpoint**: Inputs se capturan correctamente.
+**Checkpoint**: ✅ Inputs se capturan correctamente.
 
 #### 1.3 Lógica del Jugador
 **Archivo**: `client/src/game/player.ts`
 
-- [ ] Clase Player:
-  - [ ] Propiedades: id, name, color, x, y, angle, speed, alive
-  - [ ] Método `update()`: mover según ángulo y velocidad
-  - [ ] Método `turnLeft()`: cambiar ángulo
-  - [ ] Método `turnRight()`: cambiar ángulo
-  - [ ] Método `getCurrentPosition()`: retornar posición actual
-  - [ ] Método `getTrail()`: retornar historial de posiciones (trail)
+- [x] Clase Player:
+  - [x] Propiedades: id, name, color, x, y, angle, speed, alive
+  - [x] Método `update()`: mover según ángulo y velocidad
+  - [x] Método `turnLeft()`: cambiar ángulo
+  - [x] Método `turnRight()`: cambiar ángulo
+  - [x] Método `getCurrentPosition()`: retornar posición actual
+  - [x] Método `getTrail()`: retornar historial de posiciones (trail)
+  - [x] Sistema de huecos en trail (cada 3s, 0.5s sin pintar)
+  - [x] Sistema de boost (velocidad +50%, 5s, recarga 20s)
 
-**Checkpoint**: Jugador se mueve correctamente con inputs.
+**Checkpoint**: ✅ Jugador se mueve correctamente con inputs y boost.
 
 #### 1.4 Sistema de Colisiones
 **Archivo**: `client/src/game/collision.ts`
 
-- [ ] Función `checkLineLineCollision()`: intersección línea-línea
-- [ ] Función `checkPointInLine()`: punto en línea
-- [ ] Función `checkBoundaryCollision()`: colisión con bordes
-- [ ] Función `checkTrailCollision()`: colisión con trails de otros jugadores
-- [ ] Optimización: spatial hash para colisiones eficientes
+- [x] Función `checkLineLineCollision()`: intersección línea-línea
+- [x] Función `checkPointInLine()`: punto en línea
+- [x] Función `checkBoundaryCollision()`: colisión con bordes
+- [x] Función `checkTrailCollision()`: colisión con trails de otros jugadores
+- [x] Función `checkSelfCollision()`: colisión consigo mismo
+- [x] Respeto de breaks en trails para colisiones
 
 **Algoritmo de colisión línea-línea:**
 ```
@@ -129,39 +132,41 @@ Para cada segmento del trail:
   - Usar algoritmo de intersección de segmentos
 ```
 
-**Checkpoint**: Colisiones detectadas correctamente.
+**Checkpoint**: ✅ Colisiones detectadas correctamente.
 
 #### 1.5 Game Loop Local
 **Archivo**: `client/src/game/game.ts`
 
-- [ ] Clase Game:
-  - [ ] Propiedades: players[], gameState, canvas, ctx
-  - [ ] Método `init()`: inicializar jugadores
-  - [ ] Método `update()`: 
+- [x] Clase Game:
+  - [x] Propiedades: players[], gameState, canvas, ctx
+  - [x] Método `init()`: inicializar jugadores
+  - [x] Método `update()`: 
     - Procesar inputs
     - Actualizar jugadores
     - Detectar colisiones
     - Eliminar jugadores muertos
-  - [ ] Método `render()`: dibujar todos los jugadores
-  - [ ] Método `gameLoop()`: requestAnimationFrame loop
-  - [ ] Método `checkWinCondition()`: verificar si queda 1 jugador
+    - Sistema de boost
+  - [x] Método `render()`: dibujar todos los jugadores
+  - [x] Método `gameLoop()`: requestAnimationFrame loop con deltaTime
+  - [x] Método `checkWinCondition()`: verificar si queda 1 jugador
 
-**Checkpoint**: Juego funciona localmente con múltiples jugadores simulados.
+**Checkpoint**: ✅ Juego funciona localmente con múltiples jugadores simulados.
 
 #### 1.6 UI Básica
-**Archivos**: `client/src/ui/components/`
+**Archivos**: `client/src/ui/`
 
-- [ ] Componente `MainMenu.tsx`: Pantalla de inicio (nombre de jugador)
-- [ ] Componente `GameHUD.tsx`: Indicador de jugadores vivos, contador
-- [ ] Componente `GameOver.tsx`: Pantalla de game over
-- [ ] Integración React con Canvas (comunicación entre UI y juego)
+- [x] Componente `App.tsx`: Pantalla de inicio y HUD integrado
+- [x] Componente `BoostBar`: Barra de boost con carga y timer
+- [x] Botones de menú y reiniciar
+- [x] Integración React con Canvas (comunicación entre UI y juego)
+- [x] Actualización en tiempo real del estado del boost
 
 **Arquitectura Híbrida:**
 - React maneja UI (menús, HUD, overlays)
 - Vanilla TS maneja juego (Canvas, game loop, lógica)
-- Comunicación vía eventos o estado compartido
+- Comunicación vía estado compartido y polling
 
-**Checkpoint**: UI básica funcional con React.
+**Checkpoint**: ✅ UI básica funcional con React.
 
 ---
 
@@ -460,12 +465,12 @@ Preparar el juego para producción y despliegue.
 - [x] Tipos definidos
 
 ### Fase 1: Prototipo Local
-- [ ] Renderizado
-- [ ] Input
-- [ ] Lógica de jugador
-- [ ] Colisiones
-- [ ] Game loop local
-- [ ] UI básica
+- [x] Renderizado
+- [x] Input
+- [x] Lógica de jugador
+- [x] Colisiones
+- [x] Game loop local
+- [x] UI básica
 
 ### Fase 2: Sistema de Red
 - [ ] Servidor básico

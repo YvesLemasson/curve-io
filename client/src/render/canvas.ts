@@ -68,9 +68,10 @@ export class CanvasRenderer {
 
   /**
    * Dibuja el trail completo de un jugador
+   * Respeta los breaks (null) en el trail para crear huecos
    */
   drawTrail(
-    trail: Array<{ x: number; y: number }>,
+    trail: Array<{ x: number; y: number } | null>,
     color: string,
     lineWidth: number = 2
   ): void {
@@ -81,14 +82,55 @@ export class CanvasRenderer {
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
 
-    this.ctx.beginPath();
-    this.ctx.moveTo(trail[0].x, trail[0].y);
-
-    for (let i = 1; i < trail.length; i++) {
-      this.ctx.lineTo(trail[i].x, trail[i].y);
+    // Dibujar segmentos continuos, saltando los breaks (null)
+    let segmentStart = -1;
+    
+    for (let i = 0; i < trail.length; i++) {
+      const point = trail[i];
+      
+      // Si encontramos un break (null) o el punto es null
+      if (point === null) {
+        // Si hay un segmento activo, dibujarlo
+        if (segmentStart >= 0 && i > segmentStart + 1) {
+          this.ctx.beginPath();
+          const startPoint = trail[segmentStart];
+          if (startPoint) {
+            this.ctx.moveTo(startPoint.x, startPoint.y);
+            
+            for (let j = segmentStart + 1; j < i; j++) {
+              const p = trail[j];
+              if (p) {
+                this.ctx.lineTo(p.x, p.y);
+              }
+            }
+            this.ctx.stroke();
+          }
+        }
+        segmentStart = -1; // Resetear segmento
+      } else {
+        // Si es el primer punto válido después de un break
+        if (segmentStart === -1) {
+          segmentStart = i;
+        }
+      }
     }
-
-    this.ctx.stroke();
+    
+    // Dibujar el último segmento si existe
+    if (segmentStart >= 0 && segmentStart < trail.length - 1) {
+      this.ctx.beginPath();
+      const startPoint = trail[segmentStart];
+      if (startPoint) {
+        this.ctx.moveTo(startPoint.x, startPoint.y);
+        
+        for (let i = segmentStart + 1; i < trail.length; i++) {
+          const point = trail[i];
+          if (point) {
+            this.ctx.lineTo(point.x, point.y);
+          }
+        }
+        this.ctx.stroke();
+      }
+    }
   }
 
   /**
