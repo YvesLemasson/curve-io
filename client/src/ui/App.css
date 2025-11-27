@@ -1,0 +1,40 @@
+.app {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.ui-overlay {
+  /* UI overlay encima del canvas */
+}
+
+.main-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.main-menu h1 {
+  font-size: 4rem;
+  margin-bottom: 2rem;
+  color: #fff;
+}
+
+.matchmaking {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.game-hud {
+  /* HUD durante el juego */
+  pointer-events: none;
+}
+
