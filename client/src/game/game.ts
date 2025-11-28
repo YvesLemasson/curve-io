@@ -358,6 +358,9 @@ export class Game {
       }
     }
     
+    // Activar procesamiento de toques
+    this.input.setGameActive(true);
+    
     this.isRunning = true;
     this.gameState.gameStatus = 'playing';
     this.lastFrameTime = 0; // Resetear tiempo
@@ -369,6 +372,9 @@ export class Game {
    * Detiene el juego
    */
   stop(): void {
+    // Desactivar procesamiento de toques
+    this.input.setGameActive(false);
+    
     this.isRunning = false;
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);

@@ -8,6 +8,7 @@ export class InputManager {
   private activeTouches: Map<number, { x: number; y: number; side: 'left' | 'right' }> = new Map();
   private canvasElement: HTMLCanvasElement | null = null;
   private touchStateCallback: ((left: boolean, right: boolean) => void) | null = null;
+  private isGameActive: boolean = false; // Flag para saber si estamos en el juego
 
   constructor(canvasId?: string) {
     if (canvasId) {
@@ -21,6 +22,18 @@ export class InputManager {
    */
   onTouchStateChange(callback: (left: boolean, right: boolean) => void): void {
     this.touchStateCallback = callback;
+  }
+
+  /**
+   * Activa o desactiva el procesamiento de toques (útil cuando se sale del juego)
+   */
+  setGameActive(active: boolean): void {
+    this.isGameActive = active;
+    if (!active) {
+      // Limpiar toques activos cuando se sale del juego
+      this.activeTouches.clear();
+      this.notifyTouchState();
+    }
   }
 
   /**
@@ -48,33 +61,43 @@ export class InputManager {
     });
 
     // Event listeners táctiles
-    // IMPORTANTE: Usar document.body o window para capturar todos los toques
-    // ya que el canvas puede tener pointer-events: none
-    const targetElement = document.body;
+    // IMPORTANTE: Usar window con capture: true para capturar TODOS los toques
+    // incluso fuera del canvas y a través de todos los elementos
+    // Esto asegura que los toques se detecten en toda la pantalla
+    const useCapture = true; // Capturar en la fase de captura (antes de llegar a los elementos)
     
-    targetElement.addEventListener('touchstart', (e) => {
-      e.preventDefault(); // Prevenir scroll y zoom
-      this.handleTouchStart(e);
-      this.notifyTouchState();
-    }, { passive: false });
+    window.addEventListener('touchstart', (e) => {
+      // Solo procesar toques si estamos en el juego
+      if (this.isGameActive) {
+        e.preventDefault(); // Prevenir scroll y zoom
+        this.handleTouchStart(e);
+        this.notifyTouchState();
+      }
+    }, { passive: false, capture: useCapture });
 
-    targetElement.addEventListener('touchmove', (e) => {
-      e.preventDefault(); // Prevenir scroll
-      this.handleTouchMove(e);
-      this.notifyTouchState();
-    }, { passive: false });
+    window.addEventListener('touchmove', (e) => {
+      if (this.isGameActive) {
+        e.preventDefault(); // Prevenir scroll
+        this.handleTouchMove(e);
+        this.notifyTouchState();
+      }
+    }, { passive: false, capture: useCapture });
 
-    targetElement.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      this.handleTouchEnd(e);
-      this.notifyTouchState();
-    }, { passive: false });
+    window.addEventListener('touchend', (e) => {
+      if (this.isGameActive) {
+        e.preventDefault();
+        this.handleTouchEnd(e);
+        this.notifyTouchState();
+      }
+    }, { passive: false, capture: useCapture });
 
-    targetElement.addEventListener('touchcancel', (e) => {
-      e.preventDefault();
-      this.handleTouchEnd(e);
-      this.notifyTouchState();
-    }, { passive: false });
+    window.addEventListener('touchcancel', (e) => {
+      if (this.isGameActive) {
+        e.preventDefault();
+        this.handleTouchEnd(e);
+        this.notifyTouchState();
+      }
+    }, { passive: false, capture: useCapture });
   }
 
   /**
