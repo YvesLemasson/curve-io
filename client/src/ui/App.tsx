@@ -1,14 +1,14 @@
-// Componente principal de la aplicación React
-// Maneja routing y estructura general de la UI
+// Main React application component
+// Handles routing and general UI structure
 
 import { useState, useEffect, useRef } from 'react';
 import { Game } from '../game/game';
 import './App.css';
 
-// Importar Game aquí para evitar error de referencia circular
+// Import Game here to avoid circular reference error
 // import { NetworkClient } from '../network/client';
 
-// Componente de barra de boost
+// Boost bar component
 function BoostBar({ charge, active, remaining }: { charge: number; active: boolean; remaining: number }) {
   const remainingSeconds = (remaining / 1000).toFixed(1);
   
@@ -28,7 +28,7 @@ function BoostBar({ charge, active, remaining }: { charge: number; active: boole
   );
 }
 
-// Componente del modal de fin de partida
+// Game over modal component
 function GameOverModal({ 
   gameState, 
   onBackToMenu 
@@ -48,45 +48,45 @@ function GameOverModal({
     <div className="game-over-modal-overlay">
       <div className="game-over-modal">
         <h1 className="game-over-title">
-          {winner ? '🏆 ¡Partida Finalizada!' : '🤝 Empate'}
+          {winner ? '🏆 Game Over!' : '🤝 Tie'}
         </h1>
         
         <div className="game-over-content">
-          {/* Columna izquierda: Información de la partida */}
+          {/* Left column: Game information */}
           <div className="game-over-left">
             {winner ? (
               <div className="winner-section">
                 <div className="winner-name" style={{ color: winner.color }}>
                   {winner.name}
                 </div>
-                <p className="winner-label">es el ganador</p>
+                <p className="winner-label">is the winner</p>
               </div>
             ) : (
               <div className="tie-section">
-                <p>Todos los jugadores fueron eliminados</p>
+                <p>All players were eliminated</p>
               </div>
             )}
 
             <div className="game-summary">
-              <h2>Resumen de la Partida</h2>
+              <h2>Game Summary</h2>
               
               <div className="summary-stats">
                 <div className="stat-item">
-                  <span className="stat-label">Duración:</span>
+                  <span className="stat-label">Duration:</span>
                   <span className="stat-value">{gameDuration}s</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Total de jugadores:</span>
+                  <span className="stat-label">Total players:</span>
                   <span className="stat-value">{gameState.players.length}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Columna derecha: Información de jugadores */}
+          {/* Right column: Player information */}
           <div className="game-over-right">
             <div className="players-summary">
-              <h3>Jugadores</h3>
+              <h3>Players</h3>
               <div className="players-list-summary">
                 {winner && (
                   <div className="player-summary-item winner-item">
@@ -95,7 +95,7 @@ function GameOverModal({
                       style={{ backgroundColor: winner.color }}
                     />
                     <span className="player-name-summary">{winner.name}</span>
-                    <span className="player-status winner-status">🏆 Ganador</span>
+                    <span className="player-status winner-status">🏆 Winner</span>
                   </div>
                 )}
                 {deadPlayers.map((player) => (
@@ -105,7 +105,7 @@ function GameOverModal({
                       style={{ backgroundColor: player.color }}
                     />
                     <span className="player-name-summary">{player.name}</span>
-                    <span className="player-status eliminated-status">Eliminado</span>
+                    <span className="player-status eliminated-status">Eliminated</span>
                   </div>
                 ))}
               </div>
@@ -117,14 +117,14 @@ function GameOverModal({
           onClick={onBackToMenu}
           className="back-to-menu-button"
         >
-          Volver al Menú
+          Back to Menu
         </button>
       </div>
     </div>
   );
 }
 
-// Componente del modal de selección de color
+// Color picker modal component
 function ColorPickerModal({ 
   isOpen, 
   currentColor,
@@ -190,7 +190,7 @@ function ColorPickerModal({
             className="color-picker-cancel"
             onClick={onClose}
           >
-            Cancelar
+            Cancel
           </button>
           <button 
             className="color-picker-confirm"
@@ -201,7 +201,7 @@ function ColorPickerModal({
             }}
             disabled={usedColors.has(selectedColor) && selectedColor !== currentColor}
           >
-            Confirmar
+            Confirm
           </button>
         </div>
       </div>
@@ -220,9 +220,23 @@ function App() {
   const [showInstallButton, setShowInstallButton] = useState<boolean>(false);
   const [touchLeft, setTouchLeft] = useState<boolean>(false);
   const [touchRight, setTouchRight] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const gameRef = useRef<Game | null>(null);
 
-  // Manejar el evento beforeinstallprompt para PWA
+  // Detect if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isSmallScreen = window.innerWidth <= 768;
+      setIsMobile(isTouchDevice && isSmallScreen);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Handle beforeinstallprompt event for PWA
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       // Prevenir el prompt automático
@@ -244,7 +258,7 @@ function App() {
     };
   }, []);
 
-  // Función para instalar la PWA
+  // Function to install the PWA
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
       return;
@@ -344,7 +358,7 @@ function App() {
     }
   }, [gameOverState]);
 
-  // Función para conectar al servidor y mostrar lobby
+  // Function to connect to server and show lobby
   const handleConnectToServer = () => {
     // Si ya existe un juego con red, limpiarlo primero
     if (gameRef.current) {
@@ -391,13 +405,13 @@ function App() {
     });
 
     networkClient.onGameStart(() => {
-      // Cuando el servidor inicia el juego, iniciar el juego local también
-      // IMPORTANTE: En modo red NO llamamos init() porque los jugadores
+      // When the server starts the game, start the local game too
+      // IMPORTANT: In network mode we DON'T call init() because players
       // se crean desde el estado del servidor en syncFromServer()
       if (gameRef.current) {
         // Limpiar cualquier jugador local previo
         gameRef.current.clearPlayers();
-        // Solo iniciar el game loop, los jugadores vendrán del servidor
+        // Only start the game loop, players will come from the server
         gameRef.current.start();
         setCurrentView('game');
       }
@@ -421,11 +435,11 @@ function App() {
     // Cambiar a vista de lobby primero
     setCurrentView('lobby');
     
-    // Conectar al servidor
+    // Connect to server
     networkClient.connect();
   };
 
-  // Función para iniciar el juego local
+  // Function to start local game
   const handleStartLocalGame = () => {
     if (gameRef.current) {
       // Si ya existe, destruirlo y crear uno nuevo
@@ -440,7 +454,7 @@ function App() {
     }
   };
 
-  // Función para solicitar inicio del juego desde el lobby
+  // Function to request game start from lobby
   const handleStartGameFromLobby = () => {
     const networkClient = gameRef.current?.getNetworkClient();
     if (networkClient) {
@@ -448,7 +462,7 @@ function App() {
     }
   };
 
-  // Función para reiniciar el juego
+  // Function to restart the game
   const handleRestart = () => {
     if (gameRef.current) {
       gameRef.current.stop();
@@ -459,7 +473,7 @@ function App() {
     }
   };
 
-  // Función para volver al menú desde el modal de fin de partida
+  // Function to go back to menu from game over modal
   const handleBackToMenuFromGameOver = () => {
     if (gameRef.current) {
       gameRef.current.stop();
@@ -506,7 +520,7 @@ function App() {
 
   return (
     <div className="app">
-      {/* Canvas del juego */}
+      {/* Game canvas */}
       <canvas 
         id="gameCanvas" 
         style={{ 
@@ -515,10 +529,10 @@ function App() {
         }} 
       />
       
-      {/* Feedback visual táctil - solo en modo juego */}
+      {/* Touch visual feedback - only in game mode */}
       {currentView === 'game' && !gameOverState && (
         <>
-          {/* Overlay izquierdo */}
+          {/* Left overlay */}
           <div 
             className="touch-feedback touch-feedback-left"
             style={{
@@ -526,7 +540,7 @@ function App() {
               '--touch-feedback-color': touchLeft ? getLocalPlayerColorWithOpacity(0.4) : 'transparent',
             } as React.CSSProperties}
           />
-          {/* Overlay derecho */}
+          {/* Right overlay */}
           <div 
             className="touch-feedback touch-feedback-right"
             style={{
@@ -537,7 +551,7 @@ function App() {
         </>
       )}
       
-      {/* UI Overlay - React maneja menús, HUD, etc. */}
+      {/* UI Overlay - React handles menus, HUD, etc. */}
       <div 
         className="ui-overlay" 
         style={{ 
@@ -556,102 +570,110 @@ function App() {
               <button 
                 onClick={handleInstallClick}
                 className="install-button"
-                title="Instalar aplicación"
+                title="Install application"
               >
-                📱 Instalar App
+                Install
               </button>
             )}
             <h1>curve.io</h1>
-            <p>Juego multijugador en tiempo real</p>
             <button 
               onClick={handleStartLocalGame}
               className="start-button"
             >
-              Juego Local
+              Local Game
             </button>
             <button 
               onClick={handleConnectToServer}
               className="start-button"
               style={{ background: '#2196F3', marginTop: '10px' }}
             >
-              Conectar al Servidor
+              Play Online
             </button>
             <div className="controls-info">
-              <p>Controles:</p>
-              <p>A / ← : Girar izquierda</p>
-              <p>D / → : Girar derecha</p>
-              <p>A + D : Activar boost (velocidad +50%)</p>
+              {isMobile ? (
+                <>
+                  <p>Controls:</p>
+                  <p>Tap left side : Turn left</p>
+                  <p>Tap right side : Turn right</p>
+                  <p>Tap both sides : Activate boost (speed +50%)</p>
+                </>
+              ) : (
+                <>
+                  <p>Controls:</p>
+                  <p>A / ← : Turn left</p>
+                  <p>D / → : Turn right</p>
+                  <p>A + D : Activate boost (speed +50%)</p>
+                </>
+              )}
             </div>
           </div>
         )}
 
         {currentView === 'lobby' && (
           <div className="lobby">
-            <h1>Sala de Espera</h1>
-            <div className="lobby-players">
-              <h2>Jugadores ({lobbyPlayers.length})</h2>
-              <div className="players-list">
-                {lobbyPlayers.length === 0 ? (
-                  <p className="waiting-text">Esperando jugadores...</p>
-                ) : (
-                  lobbyPlayers.map((player) => (
-                    <div key={player.id} className="player-item">
-                      <div 
-                        className="player-color-indicator" 
-                        style={{ backgroundColor: player.color }}
-                      />
-                      <span className="player-name">{player.name}</span>
-                    </div>
-                  ))
-                )}
+            <h1>Waiting Room</h1>
+            <div className="lobby-content">
+              {/* Left column: Player list */}
+              <div className="lobby-players">
+                <h2>Players ({lobbyPlayers.length})</h2>
+                <div className="players-list">
+                  {lobbyPlayers.length === 0 ? (
+                    <p className="waiting-text">Waiting for players...</p>
+                  ) : (
+                    lobbyPlayers.map((player) => (
+                      <div key={player.id} className="player-item">
+                        <div 
+                          className="player-color-indicator" 
+                          style={{ backgroundColor: player.color }}
+                        />
+                        <span className="player-name">{player.name}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              {/* Right column: Actions */}
+              <div className="lobby-actions">
+                <button 
+                  onClick={() => {
+                    const currentPlayer = lobbyPlayers.find(p => p.id === localPlayerId);
+                    if (currentPlayer) {
+                      setShowColorPicker(true);
+                    }
+                  }}
+                  className="change-color-button"
+                >
+                  Change Color
+                </button>
+                <button 
+                  onClick={handleStartGameFromLobby}
+                  className="start-button"
+                  disabled={lobbyPlayers.length < 2}
+                >
+                  {lobbyPlayers.length < 2 ? 'Waiting for more players...' : 'Start'}
+                </button>
+                <button 
+                  onClick={() => {
+                    if (gameRef.current) {
+                      const networkClient = gameRef.current.getNetworkClient();
+                      if (networkClient) {
+                        networkClient.disconnect();
+                      }
+                      gameRef.current.destroy();
+                      gameRef.current = new Game('gameCanvas');
+                    }
+                    setCurrentView('menu');
+                    setLobbyPlayers([]);
+                    setLocalPlayerId(null);
+                  }}
+                  className="back-button"
+                >
+                  Back to Menu
+                </button>
               </div>
             </div>
-            <div className="lobby-actions">
-              <button 
-                onClick={() => {
-                  const currentPlayer = lobbyPlayers.find(p => p.id === localPlayerId);
-                  if (currentPlayer) {
-                    setShowColorPicker(true);
-                  }
-                }}
-                className="change-color-button"
-                style={{ marginBottom: '10px' }}
-              >
-                Cambiar Color
-              </button>
-              <button 
-                onClick={handleStartGameFromLobby}
-                className="start-button"
-                disabled={lobbyPlayers.length < 2}
-                style={{ 
-                  opacity: lobbyPlayers.length < 2 ? 0.5 : 1,
-                  cursor: lobbyPlayers.length < 2 ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {lobbyPlayers.length < 2 ? 'Esperando más jugadores...' : 'Start'}
-              </button>
-              <button 
-                onClick={() => {
-                  if (gameRef.current) {
-                    const networkClient = gameRef.current.getNetworkClient();
-                    if (networkClient) {
-                      networkClient.disconnect();
-                    }
-                    gameRef.current.destroy();
-                    gameRef.current = new Game('gameCanvas');
-                  }
-                  setCurrentView('menu');
-                  setLobbyPlayers([]);
-                  setLocalPlayerId(null);
-                }}
-                className="back-button"
-                style={{ marginTop: '10px', background: '#666' }}
-              >
-                Volver al Menú
-              </button>
-            </div>
             
-            {/* Modal de selección de color */}
+            {/* Color picker modal */}
             {showColorPicker && (
               <ColorPickerModal
                 isOpen={showColorPicker}
@@ -685,20 +707,20 @@ function App() {
                 }}
                 className="menu-button"
               >
-                Menú
+                Menu
               </button>
               <button 
                 onClick={handleRestart}
                 className="restart-button"
               >
-                Reiniciar
+                Restart
               </button>
               {gameRef.current?.isUsingNetwork() && (
                 <div className="connection-status">
                   {gameRef.current?.getNetworkClient()?.getIsConnected() ? (
-                    <span style={{ color: '#4CAF50' }}>● Conectado</span>
+                    <span style={{ color: '#4CAF50' }}>● Connected</span>
                   ) : (
-                    <span style={{ color: '#f44336' }}>● Desconectado</span>
+                    <span style={{ color: '#f44336' }}>● Disconnected</span>
                   )}
                 </div>
               )}
@@ -715,7 +737,7 @@ function App() {
           </div>
         )}
 
-        {/* Modal de fin de partida */}
+        {/* Game over modal */}
         {gameOverState && (
           <GameOverModal 
             gameState={gameOverState}

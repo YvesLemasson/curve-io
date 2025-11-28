@@ -1,7 +1,7 @@
 {
   "name": "curve.io",
   "short_name": "curve.io",
-  "description": "Juego multijugador en tiempo real",
+  "description": "Real-time multiplayer game",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1a1a",

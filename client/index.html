@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -49,15 +49,15 @@
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
   <script>
-    // Registrar Service Worker
+    // Register Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then((registration) => {
-            console.log('Service Worker registrado exitosamente:', registration.scope);
+            console.log('Service Worker registered successfully:', registration.scope);
           })
           .catch((error) => {
-            console.error('Error al registrar Service Worker:', error);
+            console.error('Error registering Service Worker:', error);
           });
       });
     }
