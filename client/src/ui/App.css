@@ -1083,8 +1083,27 @@
   transform: scale(1.05);
 }
 
-.change-color-button:active {
-  transform: scale(0.95);
+  .change-color-button:active {
+    transform: scale(0.95);
+  }
+
+/* Feedback visual táctil */
+.touch-feedback {
+  position: fixed;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.touch-feedback-left {
+  left: 0;
+}
+
+.touch-feedback-right {
+  right: 0;
 }
 
 /* Ajustes para móviles */

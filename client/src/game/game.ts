@@ -483,6 +483,13 @@ export class Game {
   }
 
   /**
+   * Obtiene el InputManager (para configurar callbacks de toques)
+   */
+  getInputManager(): InputManager {
+    return this.input;
+  }
+
+  /**
    * Limpia todos los jugadores locales (útil al iniciar en modo red)
    */
   clearPlayers(): void {

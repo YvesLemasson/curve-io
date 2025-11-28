@@ -210,6 +210,8 @@ function App() {
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState<boolean>(false);
+  const [touchLeft, setTouchLeft] = useState<boolean>(false);
+  const [touchRight, setTouchRight] = useState<boolean>(false);
   const gameRef = useRef<Game | null>(null);
 
   // Manejar el evento beforeinstallprompt para PWA
@@ -335,6 +337,13 @@ function App() {
     // Crear nuevo juego con red
     try {
       gameRef.current = new Game('gameCanvas', true);
+      
+      // Configurar callback para estado de toques (feedback visual)
+      const inputManager = gameRef.current.getInputManager();
+      inputManager.onTouchStateChange((left, right) => {
+        setTouchLeft(left);
+        setTouchRight(right);
+      });
     } catch (error) {
       console.error('Error al inicializar el juego:', error);
       return;
@@ -447,6 +456,16 @@ function App() {
     setLobbyPlayers([]);
   };
 
+  // Obtener el color del jugador local para el feedback visual
+  const getLocalPlayerColor = (): string => {
+    if (gameRef.current) {
+      const players = gameRef.current.getPlayers();
+      const localPlayer = players.find(p => p.id === localPlayerId || (!gameRef.current?.isUsingNetwork() && players.indexOf(p) === 0));
+      return localPlayer?.color || '#ffffff';
+    }
+    return '#ffffff';
+  };
+
   return (
     <div className="app">
       {/* Canvas del juego */}
@@ -457,6 +476,28 @@ function App() {
           display: 'block'
         }} 
       />
+      
+      {/* Feedback visual táctil - solo en modo juego */}
+      {currentView === 'game' && !gameOverState && (
+        <>
+          {/* Overlay izquierdo */}
+          <div 
+            className="touch-feedback touch-feedback-left"
+            style={{
+              opacity: touchLeft ? 0.3 : 0,
+              backgroundColor: getLocalPlayerColor(),
+            }}
+          />
+          {/* Overlay derecho */}
+          <div 
+            className="touch-feedback touch-feedback-right"
+            style={{
+              opacity: touchRight ? 0.3 : 0,
+              backgroundColor: getLocalPlayerColor(),
+            }}
+          />
+        </>
+      )}
       
       {/* UI Overlay - React maneja menús, HUD, etc. */}
       <div 

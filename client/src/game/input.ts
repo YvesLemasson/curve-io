@@ -7,12 +7,20 @@ export class InputManager {
   private keys: Set<string> = new Set();
   private activeTouches: Map<number, { x: number; y: number; side: 'left' | 'right' }> = new Map();
   private canvasElement: HTMLCanvasElement | null = null;
+  private touchStateCallback: ((left: boolean, right: boolean) => void) | null = null;
 
   constructor(canvasId?: string) {
     if (canvasId) {
       this.canvasElement = document.getElementById(canvasId) as HTMLCanvasElement;
     }
     this.setupEventListeners();
+  }
+
+  /**
+   * Establece un callback para notificar cambios en el estado de toques
+   */
+  onTouchStateChange(callback: (left: boolean, right: boolean) => void): void {
+    this.touchStateCallback = callback;
   }
 
   /**
@@ -40,26 +48,32 @@ export class InputManager {
     });
 
     // Event listeners táctiles
-    const targetElement = this.canvasElement || document.body;
+    // IMPORTANTE: Usar document.body o window para capturar todos los toques
+    // ya que el canvas puede tener pointer-events: none
+    const targetElement = document.body;
     
     targetElement.addEventListener('touchstart', (e) => {
       e.preventDefault(); // Prevenir scroll y zoom
       this.handleTouchStart(e);
+      this.notifyTouchState();
     }, { passive: false });
 
     targetElement.addEventListener('touchmove', (e) => {
       e.preventDefault(); // Prevenir scroll
       this.handleTouchMove(e);
+      this.notifyTouchState();
     }, { passive: false });
 
     targetElement.addEventListener('touchend', (e) => {
       e.preventDefault();
       this.handleTouchEnd(e);
+      this.notifyTouchState();
     }, { passive: false });
 
     targetElement.addEventListener('touchcancel', (e) => {
       e.preventDefault();
       this.handleTouchEnd(e);
+      this.notifyTouchState();
     }, { passive: false });
   }
 
@@ -109,6 +123,17 @@ export class InputManager {
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
       this.activeTouches.delete(touch.identifier);
+    }
+  }
+
+  /**
+   * Notifica el estado actual de los toques
+   */
+  private notifyTouchState(): void {
+    if (this.touchStateCallback) {
+      const leftTouches = Array.from(this.activeTouches.values()).filter(t => t.side === 'left');
+      const rightTouches = Array.from(this.activeTouches.values()).filter(t => t.side === 'right');
+      this.touchStateCallback(leftTouches.length > 0, rightTouches.length > 0);
     }
   }
 
