@@ -27,6 +27,9 @@ export class Player {
   private readonly boostDuration: number = 5000; // 5 segundos en ms
   private readonly boostSpeedMultiplier: number = 1.5; // 50% más rápido
   private readonly boostRechargeRate: number = 100 / 20000; // Porcentaje por ms (20 segundos para recargar completamente)
+  
+  // FASE 1: Límite de trail para optimización
+  private readonly MAX_TRAIL_LENGTH: number = 600; // Mantener últimos 600 puntos (reducido de 1000)
 
   constructor(
     id: string,
@@ -86,6 +89,11 @@ export class Player {
     // Solo agregar al trail si no estamos en período de hueco
     if (this.shouldDrawTrail) {
       this.trail.push({ ...this.position });
+      
+      // FASE 1: Limitar tamaño del trail (mantener últimos 600 puntos)
+      if (this.trail.length > this.MAX_TRAIL_LENGTH) {
+        this.trail = this.trail.slice(-this.MAX_TRAIL_LENGTH);
+      }
     }
 
     // Actualizar estado anterior

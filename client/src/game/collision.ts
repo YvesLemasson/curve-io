@@ -96,6 +96,7 @@ export function checkLineLineCollision(
 
 /**
  * Verifica si la nueva posición del jugador colisiona con algún trail
+ * FASE 1: Early exit - verificar trails cercanos primero y saltar los muy lejanos
  */
 export function checkTrailCollision(
   currentPos: Position,
@@ -103,13 +104,37 @@ export function checkTrailCollision(
   trails: Array<{ trail: Array<Position | null>; playerId: string }>,
   excludePlayerId?: string
 ): { collided: boolean; collidedWith?: string } {
-  // Verificar colisión con cada trail
-  for (const { trail, playerId } of trails) {
-    // Saltar el trail del propio jugador si se especifica
-    if (excludePlayerId && playerId === excludePlayerId) {
-      continue;
-    }
-
+  // FASE 1: Calcular distancia máxima para considerar un trail (early exit)
+  const MAX_DISTANCE_THRESHOLD = 200; // Píxeles - solo verificar trails dentro de este radio
+  
+  // Calcular posición media del nuevo segmento
+  const midX = (currentPos.x + newPos.x) / 2;
+  const midY = (currentPos.y + newPos.y) / 2;
+  
+  // Ordenar trails por distancia (más cercanos primero) para early exit
+  const trailsWithDistance = trails
+    .filter(({ playerId }) => !excludePlayerId || playerId !== excludePlayerId)
+    .map(({ trail, playerId }) => {
+      // Calcular distancia mínima del trail al segmento del jugador
+      let minDistance = Infinity;
+      
+      for (const point of trail) {
+        if (!point) continue; // Saltar nulls
+        const dx = point.x - midX;
+        const dy = point.y - midY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < minDistance) {
+          minDistance = distance;
+        }
+      }
+      
+      return { trail, playerId, minDistance };
+    })
+    .filter(({ minDistance }) => minDistance <= MAX_DISTANCE_THRESHOLD) // Early exit: saltar trails muy lejanos
+    .sort((a, b) => a.minDistance - b.minDistance); // Ordenar por distancia (cercanos primero)
+  
+  // Verificar colisión con trails cercanos primero (early exit cuando se encuentra colisión)
+  for (const { trail, playerId } of trailsWithDistance) {
     // Verificar colisión con cada segmento del trail (saltando breaks/null)
     for (let i = 0; i < trail.length - 1; i++) {
       const segmentStart = trail[i];

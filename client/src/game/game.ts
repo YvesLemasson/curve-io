@@ -10,6 +10,7 @@ import {
   checkSelfCollision,
 } from './collision';
 import { NetworkClient } from '../network/client';
+import { SpatialHash } from './spatialHash';
 import type { GameState, Position } from '@shared/types';
 
 export class Game {
@@ -28,6 +29,9 @@ export class Game {
   // Tamaño del juego en el servidor (fijo, proporción 3:2)
   private readonly serverCanvasWidth: number = 1920;
   private readonly serverCanvasHeight: number = 1280; // 1920 / 1.5 = 1280 (proporción 3:2)
+  
+  // FASE 2: Spatial Hash para optimización de colisiones (solo modo local)
+  private spatialHash: SpatialHash | null = null;
 
   constructor(canvasId: string = 'gameCanvas', useNetwork: boolean = false, serverUrl?: string) {
     this.canvas = new CanvasRenderer(canvasId);
@@ -224,6 +228,17 @@ export class Game {
     const deltaTime = this.lastFrameTime === 0 ? 16.67 : currentTime - this.lastFrameTime;
     this.lastFrameTime = currentTime;
 
+    // FASE 2: Actualizar Spatial Hash con todos los trails
+    if (!this.spatialHash) {
+      this.spatialHash = new SpatialHash(100, this.canvas.getWidth(), this.canvas.getHeight());
+    }
+    this.spatialHash.clear();
+    for (const player of this.players) {
+      if (player.alive) {
+        this.spatialHash.addTrail(player.id, player.getTrail() as Array<Position | null>);
+      }
+    }
+    
     // Actualizar todos los jugadores vivos
     const alivePlayers = this.players.filter(p => p.alive);
     
@@ -244,12 +259,19 @@ export class Game {
       // Colisión con bordes
       if (checkBoundaryCollision(newPos, width, height)) {
         player.kill();
+        if (this.spatialHash) {
+          this.spatialHash.removePlayer(player.id);
+        }
         continue;
       }
 
-      // Colisión con otros trails
+      // FASE 2: Usar Spatial Hash para obtener solo jugadores cercanos
+      const nearbyPlayerIds = this.spatialHash.getPlayersForLine(oldPos, newPos);
+      nearbyPlayerIds.delete(player.id); // Excluir el propio jugador
+      
+      // Colisión con otros trails (solo verificar jugadores cercanos)
       const otherTrails = this.players
-        .filter(p => p.id !== player.id && p.alive)
+        .filter(p => nearbyPlayerIds.has(p.id) && p.id !== player.id && p.alive)
         .map(p => ({ trail: p.getTrail() as Array<Position | null>, playerId: p.id }));
 
       const trailCollision = checkTrailCollision(
@@ -261,12 +283,18 @@ export class Game {
 
       if (trailCollision.collided) {
         player.kill();
+        if (this.spatialHash) {
+          this.spatialHash.removePlayer(player.id);
+        }
         continue;
       }
 
       // Colisión consigo mismo
       if (checkSelfCollision(oldPos, newPos, player.getTrail() as Array<Position | null>)) {
         player.kill();
+        if (this.spatialHash) {
+          this.spatialHash.removePlayer(player.id);
+        }
         continue;
       }
     }

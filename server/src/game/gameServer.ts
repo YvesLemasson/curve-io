@@ -1,7 +1,7 @@
 // Game Loop del servidor
 // Procesa inputs, actualiza jugadores, detecta colisiones y envía estado
 
-import type { Player, GameState } from '../shared/types.js';
+import type { Player, GameState, Position } from '../shared/types.js';
 import type { GameInputMessage } from '../shared/protocol.js';
 import { PlayerManager } from './playerManager.js';
 import { checkBoundaryCollision, checkTrailCollision, checkSelfCollision } from './collision.js';
@@ -22,6 +22,10 @@ export class GameServer {
 
   // Callback para enviar estado a clientes
   private broadcastCallback: ((gameState: GameState) => void) | null = null;
+  
+  // FASE 1: Throttling de broadcast - enviar cada 2 ticks (30 Hz en lugar de 60 Hz)
+  private readonly broadcastInterval: number = 2; // Enviar cada 2 ticks
+  private broadcastTickCounter: number = 0;
 
   constructor(playerManager: PlayerManager, canvasWidth: number = 1920, canvasHeight: number = 1280) {
     this.playerManager = playerManager;
@@ -59,7 +63,7 @@ export class GameServer {
     if (!this.isRunning) return;
     
     this.isRunning = false;
-    this.gameState.gameStatus = 'finished';
+    this.gameState.gameStatus = 'ended';
     
     if (this.gameLoopInterval) {
       clearInterval(this.gameLoopInterval);
@@ -216,9 +220,10 @@ export class GameServer {
       // Agregar al trail (simplificado, sin gaps por ahora)
       player.trail.push({ ...player.position });
       
-      // Limitar tamaño del trail (mantener últimos 1000 puntos)
-      if (player.trail.length > 1000) {
-        player.trail = player.trail.slice(-1000);
+      // FASE 1: Limitar tamaño del trail (mantener últimos 600 puntos en lugar de 1000)
+      const MAX_TRAIL_LENGTH = 600;
+      if (player.trail.length > MAX_TRAIL_LENGTH) {
+        player.trail = player.trail.slice(-MAX_TRAIL_LENGTH);
       }
     }
 
@@ -265,13 +270,18 @@ export class GameServer {
       }
 
       // Colisión con otros trails
+      // Filtrar nulls del trail antes de verificar colisiones
+      const validTrail = player.trail.filter((pos): pos is Position => pos !== null);
       const otherTrails = players
         .filter(p => p.id !== player.id && p.alive)
-        .map(p => ({ trail: p.trail, playerId: p.id }));
+        .map(p => ({ 
+          trail: p.trail.filter((pos): pos is Position => pos !== null), 
+          playerId: p.id 
+        }));
       
-      if (player.trail.length >= 2) {
-        const currentPos = player.trail[player.trail.length - 2];
-        const newPos = player.trail[player.trail.length - 1];
+      if (validTrail.length >= 2) {
+        const currentPos = validTrail[validTrail.length - 2];
+        const newPos = validTrail[validTrail.length - 1];
         
         const trailCollision = checkTrailCollision(currentPos, newPos, otherTrails, player.id);
         if (trailCollision.collided) {
@@ -281,7 +291,7 @@ export class GameServer {
         }
 
         // Colisión consigo mismo
-        if (checkSelfCollision(currentPos, newPos, player.trail)) {
+        if (checkSelfCollision(currentPos, newPos, validTrail)) {
           player.alive = false;
           console.log(`💀 Jugador ${player.name} murió por colisión consigo mismo`);
         }
@@ -333,15 +343,27 @@ export class GameServer {
 
   /**
    * Envía el estado actualizado a todos los clientes
+   * FASE 1: Throttling - solo enviar cada N ticks (30 Hz en lugar de 60 Hz)
    */
   private broadcastState(): void {
+    // Incrementar contador
+    this.broadcastTickCounter++;
+    
+    // Solo enviar cada N ticks
+    if (this.broadcastTickCounter < this.broadcastInterval) {
+      return;
+    }
+    
+    // Resetear contador
+    this.broadcastTickCounter = 0;
+    
     if (this.broadcastCallback) {
       this.broadcastCallback(this.gameState);
       
       // Log cada 60 ticks (aproximadamente 1 vez por segundo)
       if (this.gameState.tick % 60 === 0) {
         const alivePlayers = this.gameState.players.filter(p => p.alive);
-        console.log(`📡 Broadcast estado | Tick: ${this.gameState.tick} | Jugadores: ${alivePlayers.length}/${this.gameState.players.length}`);
+        console.log(`📡 Broadcast estado | Tick: ${this.gameState.tick} | Jugadores: ${alivePlayers.length}/${this.gameState.players.length} | Rate: ${1000 / (this.tickInterval * this.broadcastInterval)}Hz`);
       }
     }
   }
@@ -385,7 +407,7 @@ export class GameServer {
       angle: p.angle,
       speed: p.speed,
       alive: p.alive,
-      trail: p.trail.map(pos => ({ ...pos })),
+      trail: p.trail.filter((pos): pos is Position => pos !== null).map(pos => ({ ...pos })),
     }));
   }
 }
