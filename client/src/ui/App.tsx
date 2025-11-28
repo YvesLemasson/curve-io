@@ -208,7 +208,54 @@ function App() {
   const [gameOverState, setGameOverState] = useState<{ players: Array<{ id: string; name: string; color: string; alive: boolean }>; winnerId?: string; tick: number } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallButton, setShowInstallButton] = useState<boolean>(false);
   const gameRef = useRef<Game | null>(null);
+
+  // Manejar el evento beforeinstallprompt para PWA
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevenir el prompt automático
+      e.preventDefault();
+      // Guardar el evento para usarlo después
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Verificar si ya está instalado
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setShowInstallButton(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  // Función para instalar la PWA
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      return;
+    }
+
+    // Mostrar el prompt de instalación
+    deferredPrompt.prompt();
+
+    // Esperar a que el usuario responda
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === 'accepted') {
+      console.log('Usuario aceptó la instalación');
+    } else {
+      console.log('Usuario rechazó la instalación');
+    }
+
+    // Limpiar el prompt
+    setDeferredPrompt(null);
+    setShowInstallButton(false);
+  };
 
   // Inicializar juego cuando se monta el componente
   useEffect(() => {
@@ -422,6 +469,15 @@ function App() {
       >
         {currentView === 'menu' && (
           <div className="main-menu">
+            {showInstallButton && (
+              <button 
+                onClick={handleInstallClick}
+                className="install-button"
+                title="Instalar aplicación"
+              >
+                📱 Instalar App
+              </button>
+            )}
             <h1>curve.io</h1>
             <p>Juego multijugador en tiempo real</p>
             <button 
