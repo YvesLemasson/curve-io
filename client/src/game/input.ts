@@ -6,14 +6,12 @@ export type InputAction = 'left' | 'right' | null;
 export class InputManager {
   private keys: Set<string> = new Set();
   private activeTouches: Map<number, { x: number; y: number; side: 'left' | 'right' }> = new Map();
-  private canvasElement: HTMLCanvasElement | null = null;
   private touchStateCallback: ((left: boolean, right: boolean) => void) | null = null;
   private isGameActive: boolean = false; // Flag para saber si estamos en el juego
 
   constructor(canvasId?: string) {
-    if (canvasId) {
-      this.canvasElement = document.getElementById(canvasId) as HTMLCanvasElement;
-    }
+    // canvasId se puede usar en el futuro si es necesario
+    // Por ahora no lo necesitamos ya que capturamos eventos en window
     this.setupEventListeners();
   }
 
