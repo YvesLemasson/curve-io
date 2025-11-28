@@ -21,7 +21,7 @@ export function AuthCallback() {
           // Usuario autenticado exitosamente
           // Crear/actualizar perfil en la base de datos
           const user = data.session.user;
-          const { data: profile } = await supabase
+          const { error: profileError } = await supabase
             .from('users')
             .upsert(
               {
@@ -32,6 +32,10 @@ export function AuthCallback() {
               },
               { onConflict: 'id' }
             );
+
+          if (profileError) {
+            console.error('Error creating/updating profile:', profileError);
+          }
 
           navigate('/');
         } else {
