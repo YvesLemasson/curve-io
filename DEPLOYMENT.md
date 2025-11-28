@@ -89,16 +89,23 @@ git push -u origin main
 1. Ir a [railway.app](https://railway.app) y crear una cuenta
 2. Click en **"New Project"** → **"Deploy from GitHub repo"**
 3. Seleccionar tu repositorio `curve-io`
-4. Configurar:
-   - **Root Directory**: `server` (en Settings → Source)
-   - Railway usará los archivos `nixpacks.toml` y `railway.json` para configurar el build automáticamente
-5. En **Variables**, agregar:
+4. **IMPORTANTE - Configurar Root Directory:**
+   - Después de conectar el repo, ve a **Settings** (⚙️) → **Source**
+   - En **Root Directory**, escribe exactamente: `server` (sin barra al final)
+   - **Guarda los cambios** (esto es crítico)
+5. Configurar comandos de build (si Railway no los detecta automáticamente):
+   - Ve a **Settings** → **Deploy**
+   - **Build Command**: `npm run build`
+   - **Start Command**: `npm start`
+   - Guarda los cambios
+6. En **Variables** (Settings → Variables), agregar:
    - `NODE_ENV` = `production`
    - `FRONTEND_URL` = `https://tu-app.netlify.app` (la URL de Netlify que copiaste)
-6. Railway asignará automáticamente el `PORT` (no necesitas configurarlo)
-7. Una vez desplegado, copia la URL pública (ej: `https://tu-servidor.railway.app`)
+7. Railway asignará automáticamente el `PORT` (no necesitas configurarlo)
+8. Haz un **Redeploy** para aplicar los cambios
+9. Una vez desplegado, copia la URL pública (ej: `https://tu-servidor.railway.app`)
 
-**Nota**: Los archivos `server/nixpacks.toml` y `server/railway.json` ya están configurados para que Railway sepa cómo construir y ejecutar el proyecto.
+**Nota**: Los archivos `server/nixpacks.toml`, `server/railway.json` y `server/start.sh` ya están configurados, pero el **Root Directory** debe estar configurado en la interfaz de Railway.
 
 ### 5. Configurar Variables de Entorno del Frontend
 
@@ -181,36 +188,41 @@ VITE_SERVER_URL=http://localhost:3001
 ### El build falla en Railway - "Railpack could not determine how to build"
 Este error ocurre cuando Railway analiza la raíz del repositorio en lugar del directorio `server/`.
 
-**Solución paso a paso:**
+**⚠️ SOLUCIÓN CRÍTICA - Sigue estos pasos exactos:**
 
-1. **Configurar Root Directory en Railway:**
-   - Ve a tu proyecto en Railway
-   - Click en **Settings** → **Source**
-   - En **Root Directory**, escribe: `server`
-   - Guarda los cambios
+1. **Configurar Root Directory (ESTO ES LO MÁS IMPORTANTE):**
+   - En Railway, ve a tu servicio/proyecto
+   - Click en **Settings** (⚙️) en la parte superior
+   - Click en **Source** en el menú lateral
+   - Busca el campo **"Root Directory"**
+   - **Borra cualquier valor que tenga** y escribe exactamente: `server`
+   - **NO pongas barra al final** (no `server/`, solo `server`)
+   - Click en **"Save"** o **"Update"**
+   - ⚠️ **ESPERA** a que Railway guarde los cambios (puede tardar unos segundos)
 
-2. **Verificar archivos de configuración:**
-   - Asegúrate de que estos archivos estén en `server/`:
-     - `package.json` ✅
-     - `nixpacks.toml` ✅
-     - `railway.json` ✅
-     - `start.sh` ✅
-
-3. **Si el error persiste, configura manualmente:**
+2. **Configurar comandos manualmente (si es necesario):**
    - Ve a **Settings** → **Deploy**
    - **Build Command**: `npm run build`
-   - **Start Command**: `npm start` (o `bash start.sh`)
-   - Guarda y haz un redeploy
+   - **Start Command**: `npm start`
+   - Guarda los cambios
 
-4. **Asegúrate de que el código esté en GitHub:**
+3. **Hacer Redeploy:**
+   - Ve a la pestaña **Deployments**
+   - Click en **"Redeploy"** o en los tres puntos (⋯) → **"Redeploy"**
+   - O simplemente haz un nuevo commit y push a GitHub
+
+4. **Verificar que los archivos estén en GitHub:**
    ```bash
-   git add server/
+   git add server/nixpacks.toml server/railway.json server/start.sh
    git commit -m "Agregar configuración de Railway"
    git push
    ```
 
-5. **En Railway, haz un redeploy:**
-   - Click en **Deployments** → **Redeploy** o espera a que detecte los cambios automáticamente
+**Si después de configurar Root Directory sigue fallando:**
+- Verifica que escribiste `server` exactamente (sin mayúsculas, sin espacios)
+- Asegúrate de haber guardado los cambios en Railway
+- Espera 30-60 segundos después de guardar antes de hacer redeploy
+- Verifica en los logs de Railway que ahora está buscando en el directorio `server/`
 
 ¡No habrá problemas para subir a internet! 🚀
 
