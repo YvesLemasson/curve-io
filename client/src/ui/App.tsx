@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Game } from '../game/game';
+import { useAuth } from '../auth/AuthContext';
 import './App.css';
 
 // Import Game here to avoid circular reference error
@@ -210,6 +211,7 @@ function ColorPickerModal({
 }
 
 function App() {
+  const { user, loading, signInWithGoogle, signOut } = useAuth();
   const [currentView, setCurrentView] = useState<'menu' | 'game' | 'lobby'>('menu');
   const [boostState, setBoostState] = useState<{ active: boolean; charge: number; remaining: number } | null>(null);
   const [lobbyPlayers, setLobbyPlayers] = useState<Array<{ id: string; name: string; color: string }>>([]);
@@ -423,10 +425,15 @@ function App() {
     });
 
     networkClient.onConnect(() => {
+      // Enviar user_id si el usuario está autenticado
+      if (user?.id) {
+        networkClient.sendAuthUser(user.id);
+      }
+      
       // Cuando se conecta, unirse al lobby
       setTimeout(() => {
         if (gameRef.current) {
-          const playerName = `Player ${Math.floor(Math.random() * 1000)}`;
+          const playerName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || `Player ${Math.floor(Math.random() * 1000)}`;
           gameRef.current.joinLobby(playerName);
         }
       }, 100);
@@ -576,6 +583,33 @@ function App() {
               </button>
             )}
             <h1>curve.io</h1>
+            
+            {/* Auth section */}
+            {loading ? (
+              <p style={{ color: '#fff', margin: '10px 0' }}>Loading...</p>
+            ) : user ? (
+              <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+                <p style={{ color: '#fff', margin: '5px 0' }}>
+                  Welcome, {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player'}!
+                </p>
+                <button 
+                  onClick={signOut}
+                  className="start-button"
+                  style={{ background: '#f44336', marginTop: '5px', fontSize: '14px', padding: '8px 16px' }}
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={signInWithGoogle}
+                className="start-button"
+                style={{ background: '#4285F4', marginTop: '10px' }}
+              >
+                Sign in with Google
+              </button>
+            )}
+            
             <button 
               onClick={handleStartLocalGame}
               className="start-button"
@@ -586,6 +620,8 @@ function App() {
               onClick={handleConnectToServer}
               className="start-button"
               style={{ background: '#2196F3', marginTop: '10px' }}
+              disabled={!user}
+              title={!user ? 'Please sign in to play online' : ''}
             >
               Play Online
             </button>

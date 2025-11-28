@@ -5,9 +5,10 @@ import { Server, Socket } from 'socket.io';
 import { PlayerManager } from './game/playerManager.js';
 import { GameServer } from './game/gameServer.js';
 import { CLIENT_EVENTS, SERVER_EVENTS } from './shared/protocol.js';
-import type { PlayerJoinMessage, GameInputMessage, GameStateMessage, LobbyPlayersMessage } from './shared/protocol.js';
+import type { PlayerJoinMessage, GameInputMessage, GameStateMessage, LobbyPlayersMessage, AuthUserMessage } from './shared/protocol.js';
 import type { Player } from './shared/types.js';
 import { DeltaCompressor } from './network/deltaCompression.js';
+import { GameModel } from './models/gameModel.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -37,6 +38,10 @@ const deltaCompressor = new DeltaCompressor();
 
 // Mapa de socket.id -> playerId
 const socketToPlayerId: Map<string, string> = new Map();
+// Mapa de socket.id -> user_id (Supabase)
+const socketToUserId: Map<string, string> = new Map();
+// ID de la partida actual (null si no hay partida activa)
+let currentGameId: string | null = null;
 
 // Función para encontrar un color disponible que no esté en uso
 function getAvailableColor(existingPlayers: Player[]): string {
@@ -79,6 +84,67 @@ function broadcastLobbyPlayers(): void {
   };
   io.emit(SERVER_EVENTS.LOBBY_PLAYERS, lobbyPlayers);
 }
+
+// Configurar callback cuando el juego termina para guardar en Supabase
+gameServer.onGameEnd(async (gameState) => {
+  if (!currentGameId) {
+    console.log('⚠️  No hay partida activa para guardar');
+    return;
+  }
+
+  try {
+    // Obtener todos los jugadores ordenados por si están vivos (ganador primero)
+    const allPlayers = playerManager.getAllPlayers();
+    const winnerId = gameState.winnerId;
+    
+    // Ordenar jugadores: ganador primero, luego los eliminados
+    const sortedPlayers = allPlayers.sort((a, b) => {
+      if (a.id === winnerId) return -1;
+      if (b.id === winnerId) return 1;
+      if (a.alive && !b.alive) return -1;
+      if (!a.alive && b.alive) return 1;
+      return 0;
+    });
+
+    // Mapear jugadores a participantes con user_id
+    const participants = sortedPlayers
+      .map((player, index) => {
+        const socketId = Array.from(socketToPlayerId.entries())
+          .find(([_, pid]) => pid === player.id)?.[0];
+        const userId = socketId ? socketToUserId.get(socketId) : null;
+        
+        // Si no hay user_id, no guardar este participante (jugador no autenticado)
+        if (!userId) {
+          console.log(`⚠️  Jugador ${player.name} no tiene user_id, omitiendo del guardado`);
+          return null;
+        }
+
+        return {
+          userId,
+          score: player.alive ? 100 : 0, // Score simple: 100 si está vivo, 0 si murió
+          position: index + 1, // 1 = ganador, 2 = segundo, etc.
+        };
+      })
+      .filter((p): p is { userId: string; score: number; position: number } => p !== null);
+
+    // Obtener user_id del ganador
+    const winnerSocketId = Array.from(socketToPlayerId.entries())
+      .find(([_, pid]) => pid === winnerId)?.[0];
+    const winnerUserId = winnerSocketId ? socketToUserId.get(winnerSocketId) : null;
+
+    if (participants.length > 0) {
+      await GameModel.endGame(currentGameId, participants, winnerUserId || null);
+      console.log(`✅ Partida ${currentGameId} guardada exitosamente con ${participants.length} participantes`);
+    } else {
+      console.log('⚠️  No hay participantes autenticados para guardar');
+    }
+  } catch (error) {
+    console.error('❌ Error al guardar partida:', error);
+  } finally {
+    // Limpiar gameId después de guardar
+    currentGameId = null;
+  }
+});
 
 // Configurar broadcast del game server
 // FASE 2: Delta Compression - Comprimir estado antes de enviar
@@ -131,6 +197,12 @@ io.on('connection', (socket: Socket) => {
   setTimeout(() => {
     broadcastLobbyPlayers();
   }, 100);
+
+  // Manejar autenticación de usuario (user_id de Supabase)
+  socket.on(CLIENT_EVENTS.AUTH_USER, (message: AuthUserMessage) => {
+    socketToUserId.set(socket.id, message.userId);
+    console.log(`🔐 Usuario autenticado: ${message.userId} (socket: ${socket.id})`);
+  });
 
   // Manejar unión de jugador
   socket.on(CLIENT_EVENTS.PLAYER_JOIN, (message: PlayerJoinMessage) => {
@@ -221,6 +293,17 @@ io.on('connection', (socket: Socket) => {
     }
     
     console.log(`🚀 Iniciando juego con ${playerCount} jugadores (solicitado por ${socket.id})`);
+    
+    // Crear partida en Supabase
+    GameModel.createGame()
+      .then((gameId) => {
+        currentGameId = gameId;
+        console.log(`📝 Partida creada en Supabase: ${gameId}`);
+      })
+      .catch((error) => {
+        console.error('❌ Error al crear partida en Supabase:', error);
+        // Continuar con el juego aunque falle el guardado
+      });
     
     // Iniciar el game loop (sin enviar estado inicial todavía)
     gameServer.start(false);

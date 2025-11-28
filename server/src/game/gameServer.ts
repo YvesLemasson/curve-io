@@ -32,6 +32,8 @@ export class GameServer {
 
   // Callback para enviar estado a clientes
   private broadcastCallback: ((gameState: GameState) => void) | null = null;
+  // Callback para cuando el juego termina
+  private onGameEndCallback: ((gameState: GameState) => void) | null = null;
   
   // FASE 1: Throttling de broadcast - enviar cada 2 ticks (30 Hz en lugar de 60 Hz)
   private readonly broadcastInterval: number = 2; // Enviar cada 2 ticks
@@ -544,6 +546,10 @@ export class GameServer {
       console.log(`🏆 Ganador: ${alivePlayers[0].name}`);
       // Enviar estado final antes de detener (forzar envío)
       this.broadcastState(true);
+      // Ejecutar callback de fin de juego
+      if (this.onGameEndCallback) {
+        this.onGameEndCallback(this.gameState);
+      }
       this.stop();
     } else if (alivePlayers.length === 0) {
       // Empate (todos murieron)
@@ -551,6 +557,10 @@ export class GameServer {
       console.log(`🤝 Empate: todos los jugadores murieron`);
       // Enviar estado final antes de detener (forzar envío)
       this.broadcastState(true);
+      // Ejecutar callback de fin de juego
+      if (this.onGameEndCallback) {
+        this.onGameEndCallback(this.gameState);
+      }
       this.stop();
     }
   }
@@ -575,6 +585,13 @@ export class GameServer {
    */
   onBroadcast(callback: (gameState: GameState) => void): void {
     this.broadcastCallback = callback;
+  }
+
+  /**
+   * Configura el callback para cuando el juego termina
+   */
+  onGameEnd(callback: (gameState: GameState) => void): void {
+    this.onGameEndCallback = callback;
   }
 
   /**

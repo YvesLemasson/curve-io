@@ -257,5 +257,18 @@ export class NetworkClient {
     const eventName = CLIENT_EVENTS?.CHANGE_COLOR || 'player:change-color';
     this.socket.emit(eventName, { playerId, color });
   }
+
+  /**
+   * Envía el user_id de Supabase al servidor para autenticación
+   */
+  sendAuthUser(userId: string): void {
+    if (!this.socket || !this.isConnected) {
+      console.warn('No conectado al servidor, no se puede enviar auth');
+      return;
+    }
+
+    const eventName = CLIENT_EVENTS?.AUTH_USER || 'auth:user';
+    this.socket.emit(eventName, { userId });
+  }
 }
 

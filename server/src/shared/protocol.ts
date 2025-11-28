@@ -7,6 +7,7 @@ export const CLIENT_EVENTS = {
   DISCONNECT: 'disconnect',
   REQUEST_START: 'game:request-start',
   CHANGE_COLOR: 'player:change-color',
+  AUTH_USER: 'auth:user', // Enviar user_id de Supabase
 } as const;
 
 // Eventos del servidor al cliente
@@ -80,4 +81,8 @@ export interface LobbyPlayersMessage {
 export interface ChangeColorMessage {
   playerId: string;
   color: string;
+}
+
+export interface AuthUserMessage {
+  userId: string; // user_id de Supabase
 }
