@@ -89,16 +89,16 @@ git push -u origin main
 1. Ir a [railway.app](https://railway.app) y crear una cuenta
 2. Click en **"New Project"** → **"Deploy from GitHub repo"**
 3. Seleccionar tu repositorio `curve-io`
-4. Railway detectará automáticamente que es un proyecto Node.js
-5. Configurar:
+4. Configurar:
    - **Root Directory**: `server` (en Settings → Source)
-   - **Start Command**: `npm start` (ya configurado en package.json)
-   - **Build Command**: `npm run build` (ya configurado en package.json)
-6. En **Variables**, agregar:
+   - Railway usará los archivos `nixpacks.toml` y `railway.json` para configurar el build automáticamente
+5. En **Variables**, agregar:
    - `NODE_ENV` = `production`
    - `FRONTEND_URL` = `https://tu-app.netlify.app` (la URL de Netlify que copiaste)
-7. Railway asignará automáticamente el `PORT` (no necesitas configurarlo)
-8. Una vez desplegado, copia la URL pública (ej: `https://tu-servidor.railway.app`)
+6. Railway asignará automáticamente el `PORT` (no necesitas configurarlo)
+7. Una vez desplegado, copia la URL pública (ej: `https://tu-servidor.railway.app`)
+
+**Nota**: Los archivos `server/nixpacks.toml` y `server/railway.json` ya están configurados para que Railway sepa cómo construir y ejecutar el proyecto.
 
 ### 5. Configurar Variables de Entorno del Frontend
 
@@ -178,10 +178,18 @@ VITE_SERVER_URL=http://localhost:3001
 - Asegúrate de que no haya `/` al final de las URLs
 - Verifica que Railway esté usando la variable de entorno correctamente
 
-### El build falla
-- Verifica que `package.json` tenga los scripts correctos
-- En Netlify, asegúrate de que el Base directory sea `client`
-- En Railway, asegúrate de que el Root directory sea `server`
+### El build falla en Railway
+- Verifica que `package.json` tenga los scripts correctos (`build` y `start`)
+- En Railway, asegúrate de que el **Root Directory** sea `server` (Settings → Source → Root Directory)
+- Verifica que los archivos `server/nixpacks.toml` y `server/railway.json` estén en el repositorio
+- Si Railway muestra "Railpack could not determine how to build":
+  1. Ve a Settings → Source
+  2. Asegúrate de que **Root Directory** esté configurado como `server`
+  3. Verifica que **Build Command** esté vacío (Railway usará `nixpacks.toml`)
+  4. Verifica que **Start Command** esté vacío (Railway usará `nixpacks.toml`)
+  5. Si el problema persiste, en Settings → Deploy, configura manualmente:
+     - **Build Command**: `npm run build`
+     - **Start Command**: `npm start`
 
 ¡No habrá problemas para subir a internet! 🚀
 
