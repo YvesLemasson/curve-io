@@ -9,9 +9,10 @@ export class InputManager {
   private touchStateCallback: ((left: boolean, right: boolean) => void) | null = null;
   private isGameActive: boolean = false; // Flag para saber si estamos en el juego
 
-  constructor(canvasId?: string) {
+  constructor(_canvasId?: string) {
     // canvasId se puede usar en el futuro si es necesario
     // Por ahora no lo necesitamos ya que capturamos eventos en window
+    // Prefijo _ para indicar que no se usa actualmente
     this.setupEventListeners();
   }
 
