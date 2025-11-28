@@ -70,51 +70,75 @@ git branch -M main
 git push -u origin main
 ```
 
-### 3. Desplegar Frontend (Vercel)
+### 3. Desplegar Frontend (Netlify)
 
-1. Ir a [vercel.com](https://vercel.com)
-2. Conectar repositorio
-3. Configurar:
-   - **Root Directory**: `client`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-   - **Install Command**: `npm install`
+1. Ir a [netlify.com](https://netlify.com) y crear una cuenta
+2. Click en **"Add new site"** → **"Import an existing project"**
+3. Conectar con GitHub y seleccionar tu repositorio `curve-io`
+4. Configurar:
+   - **Base directory**: `client`
+   - **Build command**: `npm run build`
+   - **Publish directory**: `client/dist`
+5. Click en **"Deploy site"**
+6. Una vez desplegado, copia la URL (ej: `https://tu-app.netlify.app`)
+
+**Nota**: El archivo `client/netlify.toml` ya está configurado con estas opciones.
 
 ### 4. Desplegar Backend (Railway)
 
-1. Ir a [railway.app](https://railway.app)
-2. Conectar repositorio
-3. Configurar:
-   - **Root Directory**: `server`
-   - **Start Command**: `npm start`
-   - **Build Command**: `npm run build`
-   - Variables de entorno:
-     - `PORT` (auto)
-     - `NODE_ENV=production`
+1. Ir a [railway.app](https://railway.app) y crear una cuenta
+2. Click en **"New Project"** → **"Deploy from GitHub repo"**
+3. Seleccionar tu repositorio `curve-io`
+4. Railway detectará automáticamente que es un proyecto Node.js
+5. Configurar:
+   - **Root Directory**: `server` (en Settings → Source)
+   - **Start Command**: `npm start` (ya configurado en package.json)
+   - **Build Command**: `npm run build` (ya configurado en package.json)
+6. En **Variables**, agregar:
+   - `NODE_ENV` = `production`
+   - `FRONTEND_URL` = `https://tu-app.netlify.app` (la URL de Netlify que copiaste)
+7. Railway asignará automáticamente el `PORT` (no necesitas configurarlo)
+8. Una vez desplegado, copia la URL pública (ej: `https://tu-servidor.railway.app`)
 
-### 5. Configurar CORS
+### 5. Configurar Variables de Entorno del Frontend
 
-En `server/src/index.ts`, actualizar CORS con la URL del frontend:
+1. Volver a Netlify
+2. Ir a **Site settings** → **Environment variables**
+3. Agregar:
+   - `VITE_SERVER_URL` = `https://tu-servidor.railway.app` (la URL de Railway que copiaste)
+4. **Redeploy** el sitio para que tome la nueva variable
 
-```typescript
-cors: {
-  origin: process.env.FRONTEND_URL || 'https://tu-app.vercel.app',
-  methods: ['GET', 'POST'],
-}
-```
+**Nota**: El CORS ya está configurado para usar `FRONTEND_URL` automáticamente.
 
 ## 🔧 Variables de Entorno
 
-### Server (.env)
+### Server (Railway)
+Configurar en Railway → Variables:
 ```env
-PORT=3001
 NODE_ENV=production
-FRONTEND_URL=https://tu-app.vercel.app
+FRONTEND_URL=https://tu-app.netlify.app
+```
+**Nota**: `PORT` se asigna automáticamente por Railway, no es necesario configurarlo.
+
+### Client (Netlify)
+Configurar en Netlify → Site settings → Environment variables:
+```env
+VITE_SERVER_URL=https://tu-servidor.railway.app
 ```
 
-### Client (Vite)
+### Desarrollo Local
+Para desarrollo local, crear archivos `.env` (no se suben a Git):
+
+**`server/.env`**:
 ```env
-VITE_SERVER_URL=https://tu-server.railway.app
+PORT=3001
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
+```
+
+**`client/.env`**:
+```env
+VITE_SERVER_URL=http://localhost:3001
 ```
 
 ## 📝 Notas Importantes
@@ -128,9 +152,36 @@ VITE_SERVER_URL=https://tu-server.railway.app
 
 - **Desarrollo**: Monorepo local ✅
 - **Producción**: 
-  - Frontend → Vercel
-  - Backend → Railway
+  - Frontend → **Netlify** ✅
+  - Backend → **Railway** ✅
   - Ambos conectados al mismo repo de GitHub
+
+## ✅ Checklist de Despliegue
+
+- [ ] Repositorio subido a GitHub
+- [ ] Frontend desplegado en Netlify
+- [ ] Backend desplegado en Railway
+- [ ] Variable `FRONTEND_URL` configurada en Railway
+- [ ] Variable `VITE_SERVER_URL` configurada en Netlify
+- [ ] Redeploy del frontend después de configurar variables
+- [ ] Probar conexión entre frontend y backend
+
+## 🐛 Troubleshooting
+
+### El frontend no se conecta al backend
+- Verifica que `VITE_SERVER_URL` esté configurada en Netlify
+- Asegúrate de hacer **redeploy** después de agregar la variable
+- Verifica que la URL de Railway sea correcta (debe incluir `https://`)
+
+### Error de CORS
+- Verifica que `FRONTEND_URL` en Railway sea exactamente la URL de Netlify
+- Asegúrate de que no haya `/` al final de las URLs
+- Verifica que Railway esté usando la variable de entorno correctamente
+
+### El build falla
+- Verifica que `package.json` tenga los scripts correctos
+- En Netlify, asegúrate de que el Base directory sea `client`
+- En Railway, asegúrate de que el Root directory sea `server`
 
 ¡No habrá problemas para subir a internet! 🚀
 

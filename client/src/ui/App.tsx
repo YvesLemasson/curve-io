@@ -28,9 +28,186 @@ function BoostBar({ charge, active, remaining }: { charge: number; active: boole
   );
 }
 
+// Componente del modal de fin de partida
+function GameOverModal({ 
+  gameState, 
+  onBackToMenu 
+}: { 
+  gameState: { players: Array<{ id: string; name: string; color: string; alive: boolean }>; winnerId?: string; tick: number } | null;
+  onBackToMenu: () => void;
+}) {
+  if (!gameState) return null;
+
+  const winner = gameState.winnerId 
+    ? gameState.players.find(p => p.id === gameState.winnerId)
+    : null;
+  const deadPlayers = gameState.players.filter(p => !p.alive);
+  const gameDuration = Math.floor(gameState.tick / 60); // Aproximadamente segundos (60 ticks por segundo)
+
+  return (
+    <div className="game-over-modal-overlay">
+      <div className="game-over-modal">
+        <h1 className="game-over-title">
+          {winner ? '🏆 ¡Partida Finalizada!' : '🤝 Empate'}
+        </h1>
+        
+        {winner ? (
+          <div className="winner-section">
+            <div className="winner-name" style={{ color: winner.color }}>
+              {winner.name}
+            </div>
+            <p className="winner-label">es el ganador</p>
+          </div>
+        ) : (
+          <div className="tie-section">
+            <p>Todos los jugadores fueron eliminados</p>
+          </div>
+        )}
+
+        <div className="game-summary">
+          <h2>Resumen de la Partida</h2>
+          
+          <div className="summary-stats">
+            <div className="stat-item">
+              <span className="stat-label">Duración:</span>
+              <span className="stat-value">{gameDuration}s</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Total de jugadores:</span>
+              <span className="stat-value">{gameState.players.length}</span>
+            </div>
+          </div>
+
+          <div className="players-summary">
+            <h3>Jugadores</h3>
+            <div className="players-list-summary">
+              {winner && (
+                <div className="player-summary-item winner-item">
+                  <div 
+                    className="player-color-indicator" 
+                    style={{ backgroundColor: winner.color }}
+                  />
+                  <span className="player-name-summary">{winner.name}</span>
+                  <span className="player-status winner-status">🏆 Ganador</span>
+                </div>
+              )}
+              {deadPlayers.map((player) => (
+                <div key={player.id} className="player-summary-item">
+                  <div 
+                    className="player-color-indicator" 
+                    style={{ backgroundColor: player.color }}
+                  />
+                  <span className="player-name-summary">{player.name}</span>
+                  <span className="player-status eliminated-status">Eliminado</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <button 
+          onClick={onBackToMenu}
+          className="back-to-menu-button"
+        >
+          Volver al Menú
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Componente del modal de selección de color
+function ColorPickerModal({ 
+  isOpen, 
+  currentColor,
+  usedColors,
+  onClose, 
+  onConfirm 
+}: { 
+  isOpen: boolean;
+  currentColor: string;
+  usedColors: Set<string>;
+  onClose: () => void;
+  onConfirm: (color: string) => void;
+}) {
+  const [selectedColor, setSelectedColor] = useState<string>(currentColor);
+
+  // 16 colores predefinidos
+  const availableColors = [
+    '#ff0000', // Rojo
+    '#00ff00', // Verde
+    '#0000ff', // Azul
+    '#ffff00', // Amarillo
+    '#ff00ff', // Magenta
+    '#00ffff', // Cyan
+    '#ff8000', // Naranja
+    '#8000ff', // Morado
+    '#ff0080', // Rosa
+    '#00ff80', // Verde claro
+    '#0080ff', // Azul claro
+    '#ff8080', // Rosa claro
+    '#80ff80', // Verde menta
+    '#8080ff', // Azul claro
+    '#ffff80', // Amarillo claro
+    '#ff80ff', // Rosa magenta
+  ];
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="color-picker-modal-overlay" onClick={onClose}>
+      <div className="color-picker-modal" onClick={(e) => e.stopPropagation()}>
+        <h2>Seleccionar Color</h2>
+        <div className="color-picker-grid">
+          {availableColors.map((color) => {
+            const isUsed = usedColors.has(color) && color !== currentColor;
+            const isSelected = selectedColor === color;
+            return (
+              <button
+                key={color}
+                className={`color-option ${isSelected ? 'selected' : ''} ${isUsed ? 'used' : ''}`}
+                style={{ backgroundColor: color }}
+                onClick={() => !isUsed && setSelectedColor(color)}
+                disabled={isUsed}
+                title={isUsed ? 'Color en uso' : color}
+              >
+                {isSelected && <span className="check-mark">✓</span>}
+                {isUsed && <span className="used-mark">✗</span>}
+              </button>
+            );
+          })}
+        </div>
+        <div className="color-picker-actions">
+          <button 
+            className="color-picker-cancel"
+            onClick={onClose}
+          >
+            Cancelar
+          </button>
+          <button 
+            className="color-picker-confirm"
+            onClick={() => {
+              if (selectedColor && !usedColors.has(selectedColor) || selectedColor === currentColor) {
+                onConfirm(selectedColor);
+              }
+            }}
+            disabled={usedColors.has(selectedColor) && selectedColor !== currentColor}
+          >
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
-  const [currentView, setCurrentView] = useState<'menu' | 'game' | 'matchmaking'>('menu');
+  const [currentView, setCurrentView] = useState<'menu' | 'game' | 'lobby'>('menu');
   const [boostState, setBoostState] = useState<{ active: boolean; charge: number; remaining: number } | null>(null);
+  const [lobbyPlayers, setLobbyPlayers] = useState<Array<{ id: string; name: string; color: string }>>([]);
+  const [gameOverState, setGameOverState] = useState<{ players: Array<{ id: string; name: string; color: string; alive: boolean }>; winnerId?: string; tick: number } | null>(null);
+  const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
+  const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
   const gameRef = useRef<Game | null>(null);
 
   // Inicializar juego cuando se monta el componente
@@ -66,18 +243,127 @@ function App() {
     return () => clearInterval(interval);
   }, [currentView]);
 
-  // Función para iniciar el juego
-  const handleStartGame = (useNetwork: boolean = false) => {
+  // Monitorear el estado del juego para detectar cuando termina
+  useEffect(() => {
+    if (currentView !== 'game' || !gameRef.current) return;
+    
+    // Variable para evitar mostrar el modal múltiples veces
+    let gameOverShown = false;
+    
+    const interval = setInterval(() => {
+      if (gameRef.current && !gameOverShown) {
+        const gameState = gameRef.current.getGameState();
+        if (gameState.gameStatus === 'finished' || gameState.gameStatus === 'ended') {
+          // El juego terminó, mostrar modal
+          gameOverShown = true;
+          const players = gameRef.current.getPlayers();
+          setGameOverState({
+            players: players.map(p => ({
+              id: p.id,
+              name: p.name,
+              color: p.color,
+              alive: p.alive
+            })),
+            winnerId: gameState.winnerId,
+            tick: gameState.tick
+          });
+        }
+      }
+    }, 50); // Verificar cada 50ms para detectar más rápido
+    
+    return () => clearInterval(interval);
+  }, [currentView]);
+
+  // Función para conectar al servidor y mostrar lobby
+  const handleConnectToServer = () => {
+    // Si ya existe un juego con red, limpiarlo primero
+    if (gameRef.current) {
+      if (gameRef.current.isUsingNetwork()) {
+        gameRef.current.destroy();
+      } else {
+        gameRef.current.destroy();
+      }
+    }
+
+    // Crear nuevo juego con red
+    try {
+      gameRef.current = new Game('gameCanvas', true);
+    } catch (error) {
+      console.error('Error al inicializar el juego:', error);
+      return;
+    }
+
+    const networkClient = gameRef.current.getNetworkClient();
+    if (!networkClient) {
+      console.error('No se pudo obtener el cliente de red');
+      return;
+    }
+
+    // IMPORTANTE: Configurar callbacks ANTES de conectar para que estén listos cuando lleguen los eventos
+    networkClient.onLobbyPlayers((data) => {
+      setLobbyPlayers(data.players);
+    });
+
+    networkClient.onPlayerJoined((data) => {
+      setLocalPlayerId(data.playerId);
+      // También actualizar el localPlayerId en la instancia de Game
+      // para que el juego pueda enviar inputs correctamente
+      if (gameRef.current) {
+        gameRef.current.setLocalPlayerId(data.playerId);
+      }
+    });
+
+    networkClient.onGameStart(() => {
+      // Cuando el servidor inicia el juego, iniciar el juego local también
+      if (gameRef.current) {
+        gameRef.current.init(4);
+        gameRef.current.start();
+        setCurrentView('game');
+      }
+    });
+
+    networkClient.onError((error) => {
+      console.error('Error de red:', error);
+      alert(`Error: ${error}`);
+    });
+
+    networkClient.onConnect(() => {
+      // Cuando se conecta, unirse al lobby
+      setTimeout(() => {
+        if (gameRef.current) {
+          const playerName = `Player ${Math.floor(Math.random() * 1000)}`;
+          gameRef.current.joinLobby(playerName);
+        }
+      }, 100);
+    });
+
+    // Cambiar a vista de lobby primero
+    setCurrentView('lobby');
+    
+    // Conectar al servidor
+    networkClient.connect();
+  };
+
+  // Función para iniciar el juego local
+  const handleStartLocalGame = () => {
     if (gameRef.current) {
       // Si ya existe, destruirlo y crear uno nuevo
-      if (gameRef.current.isUsingNetwork() !== useNetwork) {
+      if (gameRef.current.isUsingNetwork()) {
         gameRef.current.destroy();
-        gameRef.current = new Game('gameCanvas', useNetwork);
+        gameRef.current = new Game('gameCanvas', false);
       }
       
       gameRef.current.init(4); // 4 jugadores
       gameRef.current.start();
       setCurrentView('game');
+    }
+  };
+
+  // Función para solicitar inicio del juego desde el lobby
+  const handleStartGameFromLobby = () => {
+    const networkClient = gameRef.current?.getNetworkClient();
+    if (networkClient) {
+      networkClient.requestStartGame();
     }
   };
 
@@ -88,7 +374,26 @@ function App() {
       gameRef.current.init(4);
       gameRef.current.start();
       setCurrentView('game');
+      setGameOverState(null);
     }
+  };
+
+  // Función para volver al menú desde el modal de fin de partida
+  const handleBackToMenuFromGameOver = () => {
+    if (gameRef.current) {
+      gameRef.current.stop();
+      if (gameRef.current.isUsingNetwork()) {
+        const networkClient = gameRef.current.getNetworkClient();
+        if (networkClient) {
+          networkClient.disconnect();
+        }
+        gameRef.current.destroy();
+        gameRef.current = new Game('gameCanvas');
+      }
+    }
+    setGameOverState(null);
+    setCurrentView('menu');
+    setLobbyPlayers([]);
   };
 
   return (
@@ -112,7 +417,7 @@ function App() {
           width: '100%', 
           height: '100%',
           zIndex: 10,
-          pointerEvents: currentView === 'game' ? 'none' : 'auto'
+          pointerEvents: (currentView === 'game' && !gameOverState) ? 'none' : 'auto'
         }}
       >
         {currentView === 'menu' && (
@@ -120,13 +425,13 @@ function App() {
             <h1>curve.io</h1>
             <p>Juego multijugador en tiempo real</p>
             <button 
-              onClick={() => handleStartGame(false)}
+              onClick={handleStartLocalGame}
               className="start-button"
             >
               Juego Local
             </button>
             <button 
-              onClick={() => handleStartGame(true)}
+              onClick={handleConnectToServer}
               className="start-button"
               style={{ background: '#2196F3', marginTop: '10px' }}
             >
@@ -140,6 +445,93 @@ function App() {
             </div>
           </div>
         )}
+
+        {currentView === 'lobby' && (
+          <div className="lobby">
+            <h1>Sala de Espera</h1>
+            <div className="lobby-players">
+              <h2>Jugadores ({lobbyPlayers.length})</h2>
+              <div className="players-list">
+                {lobbyPlayers.length === 0 ? (
+                  <p className="waiting-text">Esperando jugadores...</p>
+                ) : (
+                  lobbyPlayers.map((player) => (
+                    <div key={player.id} className="player-item">
+                      <div 
+                        className="player-color-indicator" 
+                        style={{ backgroundColor: player.color }}
+                      />
+                      <span className="player-name">{player.name}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="lobby-actions">
+              <button 
+                onClick={() => {
+                  const currentPlayer = lobbyPlayers.find(p => p.id === localPlayerId);
+                  if (currentPlayer) {
+                    setShowColorPicker(true);
+                  }
+                }}
+                className="change-color-button"
+                style={{ marginBottom: '10px' }}
+              >
+                Cambiar Color
+              </button>
+              <button 
+                onClick={handleStartGameFromLobby}
+                className="start-button"
+                disabled={lobbyPlayers.length < 2}
+                style={{ 
+                  opacity: lobbyPlayers.length < 2 ? 0.5 : 1,
+                  cursor: lobbyPlayers.length < 2 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {lobbyPlayers.length < 2 ? 'Esperando más jugadores...' : 'Start'}
+              </button>
+              <button 
+                onClick={() => {
+                  if (gameRef.current) {
+                    const networkClient = gameRef.current.getNetworkClient();
+                    if (networkClient) {
+                      networkClient.disconnect();
+                    }
+                    gameRef.current.destroy();
+                    gameRef.current = new Game('gameCanvas');
+                  }
+                  setCurrentView('menu');
+                  setLobbyPlayers([]);
+                  setLocalPlayerId(null);
+                }}
+                className="back-button"
+                style={{ marginTop: '10px', background: '#666' }}
+              >
+                Volver al Menú
+              </button>
+            </div>
+            
+            {/* Modal de selección de color */}
+            {showColorPicker && (
+              <ColorPickerModal
+                isOpen={showColorPicker}
+                currentColor={lobbyPlayers.find(p => p.id === localPlayerId)?.color || '#ffffff'}
+                usedColors={new Set(lobbyPlayers.map(p => p.color))}
+                onClose={() => setShowColorPicker(false)}
+                onConfirm={(color) => {
+                  if (localPlayerId && gameRef.current) {
+                    const networkClient = gameRef.current.getNetworkClient();
+                    if (networkClient) {
+                      networkClient.changeColor(localPlayerId, color);
+                    }
+                  }
+                  setShowColorPicker(false);
+                }}
+              />
+            )}
+          </div>
+        )}
         
         {currentView === 'game' && (
           <div className="game-hud">
@@ -149,6 +541,7 @@ function App() {
                   if (gameRef.current) {
                     gameRef.current.stop();
                     setCurrentView('menu');
+                    setGameOverState(null);
                   }
                 }}
                 className="menu-button"
@@ -181,6 +574,14 @@ function App() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Modal de fin de partida */}
+        {gameOverState && (
+          <GameOverModal 
+            gameState={gameOverState}
+            onBackToMenu={handleBackToMenuFromGameOver}
+          />
         )}
       </div>
     </div>

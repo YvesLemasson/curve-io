@@ -123,25 +123,61 @@ export class DeltaDecompressor {
 
         // Actualizar trail
         if (playerDelta.trailNew) {
-          if (playerDelta.trailLength !== undefined && playerDelta.trailLength < player.trail.length) {
-            // Trail se redujo (reseteo) - reemplazar todo
-            player.trail = playerDelta.trailNew.map(pos => pos ? {
-              x: pos.x * scaleX,
-              y: pos.y * scaleY,
-            } : null);
+          const newPoints = playerDelta.trailNew.map(pos => pos ? {
+            x: pos.x * scaleX,
+            y: pos.y * scaleY,
+          } : null);
+          
+          if (playerDelta.trailLength !== undefined) {
+            // Tenemos información de la longitud del trail del servidor
+            const currentLength = player.trail.length;
+            const targetLength = playerDelta.trailLength;
+            
+            if (targetLength < currentLength) {
+              // Trail se redujo (reseteo) - reemplazar todo
+              player.trail = newPoints;
+            } else if (targetLength === currentLength) {
+              // Trail tiene la misma longitud - reemplazar los últimos puntos
+              // Esto ocurre cuando el trail está en el máximo y se agregan/eliminan puntos
+              const pointsToReplace = newPoints.length;
+              if (pointsToReplace === targetLength) {
+                // Si se envían todos los puntos (reseteo completo o estado completo), reemplazar todo
+                player.trail = newPoints;
+              } else if (pointsToReplace > 0 && pointsToReplace < currentLength) {
+                // Eliminar los últimos N puntos y agregar los nuevos
+                // Mantener los primeros (targetLength - pointsToReplace) puntos
+                const pointsToKeep = targetLength - pointsToReplace;
+                player.trail = player.trail.slice(0, pointsToKeep).concat(newPoints);
+              }
+              // Asegurar que la longitud final sea exactamente targetLength
+              if (player.trail.length !== targetLength) {
+                player.trail = player.trail.slice(-targetLength);
+              }
+            } else {
+              // Trail creció - agregar nuevos puntos
+              player.trail.push(...newPoints);
+              
+              // Asegurar que la longitud coincida exactamente con el servidor
+              if (player.trail.length !== targetLength) {
+                if (player.trail.length > targetLength) {
+                  // El trail del cliente es más largo - recortar desde el inicio
+                  player.trail = player.trail.slice(-targetLength);
+                } else {
+                  // El trail del cliente es más corto - esto no debería pasar, pero por seguridad
+                  // mantener lo que tenemos (el servidor agregará más puntos en el siguiente delta)
+                }
+              }
+            }
           } else {
-            // Agregar nuevos puntos
-            const newPoints = playerDelta.trailNew.map(pos => pos ? {
-              x: pos.x * scaleX,
-              y: pos.y * scaleY,
-            } : null);
+            // No tenemos información de longitud - solo agregar (comportamiento antiguo)
             player.trail.push(...newPoints);
             
+            // EXPERIMENTO: Sin límite de trail - monitorear rendimiento
             // Limitar tamaño (por si acaso)
-            const MAX_TRAIL_LENGTH = 600;
-            if (player.trail.length > MAX_TRAIL_LENGTH) {
-              player.trail = player.trail.slice(-MAX_TRAIL_LENGTH);
-            }
+            // const MAX_TRAIL_LENGTH = 1200;
+            // if (player.trail.length > MAX_TRAIL_LENGTH) {
+            //   player.trail = player.trail.slice(-MAX_TRAIL_LENGTH);
+            // }
           }
         }
 

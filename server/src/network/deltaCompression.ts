@@ -109,16 +109,61 @@ export class DeltaCompressor {
         }
 
         // Trail - solo nuevos puntos
+        // IMPORTANTE: Detectar cambios incluso cuando el trail está en el máximo
+        // porque se agregan nuevos puntos pero se eliminan los antiguos (slice)
         const previousTrailLength = previousPlayer.trail.length;
-        if (currentPlayer.trail.length > previousTrailLength) {
+        const currentTrailLength = currentPlayer.trail.length;
+        
+        if (currentTrailLength > previousTrailLength) {
+          // Trail creció - enviar solo los nuevos puntos
           playerDelta.trailNew = currentPlayer.trail.slice(previousTrailLength);
-          playerDelta.trailLength = currentPlayer.trail.length;
+          playerDelta.trailLength = currentTrailLength;
           hasChanges = true;
-        } else if (currentPlayer.trail.length < previousTrailLength) {
+        } else if (currentTrailLength < previousTrailLength) {
           // Trail se redujo (jugador reseteado) - enviar todo
           playerDelta.trailNew = currentPlayer.trail;
-          playerDelta.trailLength = currentPlayer.trail.length;
+          playerDelta.trailLength = currentTrailLength;
           hasChanges = true;
+        } else if (currentTrailLength === previousTrailLength && currentTrailLength > 0) {
+          // Trail tiene la misma longitud (probablemente está en el máximo)
+          // Comparar los últimos N puntos para detectar si hay cambios
+          // Si el trail está en el máximo, los últimos puntos deberían ser diferentes
+          const COMPARE_LAST_N = 10; // Comparar últimos 10 puntos
+          const prevLastN = previousPlayer.trail.slice(-COMPARE_LAST_N);
+          const currLastN = currentPlayer.trail.slice(-COMPARE_LAST_N);
+          
+          // Verificar si los últimos puntos son diferentes
+          let trailsAreDifferent = false;
+          if (prevLastN.length !== currLastN.length) {
+            trailsAreDifferent = true;
+          } else {
+            for (let i = 0; i < currLastN.length; i++) {
+              const prev = prevLastN[i];
+              const curr = currLastN[i];
+              // Comparar puntos (o nulls)
+              if ((prev === null) !== (curr === null)) {
+                trailsAreDifferent = true;
+                break;
+              }
+              if (prev !== null && curr !== null) {
+                if (Math.abs(prev.x - curr.x) > 0.01 || Math.abs(prev.y - curr.y) > 0.01) {
+                  trailsAreDifferent = true;
+                  break;
+                }
+              }
+            }
+          }
+          
+          if (trailsAreDifferent) {
+            // Los últimos puntos son diferentes - hay nuevos puntos
+            // Cuando el trail está en el máximo, se agregan puntos al final y se eliminan del inicio
+            // Para sincronizar correctamente, enviar los últimos N puntos (suficientes para cubrir cambios)
+            // Aumentado a 100 puntos para mejor sincronización cuando el trail está en el máximo
+            const POINTS_TO_SEND = Math.min(100, currentTrailLength); // Enviar últimos 100 puntos o menos
+            playerDelta.trailNew = currentPlayer.trail.slice(-POINTS_TO_SEND);
+            playerDelta.trailLength = currentTrailLength;
+            hasChanges = true;
+          }
         }
 
         // Boost

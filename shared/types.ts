@@ -13,7 +13,7 @@ export interface Player {
   angle: number; // en radianes
   speed: number;
   alive: boolean;
-  trail: Position[]; // historial de posiciones
+  trail: Array<Position | null>; // historial de posiciones, permite null para gaps
   boost?: {
     active: boolean;
     charge: number;
@@ -23,7 +23,7 @@ export interface Player {
 
 export interface GameState {
   players: Player[];
-  gameStatus: 'waiting' | 'playing' | 'finished';
+  gameStatus: 'waiting' | 'playing' | 'finished' | 'ended';
   tick: number;
   winnerId?: string;
 }

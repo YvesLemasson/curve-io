@@ -54,11 +54,12 @@ export function checkLineLineCollision(
 /**
  * Verifica si la nueva posición del jugador colisiona con algún trail
  * FASE 1: Early exit - verificar trails cercanos primero y saltar los muy lejanos
+ * IMPORTANTE: Salta segmentos con nulls (gaps) para permitir pasar a través de ellos
  */
 export function checkTrailCollision(
   currentPos: Position,
   newPos: Position,
-  trails: Array<{ trail: Position[]; playerId: string }>,
+  trails: Array<{ trail: Array<Position | null>; playerId: string }>,
   excludePlayerId?: string
 ): { collided: boolean; collidedWith?: string } {
   // FASE 1: Calcular distancia máxima para considerar un trail (early exit)
@@ -76,6 +77,7 @@ export function checkTrailCollision(
       let minDistance = Infinity;
       
       for (const point of trail) {
+        if (!point) continue; // Saltar nulls (gaps)
         const dx = point.x - midX;
         const dy = point.y - midY;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -91,10 +93,16 @@ export function checkTrailCollision(
   
   // Verificar colisión con trails cercanos primero (early exit cuando se encuentra colisión)
   for (const { trail, playerId } of trailsWithDistance) {
-    // Verificar colisión con cada segmento del trail
+    // Verificar colisión con cada segmento del trail (saltando breaks/null)
     for (let i = 0; i < trail.length - 1; i++) {
       const segmentStart = trail[i];
       const segmentEnd = trail[i + 1];
+
+      // Saltar si alguno de los puntos es null (break en el trail - gap)
+      // Esto permite que los jugadores pasen a través de los gaps
+      if (!segmentStart || !segmentEnd) {
+        continue;
+      }
 
       // Verificar si el nuevo segmento intersecta con este segmento del trail
       if (
@@ -115,14 +123,16 @@ export function checkTrailCollision(
 
 /**
  * Verifica si el jugador colisiona consigo mismo (su propio trail)
+ * IMPORTANTE: Salta segmentos con nulls (gaps) para permitir pasar a través de ellos
  */
 export function checkSelfCollision(
   currentPos: Position,
   newPos: Position,
-  ownTrail: Position[]
+  ownTrail: Array<Position | null>
 ): boolean {
-  // Necesitamos al menos 10 puntos en el trail para evitar colisiones inmediatas
-  if (ownTrail.length < 10) {
+  // Necesitamos al menos 10 puntos válidos en el trail para evitar colisiones inmediatas
+  const validPoints = ownTrail.filter(p => p !== null).length;
+  if (validPoints < 10) {
     return false;
   }
 
@@ -132,6 +142,12 @@ export function checkSelfCollision(
   for (let i = 0; i < ownTrail.length - skipPoints - 1; i++) {
     const segmentStart = ownTrail[i];
     const segmentEnd = ownTrail[i + 1];
+
+    // Saltar si alguno de los puntos es null (break en el trail - gap)
+    // Esto permite que el jugador pase a través de sus propios gaps
+    if (!segmentStart || !segmentEnd) {
+      continue;
+    }
 
     if (
       checkLineLineCollision(

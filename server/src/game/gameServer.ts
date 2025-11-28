@@ -16,6 +16,16 @@ export class GameServer {
   private inputQueue: Map<string, GameInputMessage[]> = new Map(); // playerId -> inputs[]
   private lastTickTime: number = 0;
   private playerBoostState: Map<string, { active: boolean; charge: number; remaining: number }> = new Map(); // playerId -> boost state
+  private lastBoostRequested: Map<string, boolean> = new Map(); // playerId -> último estado de boost solicitado
+  
+  // Sistema de gaps en trails
+  private playerTrailTimers: Map<string, number> = new Map(); // playerId -> trailTimer acumulado
+  private playerShouldDrawTrail: Map<string, boolean> = new Map(); // playerId -> shouldDrawTrail
+  private playerWasDrawingTrail: Map<string, boolean> = new Map(); // playerId -> wasDrawingTrail
+  private playerLastPointTime: Map<string, number> = new Map(); // playerId -> tiempo del último punto agregado
+  private readonly gapInterval: number = 3000; // 3 segundos en ms
+  private readonly gapDuration: number = 500; // 0.5 segundos en ms
+  
   // Canvas en proporción 3:2 (apaisado)
   private canvasWidth: number = 1920;
   private canvasHeight: number = 1280; // 1920 / 1.5 = 1280 (proporción 3:2)
@@ -63,7 +73,11 @@ export class GameServer {
     if (!this.isRunning) return;
     
     this.isRunning = false;
-    this.gameState.gameStatus = 'ended';
+    // No cambiar gameStatus aquí si ya se estableció en checkWinCondition
+    // Solo establecerlo si no está ya establecido
+    if (this.gameState.gameStatus === 'playing' || this.gameState.gameStatus === 'waiting') {
+      this.gameState.gameStatus = 'ended';
+    }
     
     if (this.gameLoopInterval) {
       clearInterval(this.gameLoopInterval);
@@ -85,6 +99,9 @@ export class GameServer {
 
     // Procesar inputs de la cola
     this.processInputs();
+
+    // Actualizar boost de todos los jugadores cada tick (usando deltaTime real)
+    this.updateAllBoosts(deltaTime);
 
     // Actualizar posiciones de jugadores
     this.updatePlayers(deltaTime);
@@ -113,8 +130,8 @@ export class GameServer {
         // Procesar el input más reciente
         const latestInput = inputs[inputs.length - 1];
         
-        // Actualizar estado de boost
-        this.updatePlayerBoost(player.id, latestInput.boost);
+        // Guardar el último estado de boost solicitado (se usará en updateAllBoosts)
+        this.lastBoostRequested.set(player.id, latestInput.boost);
         
         // Solo aplicar rotación si no está en boost
         if (!latestInput.boost && latestInput.key) {
@@ -132,10 +149,26 @@ export class GameServer {
   }
   
   /**
-   * Actualiza el estado de boost de un jugador
+   * Actualiza el boost de todos los jugadores cada tick
+   * Esto asegura que el boost se consuma continuamente, no solo cuando hay inputs nuevos
    */
-  private updatePlayerBoost(playerId: string, isBoostRequested: boolean): void {
-    const deltaTime = 1000 / this.tickRate; // ~16.67ms por tick
+  private updateAllBoosts(deltaTime: number): void {
+    const players = this.playerManager.getAllPlayers();
+    
+    for (const player of players) {
+      // Obtener el último estado de boost solicitado (o false si no hay)
+      const isBoostRequested = this.lastBoostRequested.get(player.id) || false;
+      this.updatePlayerBoost(player.id, isBoostRequested, deltaTime);
+    }
+  }
+
+  /**
+   * Actualiza el estado de boost de un jugador
+   * @param playerId - ID del jugador
+   * @param isBoostRequested - Si el jugador está solicitando boost
+   * @param deltaTime - Tiempo transcurrido desde el último tick en ms
+   */
+  private updatePlayerBoost(playerId: string, isBoostRequested: boolean, deltaTime: number): void {
     let boostState = this.playerBoostState.get(playerId);
     
     // Inicializar estado de boost si no existe
@@ -161,7 +194,7 @@ export class GameServer {
         boostState.active = false;
         boostState.remaining = 0;
       } else {
-        // Consumir carga y tiempo
+        // Consumir carga y tiempo usando deltaTime real
         const chargeConsumed = (100 / 5000) * deltaTime;
         boostState.charge = Math.max(0, boostState.charge - chargeConsumed);
         boostState.remaining -= deltaTime;
@@ -217,13 +250,142 @@ export class GameServer {
       player.position.x = newX;
       player.position.y = newY;
 
-      // Agregar al trail (simplificado, sin gaps por ahora)
-      player.trail.push({ ...player.position });
+      // Sistema de gaps en trails
+      // Inicializar estado de gaps si no existe
+      if (!this.playerTrailTimers.has(player.id)) {
+        this.playerTrailTimers.set(player.id, 0);
+        this.playerShouldDrawTrail.set(player.id, true);
+        this.playerWasDrawingTrail.set(player.id, true);
+      }
       
-      // FASE 1: Limitar tamaño del trail (mantener últimos 600 puntos en lugar de 1000)
-      const MAX_TRAIL_LENGTH = 600;
-      if (player.trail.length > MAX_TRAIL_LENGTH) {
-        player.trail = player.trail.slice(-MAX_TRAIL_LENGTH);
+      // Actualizar timer del trail
+      const currentTimer = this.playerTrailTimers.get(player.id)!;
+      const newTimer = currentTimer + deltaTime;
+      
+      // Prevenir acumulación excesiva del timer para evitar problemas de precisión numérica
+      // Usar módulo siempre para mantener el timer dentro de un rango manejable
+      // Resetear cada 100 ciclos (~5 minutos = 300000ms) manteniendo solo el resto
+      const MAX_TIMER_VALUE = this.gapInterval * 100; // ~5 minutos = 300000ms
+      const normalizedTimer = newTimer % MAX_TIMER_VALUE;
+      this.playerTrailTimers.set(player.id, normalizedTimer);
+      
+      // Calcular si estamos en un período de hueco
+      // Usar módulo directamente para obtener la posición en el ciclo actual (0-3000ms)
+      const timeInCycle = normalizedTimer % this.gapInterval;
+      // shouldDrawTrail = true cuando timeInCycle >= gapDuration (es decir, después del gap)
+      // gapInterval = 3000ms, gapDuration = 500ms
+      // Entonces: de 0-500ms = gap (false), de 500-3000ms = dibujar (true)
+      const shouldDrawTrail = timeInCycle >= this.gapDuration;
+      const wasDrawingTrail = this.playerWasDrawingTrail.get(player.id)!;
+      
+      // Log detallado cada 60 ticks (~1 segundo) para debugging
+      if (this.gameState.tick % 60 === 0) {
+        const trailLength = player.trail.length;
+        const validPoints = player.trail.filter(p => p !== null).length;
+        const nullPoints = player.trail.filter(p => p === null).length;
+        const lastPointTime = this.playerLastPointTime.get(player.id);
+        const timeSinceLastPoint = lastPointTime !== undefined ? (normalizedTimer - lastPointTime) : 0;
+        console.log(`🔍 [${player.id.substring(0, 8)}] Tick ${this.gameState.tick} | Timer: ${normalizedTimer.toFixed(2)}ms | timeInCycle: ${timeInCycle.toFixed(2)}ms | shouldDraw: ${shouldDrawTrail} | wasDrawing: ${wasDrawingTrail}`);
+        console.log(`   Trail: ${validPoints} válidos, ${nullPoints} nulls, total: ${trailLength} | Tiempo desde último punto: ${timeSinceLastPoint.toFixed(2)}ms`);
+        
+        // Advertencia si el trail no está creciendo
+        if (validPoints < 10 && this.gameState.tick > 300) {
+          console.warn(`   ⚠️ Trail muy corto después de ${this.gameState.tick} ticks!`);
+        }
+      }
+      
+      // Si acabamos de entrar en un hueco, agregar un marcador de break (null)
+      if (wasDrawingTrail && !shouldDrawTrail) {
+        player.trail.push(null);
+      }
+      
+      // Solo agregar al trail si no estamos en período de hueco
+      let pointAdded = false;
+      const trailLengthBefore = player.trail.length;
+      if (shouldDrawTrail) {
+        player.trail.push({ ...player.position });
+        pointAdded = true;
+        // Actualizar tiempo del último punto agregado
+        this.playerLastPointTime.set(player.id, normalizedTimer);
+        
+        // Log detallado cuando se agrega punto y el trail está cerca del máximo
+        if (trailLengthBefore >= 1195 && this.gameState.tick % 60 === 0) {
+          console.log(`   ➕ [${player.id.substring(0, 8)}] Punto agregado: trail antes=${trailLengthBefore}, después=${player.trail.length}`);
+        }
+      }
+      
+      // Verificación de seguridad crítica: si no se ha agregado ningún punto en más de 1 segundo,
+      // forzar agregar un punto para evitar que el trail se quede sin dibujar permanentemente
+      // Esto puede pasar si hay un bug en el cálculo del timer o normalización
+      const lastPointTime = this.playerLastPointTime.get(player.id);
+      if (lastPointTime !== undefined) {
+        // Calcular tiempo desde último punto, manejando el caso donde el timer se resetea
+        let timeSinceLastPoint = normalizedTimer - lastPointTime;
+        // Si el resultado es negativo, significa que el timer se reseteó, ajustar
+        if (timeSinceLastPoint < 0) {
+          timeSinceLastPoint = normalizedTimer + (MAX_TIMER_VALUE - lastPointTime);
+        }
+        // Si han pasado más de 1 segundo sin agregar puntos (más que el gap de 500ms), hay un problema
+        if (timeSinceLastPoint > 1000 && !pointAdded) {
+          console.warn(`⚠️ [${player.id.substring(0, 8)}] Timer anómalo detectado: sin puntos por ${timeSinceLastPoint.toFixed(2)}ms, timeInCycle=${timeInCycle.toFixed(2)}ms, shouldDraw=${shouldDrawTrail}, forzando dibujo`);
+          console.warn(`   Detalles: normalizedTimer=${normalizedTimer.toFixed(2)}ms, lastPointTime=${lastPointTime.toFixed(2)}ms, gapInterval=${this.gapInterval}ms, gapDuration=${this.gapDuration}ms`);
+          player.trail.push({ ...player.position });
+          this.playerLastPointTime.set(player.id, normalizedTimer);
+          this.playerShouldDrawTrail.set(player.id, true); // Forzar estado a true
+          pointAdded = true;
+        }
+      } else {
+        // Inicializar si no existe
+        this.playerLastPointTime.set(player.id, normalizedTimer);
+      }
+      
+      // Log de advertencia si no se agregó punto y debería haberse agregado
+      if (!pointAdded && shouldDrawTrail && this.gameState.tick % 60 === 0) {
+        console.warn(`⚠️ [${player.id.substring(0, 8)}] shouldDrawTrail=true pero no se agregó punto! timeInCycle=${timeInCycle.toFixed(2)}ms`);
+      }
+      
+      // Actualizar estado anterior
+      this.playerShouldDrawTrail.set(player.id, shouldDrawTrail);
+      this.playerWasDrawingTrail.set(player.id, shouldDrawTrail);
+      
+      // EXPERIMENTO: Sin límite de trail - monitorear rendimiento
+      // const MAX_TRAIL_LENGTH = 1200;
+      // const trailLengthBeforeSlice = player.trail.length;
+      // if (player.trail.length > MAX_TRAIL_LENGTH) {
+      //   const validBefore = player.trail.filter(p => p !== null).length;
+      //   player.trail = player.trail.slice(-MAX_TRAIL_LENGTH);
+      //   const validAfter = player.trail.filter(p => p !== null).length;
+      //   
+      //   // Log cuando se hace slice para ver qué se está eliminando
+      //   if (this.gameState.tick % 60 === 0) {
+      //     console.log(`   ✂️ [${player.id.substring(0, 8)}] Slice aplicado: antes=${trailLengthBeforeSlice} (${validBefore} válidos), después=${player.trail.length} (${validAfter} válidos)`);
+      //   }
+      // }
+      
+      // Verificación de seguridad: asegurar que siempre haya al menos un punto válido en el trail
+      // Esto previene que el trail se quede completamente vacío o solo con nulls
+      const hasValidPoints = player.trail.some(p => p !== null);
+      if (!hasValidPoints) {
+        // Si no hay puntos válidos (todos son null o está vacío), agregar la posición actual
+        console.warn(`⚠️ [${player.id.substring(0, 8)}] Trail sin puntos válidos! Agregando punto de emergencia. Trail length: ${player.trail.length}, shouldDraw: ${shouldDrawTrail}, timeInCycle: ${timeInCycle.toFixed(2)}ms`);
+        player.trail.push({ ...player.position });
+      }
+      
+      // Log adicional cada 300 ticks (~5 segundos) con información más detallada
+      if (this.gameState.tick % 300 === 0) {
+        const lastPointTime = this.playerLastPointTime.get(player.id);
+        const timeSinceLastPoint = lastPointTime !== undefined ? (normalizedTimer - lastPointTime) : 0;
+        const trailStats = {
+          total: player.trail.length,
+          valid: player.trail.filter(p => p !== null).length,
+          nulls: player.trail.filter(p => p === null).length,
+          lastPointTime: lastPointTime?.toFixed(2) || 'N/A',
+          timeSinceLastPoint: timeSinceLastPoint.toFixed(2)
+        };
+        console.log(`📊 [${player.id.substring(0, 8)}] Tick ${this.gameState.tick} - Estado detallado:`);
+        console.log(`   Timer: ${normalizedTimer.toFixed(2)}ms | timeInCycle: ${timeInCycle.toFixed(2)}ms | shouldDraw: ${shouldDrawTrail}`);
+        console.log(`   Trail: ${trailStats.valid} válidos, ${trailStats.nulls} nulls, total: ${trailStats.total}`);
+        console.log(`   Último punto: ${trailStats.lastPointTime}ms | Tiempo desde último: ${trailStats.timeSinceLastPoint}ms`);
       }
     }
 
@@ -238,7 +400,7 @@ export class GameServer {
         angle: p.angle,
         speed: p.speed,
         alive: p.alive,
-        trail: p.trail.map(pos => pos ? { ...pos } : null),
+        trail: p.trail.map(pos => pos ? { ...pos } : null), // Preservar nulls (gaps)
         boost: boostState ? {
           active: boostState.active,
           charge: boostState.charge,
@@ -250,6 +412,29 @@ export class GameServer {
     // Log cada 60 ticks (aproximadamente 1 vez por segundo)
     if (this.gameState.tick % 60 === 0) {
       console.log(`🎮 Tick ${this.gameState.tick} | Jugadores vivos: ${aliveCount}/${players.length}`);
+    }
+    
+    // MEDICIÓN DE RENDIMIENTO: Estadísticas de trails cada 5 segundos (300 ticks)
+    if (this.gameState.tick % 300 === 0 && this.gameState.tick > 0) {
+      const trailStats = players.map(p => ({
+        id: p.id.substring(0, 8),
+        total: p.trail.length,
+        valid: p.trail.filter(pt => pt !== null).length,
+        nulls: p.trail.filter(pt => pt === null).length
+      }));
+      
+      const totalPoints = trailStats.reduce((sum, s) => sum + s.total, 0);
+      const totalValidPoints = trailStats.reduce((sum, s) => sum + s.valid, 0);
+      const avgTrailLength = trailStats.length > 0 ? (totalPoints / trailStats.length).toFixed(1) : 0;
+      const maxTrailLength = Math.max(...trailStats.map(s => s.total), 0);
+      const minTrailLength = Math.min(...trailStats.map(s => s.total), 0);
+      
+      console.log(`📈 RENDIMIENTO [Tick ${this.gameState.tick}] - Estadísticas de Trails:`);
+      console.log(`   Total puntos: ${totalPoints} (${totalValidPoints} válidos, ${totalPoints - totalValidPoints} nulls)`);
+      console.log(`   Promedio: ${avgTrailLength} puntos/jugador | Min: ${minTrailLength} | Max: ${maxTrailLength}`);
+      trailStats.forEach(s => {
+        console.log(`   [${s.id}]: ${s.total} total (${s.valid} válidos, ${s.nulls} nulls)`);
+      });
     }
   }
 
@@ -270,30 +455,56 @@ export class GameServer {
       }
 
       // Colisión con otros trails
-      // Filtrar nulls del trail antes de verificar colisiones
-      const validTrail = player.trail.filter((pos): pos is Position => pos !== null);
-      const otherTrails = players
-        .filter(p => p.id !== player.id && p.alive)
-        .map(p => ({ 
-          trail: p.trail.filter((pos): pos is Position => pos !== null), 
-          playerId: p.id 
-        }));
+      // IMPORTANTE: NO filtrar nulls - las funciones de colisión ahora manejan gaps correctamente
+      // Necesitamos encontrar las últimas dos posiciones válidas (no null) para verificar colisión
+      let currentPos: Position | null = null;
+      let newPos: Position | null = null;
       
-      if (validTrail.length >= 2) {
-        const currentPos = validTrail[validTrail.length - 2];
-        const newPos = validTrail[validTrail.length - 1];
+      // Buscar las últimas dos posiciones válidas del trail
+      for (let i = player.trail.length - 1; i >= 0; i--) {
+        const pos = player.trail[i];
+        if (pos !== null) {
+          if (newPos === null) {
+            newPos = pos;
+          } else if (currentPos === null) {
+            currentPos = pos;
+            break;
+          }
+        }
+      }
+      
+      if (currentPos && newPos) {
+        const otherTrails = players
+          .filter(p => p.id !== player.id && p.alive)
+          .map(p => ({ 
+            trail: p.trail, // Pasar trail completo con nulls - la función manejará los gaps
+            playerId: p.id 
+          }));
         
+        // MEDICIÓN DE RENDIMIENTO: Tiempo de colisiones
+        const collisionStartTime = performance.now();
         const trailCollision = checkTrailCollision(currentPos, newPos, otherTrails, player.id);
+        const trailCollisionTime = performance.now() - collisionStartTime;
+        
         if (trailCollision.collided) {
           player.alive = false;
           console.log(`💀 Jugador ${player.name} murió por colisión con trail de ${trailCollision.collidedWith}`);
           continue;
         }
 
-        // Colisión consigo mismo
-        if (checkSelfCollision(currentPos, newPos, validTrail)) {
+        // Colisión consigo mismo (pasar trail completo con nulls)
+        const selfCollisionStartTime = performance.now();
+        const selfCollision = checkSelfCollision(currentPos, newPos, player.trail);
+        const selfCollisionTime = performance.now() - selfCollisionStartTime;
+        
+        if (selfCollision) {
           player.alive = false;
           console.log(`💀 Jugador ${player.name} murió por colisión consigo mismo`);
+        }
+        
+        // Log de rendimiento de colisiones (cada 5 segundos, solo si es lento)
+        if (this.gameState.tick % 300 === 0 && (trailCollisionTime > 1 || selfCollisionTime > 1)) {
+          console.log(`⏱️ [${player.id.substring(0, 8)}] Tiempo colisiones: trail=${trailCollisionTime.toFixed(3)}ms, self=${selfCollisionTime.toFixed(3)}ms`);
         }
       }
     }
@@ -309,13 +520,17 @@ export class GameServer {
       // Hay un ganador
       this.gameState.winnerId = alivePlayers[0].id;
       this.gameState.gameStatus = 'ended';
-      this.stop();
       console.log(`🏆 Ganador: ${alivePlayers[0].name}`);
+      // Enviar estado final antes de detener (forzar envío)
+      this.broadcastState(true);
+      this.stop();
     } else if (alivePlayers.length === 0) {
       // Empate (todos murieron)
       this.gameState.gameStatus = 'ended';
-      this.stop();
       console.log(`🤝 Empate: todos los jugadores murieron`);
+      // Enviar estado final antes de detener (forzar envío)
+      this.broadcastState(true);
+      this.stop();
     }
   }
 
@@ -344,13 +559,14 @@ export class GameServer {
   /**
    * Envía el estado actualizado a todos los clientes
    * FASE 1: Throttling - solo enviar cada N ticks (30 Hz en lugar de 60 Hz)
+   * @param force - Si es true, envía el estado incluso si el contador no está listo (útil para estado final)
    */
-  private broadcastState(): void {
+  private broadcastState(force: boolean = false): void {
     // Incrementar contador
     this.broadcastTickCounter++;
     
-    // Solo enviar cada N ticks
-    if (this.broadcastTickCounter < this.broadcastInterval) {
+    // Solo enviar cada N ticks, a menos que sea forzado
+    if (!force && this.broadcastTickCounter < this.broadcastInterval) {
       return;
     }
     
@@ -361,9 +577,9 @@ export class GameServer {
       this.broadcastCallback(this.gameState);
       
       // Log cada 60 ticks (aproximadamente 1 vez por segundo)
-      if (this.gameState.tick % 60 === 0) {
+      if (this.gameState.tick % 60 === 0 || force) {
         const alivePlayers = this.gameState.players.filter(p => p.alive);
-        console.log(`📡 Broadcast estado | Tick: ${this.gameState.tick} | Jugadores: ${alivePlayers.length}/${this.gameState.players.length} | Rate: ${1000 / (this.tickInterval * this.broadcastInterval)}Hz`);
+        console.log(`📡 Broadcast estado | Tick: ${this.gameState.tick} | Jugadores: ${alivePlayers.length}/${this.gameState.players.length} | Rate: ${1000 / (this.tickInterval * this.broadcastInterval)}Hz${force ? ' (FORZADO - Estado final)' : ''}`);
       }
     }
   }
@@ -376,11 +592,54 @@ export class GameServer {
   }
 
   /**
+   * Inicializa el estado de gaps para un jugador
+   */
+  initializePlayerGaps(playerId: string): void {
+    this.playerTrailTimers.set(playerId, 0);
+    this.playerShouldDrawTrail.set(playerId, true);
+    this.playerWasDrawingTrail.set(playerId, true);
+  }
+
+  /**
+   * Encuentra un color disponible que no esté en uso por otros jugadores
+   */
+  private getAvailableColor(existingPlayers: Player[], excludePlayerId?: string): string {
+    const availableColors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+    // Filtrar el jugador que estamos excluyendo (si se proporciona)
+    const playersToCheck = excludePlayerId 
+      ? existingPlayers.filter(p => p.id !== excludePlayerId)
+      : existingPlayers;
+    const usedColors = new Set(playersToCheck.map(p => p.color));
+    
+    // Buscar el primer color disponible que no esté en uso
+    for (const color of availableColors) {
+      if (!usedColors.has(color)) {
+        return color;
+      }
+    }
+    
+    // Si todos los colores están en uso, generar un color aleatorio
+    const randomColor = () => {
+      const r = Math.floor(Math.random() * 200) + 55; // 55-255 para evitar colores muy oscuros
+      const g = Math.floor(Math.random() * 200) + 55;
+      const b = Math.floor(Math.random() * 200) + 55;
+      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    };
+    
+    // Generar un color aleatorio y verificar que no esté en uso
+    let newColor: string;
+    do {
+      newColor = randomColor();
+    } while (usedColors.has(newColor));
+    
+    return newColor;
+  }
+
+  /**
    * Inicializa jugadores en posiciones iniciales
    */
   initializePlayers(): void {
     const players = this.playerManager.getAllPlayers();
-    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
     const positions = [
       { x: this.canvasWidth * 0.25, y: this.canvasHeight * 0.25 },
       { x: this.canvasWidth * 0.75, y: this.canvasHeight * 0.25 },
@@ -396,7 +655,16 @@ export class GameServer {
       player.speed = 2;
       player.alive = true;
       player.trail = [{ ...positions[posIndex] }];
-      player.color = colors[index % colors.length];
+      // Asignar un color que no esté en uso por otros jugadores
+      // Excluir el jugador actual de la verificación para que pueda obtener un color
+      const otherPlayers = players.filter(p => p.id !== player.id);
+      player.color = this.getAvailableColor(otherPlayers);
+      
+      // Inicializar estado de gaps para este jugador
+      this.playerTrailTimers.set(player.id, 0);
+      this.playerShouldDrawTrail.set(player.id, true);
+      this.playerWasDrawingTrail.set(player.id, true);
+      this.playerLastPointTime.set(player.id, 0);
     });
 
     this.gameState.players = players.map(p => ({
@@ -407,7 +675,7 @@ export class GameServer {
       angle: p.angle,
       speed: p.speed,
       alive: p.alive,
-      trail: p.trail.filter((pos): pos is Position => pos !== null).map(pos => ({ ...pos })),
+      trail: p.trail.map(pos => pos ? { ...pos } : null), // Preservar nulls (gaps)
     }));
   }
 }

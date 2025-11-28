@@ -11,7 +11,7 @@ export class Player {
   public angle: number; // en radianes
   public speed: number;
   public alive: boolean;
-  public trail: Position[];
+  public trail: Array<Position | null>; // Permite null para gaps
   
   // Sistema de huecos en el trail
   private trailTimer: number = 0; // Tiempo acumulado desde el inicio
@@ -28,8 +28,9 @@ export class Player {
   private readonly boostSpeedMultiplier: number = 1.5; // 50% más rápido
   private readonly boostRechargeRate: number = 100 / 20000; // Porcentaje por ms (20 segundos para recargar completamente)
   
+  // EXPERIMENTO: Sin límite de trail - monitorear rendimiento
   // FASE 1: Límite de trail para optimización
-  private readonly MAX_TRAIL_LENGTH: number = 600; // Mantener últimos 600 puntos (reducido de 1000)
+  // private readonly MAX_TRAIL_LENGTH: number = 1200; // Mantener últimos 1200 puntos (aumentado para reducir problemas de sincronización)
 
   constructor(
     id: string,
@@ -86,15 +87,16 @@ export class Player {
       this.trail.push(null as any);
     }
     
-    // Solo agregar al trail si no estamos en período de hueco
-    if (this.shouldDrawTrail) {
-      this.trail.push({ ...this.position });
-      
-      // FASE 1: Limitar tamaño del trail (mantener últimos 600 puntos)
-      if (this.trail.length > this.MAX_TRAIL_LENGTH) {
-        this.trail = this.trail.slice(-this.MAX_TRAIL_LENGTH);
+      // Solo agregar al trail si no estamos en período de hueco
+      if (this.shouldDrawTrail) {
+        this.trail.push({ ...this.position });
+        
+        // EXPERIMENTO: Sin límite de trail - monitorear rendimiento
+        // FASE 1: Limitar tamaño del trail (mantener últimos 600 puntos)
+        // if (this.trail.length > this.MAX_TRAIL_LENGTH) {
+        //   this.trail = this.trail.slice(-this.MAX_TRAIL_LENGTH);
+        // }
       }
-    }
 
     // Actualizar estado anterior
     this.wasDrawingTrail = this.shouldDrawTrail;
@@ -234,9 +236,9 @@ export class Player {
   }
 
   /**
-   * Obtiene el trail completo
+   * Obtiene el trail completo (puede contener nulls para gaps)
    */
-  getTrail(): Position[] {
+  getTrail(): Array<Position | null> {
     return [...this.trail];
   }
 
