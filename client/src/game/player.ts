@@ -167,6 +167,15 @@ export class Player {
   }
   
   /**
+   * Establece el estado del boost (para sincronización desde el servidor)
+   */
+  setBoostState(active: boolean, charge: number, remaining: number): void {
+    this.boostActive = active;
+    this.boostCharge = charge;
+    this.boostRemaining = remaining;
+  }
+  
+  /**
    * Verifica si actualmente se debe dibujar el trail
    */
   isDrawingTrail(): boolean {
@@ -197,7 +206,7 @@ export class Player {
    * @param angleDelta - Velocidad de giro en radianes por frame
    *                     Ángulo más pequeño = giro menos cerrado (radio más amplio)
    */
-  applyRotation(action: 'left' | 'right' | null, angleDelta: number = Math.PI / 200): void {
+  applyRotation(action: 'left' | 'right' | null, angleDelta: number = Math.PI / 50): void {
     if (!this.alive || !action) return;
     
     // Aplicar el mismo ángulo de giro para ambos lados

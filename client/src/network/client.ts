@@ -18,6 +18,7 @@ export class NetworkClient {
   private onConnectCallback?: () => void;
   private onDisconnectCallback?: () => void;
   private onErrorCallback?: (error: string) => void;
+  private onPlayerJoinedCallback?: (data: { playerId: string; socketId: string }) => void;
 
   constructor(serverUrl: string = 'http://localhost:3001') {
     this.serverUrl = serverUrl;
@@ -50,7 +51,7 @@ export class NetworkClient {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      console.log('✅ Conectado al servidor');
+      console.log(`✅ Conectado al servidor | Socket ID: ${this.socket?.id}`);
       this.isConnected = true;
       this.reconnectAttempts = 0;
       if (this.onConnectCallback) {
@@ -81,6 +82,12 @@ export class NetworkClient {
       }
     });
 
+    this.socket.on(SERVER_EVENTS.PLAYER_JOINED, (data: { playerId: string; socketId: string }) => {
+      if (this.onPlayerJoinedCallback) {
+        this.onPlayerJoinedCallback(data);
+      }
+    });
+
     this.socket.on(SERVER_EVENTS.ERROR, (error: string) => {
       console.error('Error del servidor:', error);
       if (this.onErrorCallback) {
@@ -103,7 +110,7 @@ export class NetworkClient {
   /**
    * Envía un input al servidor
    */
-  sendInput(playerId: string, key: 'left' | 'right', timestamp: number = Date.now()): void {
+  sendInput(playerId: string, key: 'left' | 'right' | null, boost: boolean, timestamp: number = Date.now()): void {
     if (!this.socket || !this.isConnected) {
       console.warn('No conectado al servidor, no se puede enviar input');
       return;
@@ -112,6 +119,7 @@ export class NetworkClient {
     this.socket.emit(CLIENT_EVENTS.GAME_INPUT, {
       playerId,
       key,
+      boost,
       timestamp,
     });
   }
@@ -171,6 +179,13 @@ export class NetworkClient {
    */
   getSocketId(): string | undefined {
     return this.socket?.id;
+  }
+
+  /**
+   * Callback para cuando el servidor confirma la unión del jugador
+   */
+  onPlayerJoined(callback: (data: { playerId: string; socketId: string }) => void): void {
+    this.onPlayerJoinedCallback = callback;
   }
 }
 

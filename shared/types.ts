@@ -14,6 +14,11 @@ export interface Player {
   speed: number;
   alive: boolean;
   trail: Position[]; // historial de posiciones
+  boost?: {
+    active: boolean;
+    charge: number;
+    remaining: number;
+  };
 }
 
 export interface GameState {

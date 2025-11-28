@@ -5,6 +5,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Game } from '../game/game';
 import './App.css';
 
+// Importar Game aquí para evitar error de referencia circular
+// import { NetworkClient } from '../network/client';
+
 // Componente de barra de boost
 function BoostBar({ charge, active, remaining }: { charge: number; active: boolean; remaining: number }) {
   const remainingSeconds = (remaining / 1000).toFixed(1);
@@ -64,8 +67,14 @@ function App() {
   }, [currentView]);
 
   // Función para iniciar el juego
-  const handleStartGame = () => {
+  const handleStartGame = (useNetwork: boolean = false) => {
     if (gameRef.current) {
+      // Si ya existe, destruirlo y crear uno nuevo
+      if (gameRef.current.isUsingNetwork() !== useNetwork) {
+        gameRef.current.destroy();
+        gameRef.current = new Game('gameCanvas', useNetwork);
+      }
+      
       gameRef.current.init(4); // 4 jugadores
       gameRef.current.start();
       setCurrentView('game');
@@ -88,12 +97,8 @@ function App() {
       <canvas 
         id="gameCanvas" 
         style={{ 
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          width: '100%', 
-          height: '100%',
-          zIndex: 1
+          zIndex: 1,
+          display: 'block'
         }} 
       />
       
@@ -115,10 +120,17 @@ function App() {
             <h1>curve.io</h1>
             <p>Juego multijugador en tiempo real</p>
             <button 
-              onClick={handleStartGame}
+              onClick={() => handleStartGame(false)}
               className="start-button"
             >
-              Iniciar Juego
+              Juego Local
+            </button>
+            <button 
+              onClick={() => handleStartGame(true)}
+              className="start-button"
+              style={{ background: '#2196F3', marginTop: '10px' }}
+            >
+              Conectar al Servidor
             </button>
             <div className="controls-info">
               <p>Controles:</p>
@@ -149,6 +161,15 @@ function App() {
               >
                 Reiniciar
               </button>
+              {gameRef.current?.isUsingNetwork() && (
+                <div className="connection-status">
+                  {gameRef.current?.getNetworkClient()?.getIsConnected() ? (
+                    <span style={{ color: '#4CAF50' }}>● Conectado</span>
+                  ) : (
+                    <span style={{ color: '#f44336' }}>● Desconectado</span>
+                  )}
+                </div>
+              )}
             </div>
             {boostState && (
               <div className="hud-bottom">

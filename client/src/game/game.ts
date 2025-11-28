@@ -9,6 +9,7 @@ import {
   checkTrailCollision,
   checkSelfCollision,
 } from './collision';
+import { NetworkClient } from '../network/client';
 import type { GameState, Position } from '@shared/types';
 
 export class Game {
@@ -19,15 +20,70 @@ export class Game {
   private animationFrameId: number | null = null;
   private isRunning: boolean = false;
   private lastFrameTime: number = 0;
+  private networkClient: NetworkClient | null = null;
+  private useNetwork: boolean = false;
+  private localPlayerId: string;
+  private lastInputSendTime: number = 0;
+  private readonly inputSendInterval: number = 50; // Enviar input cada 50ms (20 veces por segundo)
+  // Tamaño del juego en el servidor (fijo, proporción 3:2)
+  private readonly serverCanvasWidth: number = 1920;
+  private readonly serverCanvasHeight: number = 1280; // 1920 / 1.5 = 1280 (proporción 3:2)
 
-  constructor(canvasId: string = 'gameCanvas') {
+  constructor(canvasId: string = 'gameCanvas', useNetwork: boolean = false, serverUrl?: string) {
     this.canvas = new CanvasRenderer(canvasId);
     this.input = new InputManager();
+    this.useNetwork = useNetwork;
+    
+    // Generar ID único para este cliente
+    this.localPlayerId = `player-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     this.gameState = {
       players: [],
       gameStatus: 'waiting',
       tick: 0,
     };
+    
+    // Inicializar cliente de red si se solicita
+    if (useNetwork) {
+      this.networkClient = new NetworkClient(serverUrl);
+      this.setupNetworkCallbacks();
+    }
+  }
+  
+  /**
+   * Configura los callbacks del cliente de red
+   */
+  private setupNetworkCallbacks(): void {
+    if (!this.networkClient) return;
+    
+    this.networkClient.onConnect(() => {
+      console.log('✅ Conectado al servidor');
+      // Unirse al juego cuando se conecta (el servidor usará socket.id como playerId)
+      const playerName = `Player ${Math.floor(Math.random() * 1000)}`;
+      this.networkClient?.joinGame(this.localPlayerId, playerName);
+    });
+    
+    // Escuchar cuando el servidor confirma nuestra unión y nos da el playerId real
+    this.networkClient.onPlayerJoined((data) => {
+      this.localPlayerId = data.playerId; // Usar el playerId que el servidor asignó (socket.id)
+      console.log(`🆔 Player ID asignado por servidor: ${this.localPlayerId}`);
+    });
+    
+    this.networkClient.onDisconnect(() => {
+      console.log('❌ Desconectado del servidor');
+    });
+    
+    this.networkClient.onError((error) => {
+      console.error('Error de red:', error);
+    });
+    
+    this.networkClient.onGameState((gameState) => {
+      // Sincronizar estado del servidor
+      if (this.gameState.tick === 0 || gameState.tick % 60 === 0) {
+        console.log(`📥 Estado recibido del servidor | Tick: ${gameState.tick} | Jugadores: ${gameState.players.length} | Vivos: ${gameState.players.filter(p => p.alive).length}`);
+      }
+      this.syncFromServer(gameState);
+    });
   }
 
   /**
@@ -82,8 +138,67 @@ export class Game {
    * Actualiza el estado del juego
    */
   private update(): void {
-    if (this.gameState.gameStatus !== 'playing') return;
+    if (this.gameState.gameStatus !== 'playing' && this.gameState.gameStatus !== 'waiting') return;
 
+    // Si está en modo red, el servidor es la autoridad
+    // Solo procesamos input local y lo enviamos al servidor
+    if (this.useNetwork) {
+      this.updateNetworkMode();
+      return;
+    }
+
+    // Modo local: procesar todo localmente
+    this.updateLocalMode();
+  }
+
+  /**
+   * Actualiza en modo red (solo input, el servidor maneja el resto)
+   */
+  private updateNetworkMode(): void {
+    // En modo red, NO actualizamos posiciones localmente
+    // Solo enviamos input al servidor y el servidor nos envía las posiciones actualizadas
+    
+    // Procesar input del jugador local y enviarlo al servidor
+    const bothKeysPressed = this.input.areBothKeysPressed();
+    
+    // Buscar el jugador local
+    const localPlayer = this.players.find(p => p.id === this.localPlayerId);
+    
+    if (localPlayer && localPlayer.alive) {
+      // Enviar input al servidor (con throttling)
+      const currentTime = performance.now();
+      if (currentTime - this.lastInputSendTime >= this.inputSendInterval) {
+        if (this.networkClient) {
+          if (bothKeysPressed) {
+            // Si se presionan ambas teclas, enviar boost al servidor
+            this.networkClient.sendInput(this.localPlayerId, null, true, currentTime);
+            localPlayer.activateBoost();
+          } else {
+            // Si no se presionan ambos, procesar giro normal
+            const action = this.input.getCurrentAction();
+            if (action) {
+              this.networkClient.sendInput(this.localPlayerId, action, false, currentTime);
+              // Log cada 20 inputs (aproximadamente 1 vez por segundo)
+              if (Math.random() < 0.05) { // 5% de probabilidad para no saturar
+                console.log(`⌨️  Input enviado: ${action}`);
+              }
+            }
+          }
+          this.lastInputSendTime = currentTime;
+        }
+      }
+      
+      // Actualizar boost localmente (solo visual, no afecta posición)
+      const deltaTime = 16.67; // Aproximado
+      // Solo actualizar el estado del boost, NO la posición
+      localPlayer.updateBoost(deltaTime, bothKeysPressed);
+    }
+  }
+
+  /**
+   * Actualiza en modo local (todo se procesa localmente)
+   */
+  private updateLocalMode(): void {
     this.gameState.tick++;
 
     // Procesar input del jugador 0 (local) - giro continuo y boost
@@ -97,9 +212,10 @@ export class Game {
       } else {
         // Si no se presionan ambos, procesar giro normal
         const action = this.input.getCurrentAction();
+        
         // Aplicar rotación continua mientras se mantiene la tecla presionada
         // Ángulo más pequeño = giro menos cerrado (radio más amplio)
-        this.players[0].applyRotation(action, Math.PI / 200);
+        this.players[0].applyRotation(action, Math.PI / 50); // Giro muy fuerte (4x el original)
       }
     }
 
@@ -198,9 +314,15 @@ export class Game {
   start(): void {
     if (this.isRunning) return;
     
+    // Conectar al servidor si se usa red
+    if (this.useNetwork && this.networkClient) {
+      this.networkClient.connect();
+    }
+    
     this.isRunning = true;
     this.gameState.gameStatus = 'playing';
     this.lastFrameTime = 0; // Resetear tiempo
+    this.lastInputSendTime = 0; // Resetear tiempo de último input enviado
     this.gameLoop();
   }
 
@@ -245,11 +367,20 @@ export class Game {
   }
   
   /**
-   * Obtiene el estado del boost del jugador local (jugador 0)
+   * Obtiene el estado del boost del jugador local
    */
   getLocalPlayerBoostState(): { active: boolean; charge: number; remaining: number } | null {
-    if (this.players.length > 0) {
-      return this.players[0].getBoostState();
+    if (this.useNetwork) {
+      // En modo red, buscar por localPlayerId
+      const localPlayer = this.players.find(p => p.id === this.localPlayerId);
+      if (localPlayer) {
+        return localPlayer.getBoostState();
+      }
+    } else {
+      // En modo local, usar el primer jugador
+      if (this.players.length > 0) {
+        return this.players[0].getBoostState();
+      }
     }
     return null;
   }
@@ -260,6 +391,116 @@ export class Game {
   destroy(): void {
     this.stop();
     this.input.destroy();
+    if (this.networkClient) {
+      this.networkClient.disconnect();
+    }
+  }
+  
+  /**
+   * Obtiene el cliente de red (para verificar estado de conexión)
+   */
+  getNetworkClient(): NetworkClient | null {
+    return this.networkClient;
+  }
+  
+  /**
+   * Verifica si está usando red
+   */
+  isUsingNetwork(): boolean {
+    return this.useNetwork;
+  }
+
+  /**
+   * Sincroniza el estado desde el servidor
+   */
+  private syncFromServer(serverGameState: GameState): void {
+    if (!this.useNetwork) return;
+
+    // Actualizar gameState
+    this.gameState = { ...serverGameState };
+
+    // Sincronizar jugadores
+    const serverPlayers = serverGameState.players;
+    let newPlayersCount = 0;
+    
+    // Crear o actualizar jugadores desde el servidor
+    for (const serverPlayer of serverPlayers) {
+      let localPlayer = this.players.find(p => p.id === serverPlayer.id);
+      
+      // Escalar posiciones del servidor al tamaño del canvas del cliente
+      const scaleX = this.canvas.getWidth() / this.serverCanvasWidth;
+      const scaleY = this.canvas.getHeight() / this.serverCanvasHeight;
+      
+       if (!localPlayer) {
+         // Crear nuevo jugador si no existe (escalar posición inicial)
+         // NOTA: NO escalamos la velocidad - el servidor ya calcula las posiciones correctas
+         localPlayer = new Player(
+           serverPlayer.id,
+           serverPlayer.name,
+           serverPlayer.color,
+           {
+             x: serverPlayer.position.x * scaleX,
+             y: serverPlayer.position.y * scaleY
+           },
+           serverPlayer.angle,
+           serverPlayer.speed // Velocidad sin escalar - solo para referencia, no se usa en modo red
+         );
+        // Escalar trail inicial también
+        localPlayer.trail = serverPlayer.trail
+          .filter((pos): pos is Position => pos !== null)
+          .map(pos => ({ 
+            x: pos.x * scaleX, 
+            y: pos.y * scaleY 
+          }));
+        this.players.push(localPlayer);
+        newPlayersCount++;
+        console.log(`➕ Nuevo jugador sincronizado: ${serverPlayer.name} (${serverPlayer.id.substring(0, 8)}...)`);
+      }
+      
+      // En modo red, TODOS los jugadores (incluido el local) usan las posiciones del servidor
+      // El servidor es la única autoridad
+      const wasAlive = localPlayer.alive;
+      
+       // Actualizar posición y estado desde el servidor (escalado)
+       // NOTA: Solo escalamos posiciones, NO velocidad
+       // El servidor ya calcula las posiciones correctas, solo necesitamos escalarlas al tamaño del canvas del cliente
+       localPlayer.position = { 
+         x: serverPlayer.position.x * scaleX, 
+         y: serverPlayer.position.y * scaleY 
+       };
+       localPlayer.angle = serverPlayer.angle;
+       localPlayer.speed = serverPlayer.speed; // Velocidad sin escalar - solo para referencia, no se usa en modo red
+       localPlayer.alive = serverPlayer.alive;
+      
+      if (wasAlive && !localPlayer.alive && localPlayer.id === this.localPlayerId) {
+        console.log(`💀 Jugador local murió`);
+      }
+      
+      // Actualizar trail (filtrar nulls y escalar posiciones)
+      localPlayer.trail = serverPlayer.trail
+        .filter((pos): pos is Position => pos !== null)
+        .map(pos => ({ 
+          x: pos.x * scaleX, 
+          y: pos.y * scaleY 
+        }));
+      
+      // Sincronizar estado del boost desde el servidor
+      if (serverPlayer.boost) {
+        // Actualizar el estado interno del boost del jugador
+        localPlayer.setBoostState(serverPlayer.boost.active, serverPlayer.boost.charge, serverPlayer.boost.remaining);
+      }
+    }
+    
+    // Remover jugadores que ya no están en el servidor
+    const playersToRemove = this.players.filter(p => 
+      !serverPlayers.some(sp => sp.id === p.id)
+    );
+    if (playersToRemove.length > 0) {
+      console.log(`➖ ${playersToRemove.length} jugador(es) removido(s): ${playersToRemove.map(p => p.name).join(', ')}`);
+    }
+    this.players = this.players.filter(p => 
+      serverPlayers.some(sp => sp.id === p.id)
+    );
   }
 }
 

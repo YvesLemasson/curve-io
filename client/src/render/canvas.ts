@@ -27,21 +27,61 @@ export class CanvasRenderer {
   }
 
   /**
-   * Ajusta el tamaño del canvas al tamaño de la ventana
+   * Ajusta el tamaño del canvas manteniendo proporción 3:2 (apaisado)
    */
   private resize(): void {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    // Proporción deseada: 3:2 (ancho:alto)
+    const aspectRatio = 3 / 2;
+    
+    // Calcular dimensiones manteniendo la proporción
+    let canvasWidth = windowWidth;
+    let canvasHeight = windowWidth / aspectRatio;
+    
+    // Si el alto calculado es mayor que el disponible, ajustar por alto
+    if (canvasHeight > windowHeight) {
+      canvasHeight = windowHeight;
+      canvasWidth = windowHeight * aspectRatio;
+    }
+    
+    this.width = canvasWidth;
+    this.height = canvasHeight;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
+    
+    // Centrar el canvas en la ventana
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.left = `${(windowWidth - canvasWidth) / 2}px`;
+    this.canvas.style.top = `${(windowHeight - canvasHeight) / 2}px`;
   }
 
   /**
-   * Limpia el canvas (pinta todo de negro)
+   * Limpia el canvas (pinta todo de negro) y dibuja el borde
    */
   clear(): void {
+    // Limpiar fondo negro
     this.ctx.fillStyle = '#000000';
     this.ctx.fillRect(0, 0, this.width, this.height);
+    
+    // Dibujar borde blanco
+    this.drawBorder();
+  }
+  
+  /**
+   * Dibuja un borde alrededor del canvas
+   */
+  private drawBorder(): void {
+    const borderWidth = 4;
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = borderWidth;
+    this.ctx.strokeRect(
+      borderWidth / 2,
+      borderWidth / 2,
+      this.width - borderWidth,
+      this.height - borderWidth
+    );
   }
 
   /**

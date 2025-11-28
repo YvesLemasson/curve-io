@@ -44,4 +44,3 @@ export interface GameEndMessage {
   winnerId: string;
   winnerName: string;
 }
-

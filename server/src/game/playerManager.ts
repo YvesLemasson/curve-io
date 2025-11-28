@@ -1,7 +1,7 @@
 // Manejo de jugadores en el servidor
 // Almacena y gestiona todos los jugadores conectados
 
-import type { Player } from '@shared/types';
+import type { Player } from '../shared/types.js';
 
 export class PlayerManager {
   private players: Map<string, Player> = new Map();
