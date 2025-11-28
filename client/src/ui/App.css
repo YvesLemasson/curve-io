@@ -1140,7 +1140,7 @@
   /* Gradiente: color en el borde izquierdo (0%), transparente hacia el centro (100%) */
   background: linear-gradient(to right, 
     var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 0%,
-    var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 25%,
+    var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 10%,
     transparent 100%
   );
 }
@@ -1150,7 +1150,7 @@
   /* Gradiente: color en el borde derecho (0%), transparente hacia el centro (100%) */
   background: linear-gradient(to left, 
     var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 0%,
-    var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 25%,
+    var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 10%,
     transparent 100%
   );
 }
