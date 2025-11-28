@@ -6,6 +6,7 @@ export const CLIENT_EVENTS = {
   GAME_INPUT: 'game:input',
   DISCONNECT: 'disconnect',
   REQUEST_START: 'game:request-start',
+  CHANGE_COLOR: 'player:change-color',
 } as const;
 
 // Eventos del servidor al cliente

@@ -5,14 +5,11 @@ import type { Position } from '@shared/types';
 
 export class SpatialHash {
   private cellSize: number;
-  private width: number;
-  private height: number;
   private grid: Map<string, Set<string>>; // cellKey -> Set<playerId>
 
-  constructor(cellSize: number = 100, width: number = 1920, height: number = 1280) {
+  constructor(cellSize: number = 100, _width: number = 1920, _height: number = 1280) {
     this.cellSize = cellSize;
-    this.width = width;
-    this.height = height;
+    // width y height no se usan actualmente, pero se mantienen para compatibilidad futura
     this.grid = new Map();
   }
 

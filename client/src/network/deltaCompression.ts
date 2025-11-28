@@ -1,7 +1,7 @@
 // FASE 2: Delta Compression - Aplicar cambios delta al estado local
 // Reduce ancho de banda en 70-90%
 
-import type { GameState, Player } from '@shared/types';
+import type { GameState } from '@shared/types';
 
 export interface DeltaState {
   tick: number;
@@ -31,9 +31,10 @@ export class DeltaDecompressor {
   applyDelta(delta: DeltaState, scaleX: number = 1, scaleY: number = 1): GameState {
     // Si es estado completo, reemplazar todo
     if (delta.fullState || !this.localState) {
+      const gameStatus = (delta.gameStatus as 'waiting' | 'playing' | 'finished' | 'ended') || 'waiting';
       this.localState = {
         tick: delta.tick,
-        gameStatus: delta.gameStatus || 'waiting',
+        gameStatus,
         winnerId: delta.winnerId,
         players: delta.players.map(p => ({
           id: p.id,
@@ -64,7 +65,7 @@ export class DeltaDecompressor {
     this.localState.tick = delta.tick;
 
     if (delta.gameStatus !== undefined) {
-      this.localState.gameStatus = delta.gameStatus;
+      this.localState.gameStatus = delta.gameStatus as 'waiting' | 'playing' | 'finished' | 'ended';
     }
 
     if (delta.winnerId !== undefined) {
@@ -205,7 +206,10 @@ export class DeltaDecompressor {
   /**
    * Obtiene el estado local actual
    */
-  getState(): GameState | null {
+  getState(): GameState {
+    if (!this.localState) {
+      throw new Error('No hay estado local disponible');
+    }
     return this.localState;
   }
 

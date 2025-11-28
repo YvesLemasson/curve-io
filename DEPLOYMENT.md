@@ -75,14 +75,17 @@ git push -u origin main
 1. Ir a [netlify.com](https://netlify.com) y crear una cuenta
 2. Click en **"Add new site"** → **"Import an existing project"**
 3. Conectar con GitHub y seleccionar tu repositorio `curve-io`
-4. Configurar:
-   - **Base directory**: `client`
-   - **Build command**: `npm run build`
-   - **Publish directory**: `client/dist`
+4. **Configurar manualmente (IMPORTANTE):**
+   - **Base directory**: `client` ⚠️ (esto le dice a Netlify que busque el código en `client/`)
+   - **Package directory**: `client/` (opcional, para monorepos)
+   - **Build command**: `npm run build` ⚠️ (comando para construir el proyecto)
+   - **Publish directory**: `dist` ⚠️ (directorio donde Vite genera los archivos estáticos)
+     - **IMPORTANTE**: Como el Base directory es `client`, el path relativo es solo `dist`, **NO** `client/dist`
+     - Si pones `client/dist`, Netlify buscará en `client/client/dist` y fallará
 5. Click en **"Deploy site"**
 6. Una vez desplegado, copia la URL (ej: `https://tu-app.netlify.app`)
 
-**Nota**: El archivo `client/netlify.toml` ya está configurado con estas opciones.
+**Nota**: El archivo `client/netlify.toml` también está configurado como respaldo, pero es mejor configurarlo manualmente la primera vez para asegurarte de que funcione correctamente.
 
 ### 4. Desplegar Backend (Railway)
 
@@ -103,19 +106,43 @@ git push -u origin main
    - `FRONTEND_URL` = `https://tu-app.netlify.app` (la URL de Netlify que copiaste)
 7. Railway asignará automáticamente el `PORT` (no necesitas configurarlo)
 8. Haz un **Redeploy** para aplicar los cambios
-9. Una vez desplegado, copia la URL pública (ej: `https://tu-servidor.railway.app`)
+9. **Generar y obtener la URL pública de Railway:**
+   - Ve a **Settings** → **Networking** → **Public Networking**
+   - Click en **"Generate Domain"** (botón morado con rayo ⚡)
+   - En el campo **"Enter the port your app is listening on"**, Railway puede mostrar un puerto por defecto
+   - **IMPORTANTE**: Como tu servidor usa `process.env.PORT`, Railway asignará el puerto automáticamente
+   - Si el campo muestra un puerto (ej: 8080), puedes dejarlo así o cambiarlo al puerto que Railway está usando
+   - Para verificar el puerto, ve a **Settings** → **Variables** y busca `PORT`, o revisa los logs del deploy
+   - Click en **"Generate Domain"**
+   - Railway generará una URL como: `https://tu-servidor-production.up.railway.app`
+   - **Copia esta URL completa** (incluyendo `https://`)
 
 **Nota**: Los archivos `server/nixpacks.toml`, `server/railway.json` y `server/start.sh` ya están configurados, pero el **Root Directory** debe estar configurado en la interfaz de Railway.
 
 ### 5. Configurar Variables de Entorno del Frontend
 
-1. Volver a Netlify
-2. Ir a **Site settings** → **Environment variables**
-3. Agregar:
-   - `VITE_SERVER_URL` = `https://tu-servidor.railway.app` (la URL de Railway que copiaste)
-4. **Redeploy** el sitio para que tome la nueva variable
+1. **Obtener la URL de Railway:**
+   - En Railway, ve a tu servicio
+   - Busca la sección **"Networking"** o **"Public Domain"** en la pestaña principal
+   - O ve a **Settings** → **Networking** → **Public Networking**
+   - Copia la URL completa (ej: `https://tu-servidor-production.up.railway.app`)
+   - ⚠️ **IMPORTANTE**: Asegúrate de copiar la URL completa con `https://`
 
-**Nota**: El CORS ya está configurado para usar `FRONTEND_URL` automáticamente.
+2. **Configurar en Netlify:**
+   - Ve a tu sitio en Netlify
+   - Click en **Site settings** (⚙️) → **Environment variables**
+   - Click en **"Add variable"**
+   - **Key**: `VITE_SERVER_URL`
+   - **Value**: Pega la URL de Railway (ej: `https://tu-servidor-production.up.railway.app`)
+   - **Scope**: Selecciona **"All scopes"** o **"Production"**
+   - Click en **"Save"**
+
+3. **Redeploy en Netlify:**
+   - Ve a **Deploys**
+   - Click en los tres puntos (⋯) del último deploy → **"Redeploy"**
+   - O haz un nuevo commit y push a GitHub
+
+**Nota**: El CORS ya está configurado para usar `FRONTEND_URL` automáticamente. Asegúrate de haber configurado `FRONTEND_URL` en Railway con la URL de Netlify.
 
 ## 🔧 Variables de Entorno
 
@@ -130,8 +157,9 @@ FRONTEND_URL=https://tu-app.netlify.app
 ### Client (Netlify)
 Configurar en Netlify → Site settings → Environment variables:
 ```env
-VITE_SERVER_URL=https://tu-servidor.railway.app
+VITE_SERVER_URL=https://tu-servidor-production.up.railway.app
 ```
+**Nota**: La URL de Railway generalmente tiene el formato `https://[nombre]-production.up.railway.app`
 
 ### Desarrollo Local
 Para desarrollo local, crear archivos `.env` (no se suben a Git):

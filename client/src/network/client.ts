@@ -2,7 +2,7 @@
 // Maneja conexión WebSocket y envío/recepción de mensajes
 
 import { io, Socket } from 'socket.io-client';
-import { CLIENT_EVENTS, SERVER_EVENTS, type GameStateMessage, type PlayerJoinMessage, type LobbyPlayersMessage, type ChangeColorMessage } from '@shared/protocol';
+import { CLIENT_EVENTS, SERVER_EVENTS, type GameStateMessage, type PlayerJoinMessage, type LobbyPlayersMessage } from '@shared/protocol';
 import type { GameState } from '@shared/types';
 
 export class NetworkClient {
@@ -76,7 +76,7 @@ export class NetworkClient {
       }
     });
 
-    this.socket.on('disconnect', (reason) => {
+    this.socket.on('disconnect', () => {
       this.isConnected = false;
       if (this.onDisconnectCallback) {
         this.onDisconnectCallback();
