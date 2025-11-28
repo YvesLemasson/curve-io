@@ -336,6 +336,11 @@
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.3s ease-in;
+  /* Asegurar que los toques lleguen al modal */
+  pointer-events: auto;
+  /* Prevenir scroll en móviles */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes fadeIn {
@@ -351,13 +356,41 @@
   background: linear-gradient(135deg, rgba(30, 30, 30, 0.95), rgba(20, 20, 20, 0.95));
   border-radius: 20px;
   padding: 40px;
-  max-width: 600px;
+  max-width: 900px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   border: 2px solid rgba(255, 255, 255, 0.1);
   animation: slideUp 0.4s ease-out;
+  /* Asegurar que los toques lleguen al modal */
+  pointer-events: auto;
+  /* Centrar mejor en móviles */
+  margin: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Contenedor de dos columnas */
+.game-over-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+/* Columna izquierda: Información de la partida */
+.game-over-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Columna derecha: Información de jugadores */
+.game-over-right {
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes slideUp {
@@ -381,7 +414,6 @@
 
 .winner-section {
   text-align: center;
-  margin-bottom: 30px;
   padding: 20px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
@@ -403,7 +435,6 @@
 
 .tie-section {
   text-align: center;
-  margin-bottom: 30px;
   padding: 20px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
@@ -417,7 +448,7 @@
 }
 
 .game-summary {
-  margin-bottom: 30px;
+  /* margin-bottom ya no es necesario, se maneja con gap en game-over-left */
 }
 
 .game-summary h2 {
@@ -455,7 +486,7 @@
 }
 
 .players-summary {
-  margin-top: 20px;
+  /* margin-top ya no es necesario, se maneja con gap en game-over-right */
 }
 
 .players-summary h3 {
@@ -675,11 +706,17 @@
     width: 100%;
     max-height: calc(100vh - 10px);
     border-radius: 12px;
-    margin: 5px auto;
+    margin: 0 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     display: flex;
     flex-direction: column;
+  }
+
+  /* Mantener dos columnas incluso en móviles apaisados */
+  .game-over-content {
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
   }
 
   .game-over-title {
@@ -1100,10 +1137,22 @@
 
 .touch-feedback-left {
   left: 0;
+  /* Gradiente: transparente en el centro (derecha del div), opaco en el borde izquierdo */
+  background: linear-gradient(to right, 
+    var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 0%,
+    var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 20%,
+    transparent 100%
+  );
 }
 
 .touch-feedback-right {
   right: 0;
+  /* Gradiente: transparente en el centro (izquierda del div), opaco en el borde derecho */
+  background: linear-gradient(to left, 
+    var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 0%,
+    var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 20%,
+    transparent 100%
+  );
 }
 
 /* Ajustes para móviles */
@@ -1179,6 +1228,34 @@
 
 /* Ajustes para móviles en modo vertical (portrait) */
 @media screen and (max-width: 768px) and (orientation: portrait) {
+  /* Modal de fin de partida en portrait */
+  .game-over-modal-overlay {
+    padding: 10px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .game-over-modal {
+    padding: 20px;
+    max-width: 95%;
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    margin: 0 auto;
+    /* Asegurar que esté centrado verticalmente */
+    position: relative;
+  }
+
+  .game-over-title {
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+  }
+
+  /* Mantener dos columnas incluso en móviles portrait */
+  .game-over-content {
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+  }
+
   .color-picker-modal {
     padding: 20px;
     max-width: 90%;
@@ -1214,6 +1291,39 @@
 
 /* Ajustes para móviles pequeños en modo vertical */
 @media screen and (max-width: 480px) and (orientation: portrait) {
+  /* Modal de fin de partida en móviles pequeños portrait */
+  .game-over-modal-overlay {
+    padding: 5px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .game-over-modal {
+    padding: 15px;
+    max-width: 98%;
+    width: 100%;
+    max-height: calc(100vh - 10px);
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .game-over-title {
+    font-size: 1.5rem;
+    margin-bottom: 12px;
+  }
+
+  .winner-name {
+    font-size: 1.5rem;
+  }
+
+  .winner-label {
+    font-size: 1rem;
+  }
+
+  .game-summary h2 {
+    font-size: 1.1rem;
+  }
+
   .color-picker-modal {
     padding: 15px;
     max-width: 95%;

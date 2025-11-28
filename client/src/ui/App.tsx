@@ -51,56 +51,64 @@ function GameOverModal({
           {winner ? '🏆 ¡Partida Finalizada!' : '🤝 Empate'}
         </h1>
         
-        {winner ? (
-          <div className="winner-section">
-            <div className="winner-name" style={{ color: winner.color }}>
-              {winner.name}
-            </div>
-            <p className="winner-label">es el ganador</p>
-          </div>
-        ) : (
-          <div className="tie-section">
-            <p>Todos los jugadores fueron eliminados</p>
-          </div>
-        )}
-
-        <div className="game-summary">
-          <h2>Resumen de la Partida</h2>
-          
-          <div className="summary-stats">
-            <div className="stat-item">
-              <span className="stat-label">Duración:</span>
-              <span className="stat-value">{gameDuration}s</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-label">Total de jugadores:</span>
-              <span className="stat-value">{gameState.players.length}</span>
-            </div>
-          </div>
-
-          <div className="players-summary">
-            <h3>Jugadores</h3>
-            <div className="players-list-summary">
-              {winner && (
-                <div className="player-summary-item winner-item">
-                  <div 
-                    className="player-color-indicator" 
-                    style={{ backgroundColor: winner.color }}
-                  />
-                  <span className="player-name-summary">{winner.name}</span>
-                  <span className="player-status winner-status">🏆 Ganador</span>
+        <div className="game-over-content">
+          {/* Columna izquierda: Información de la partida */}
+          <div className="game-over-left">
+            {winner ? (
+              <div className="winner-section">
+                <div className="winner-name" style={{ color: winner.color }}>
+                  {winner.name}
                 </div>
-              )}
-              {deadPlayers.map((player) => (
-                <div key={player.id} className="player-summary-item">
-                  <div 
-                    className="player-color-indicator" 
-                    style={{ backgroundColor: player.color }}
-                  />
-                  <span className="player-name-summary">{player.name}</span>
-                  <span className="player-status eliminated-status">Eliminado</span>
+                <p className="winner-label">es el ganador</p>
+              </div>
+            ) : (
+              <div className="tie-section">
+                <p>Todos los jugadores fueron eliminados</p>
+              </div>
+            )}
+
+            <div className="game-summary">
+              <h2>Resumen de la Partida</h2>
+              
+              <div className="summary-stats">
+                <div className="stat-item">
+                  <span className="stat-label">Duración:</span>
+                  <span className="stat-value">{gameDuration}s</span>
                 </div>
-              ))}
+                <div className="stat-item">
+                  <span className="stat-label">Total de jugadores:</span>
+                  <span className="stat-value">{gameState.players.length}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Columna derecha: Información de jugadores */}
+          <div className="game-over-right">
+            <div className="players-summary">
+              <h3>Jugadores</h3>
+              <div className="players-list-summary">
+                {winner && (
+                  <div className="player-summary-item winner-item">
+                    <div 
+                      className="player-color-indicator" 
+                      style={{ backgroundColor: winner.color }}
+                    />
+                    <span className="player-name-summary">{winner.name}</span>
+                    <span className="player-status winner-status">🏆 Ganador</span>
+                  </div>
+                )}
+                {deadPlayers.map((player) => (
+                  <div key={player.id} className="player-summary-item">
+                    <div 
+                      className="player-color-indicator" 
+                      style={{ backgroundColor: player.color }}
+                    />
+                    <span className="player-name-summary">{player.name}</span>
+                    <span className="player-status eliminated-status">Eliminado</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -316,12 +324,25 @@ function App() {
             winnerId: gameState.winnerId,
             tick: gameState.tick
           });
+          
+          // IMPORTANTE: Desactivar input cuando se muestra el modal
+          // Esto permite que los toques lleguen al modal
+          const inputManager = gameRef.current.getInputManager();
+          inputManager.setGameActive(false);
         }
       }
     }, 50); // Verificar cada 50ms para detectar más rápido
     
     return () => clearInterval(interval);
   }, [currentView]);
+
+  // Desactivar input cuando hay un modal abierto
+  useEffect(() => {
+    if (gameRef.current && gameOverState) {
+      const inputManager = gameRef.current.getInputManager();
+      inputManager.setGameActive(false);
+    }
+  }, [gameOverState]);
 
   // Función para conectar al servidor y mostrar lobby
   const handleConnectToServer = () => {
@@ -454,6 +475,9 @@ function App() {
     setGameOverState(null);
     setCurrentView('menu');
     setLobbyPlayers([]);
+    // Limpiar estado de toques
+    setTouchLeft(false);
+    setTouchRight(false);
   };
 
   // Obtener el color del jugador local para el feedback visual
@@ -464,6 +488,20 @@ function App() {
       return localPlayer?.color || '#ffffff';
     }
     return '#ffffff';
+  };
+
+  // Convertir color hex a rgba con opacidad para el gradiente
+  const getLocalPlayerColorWithOpacity = (opacity: number = 0.3): string => {
+    const color = getLocalPlayerColor();
+    // Si es un color hex (#rrggbb), convertirlo a rgba
+    if (color.startsWith('#')) {
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+    // Si ya es rgba o rgb, mantenerlo
+    return color;
   };
 
   return (
@@ -484,17 +522,17 @@ function App() {
           <div 
             className="touch-feedback touch-feedback-left"
             style={{
-              opacity: touchLeft ? 0.3 : 0,
-              backgroundColor: getLocalPlayerColor(),
-            }}
+              opacity: touchLeft ? 1 : 0,
+              '--touch-feedback-color': touchLeft ? getLocalPlayerColorWithOpacity(0.4) : 'transparent',
+            } as React.CSSProperties}
           />
           {/* Overlay derecho */}
           <div 
             className="touch-feedback touch-feedback-right"
             style={{
-              opacity: touchRight ? 0.3 : 0,
-              backgroundColor: getLocalPlayerColor(),
-            }}
+              opacity: touchRight ? 1 : 0,
+              '--touch-feedback-color': touchRight ? getLocalPlayerColorWithOpacity(0.4) : 'transparent',
+            } as React.CSSProperties}
           />
         </>
       )}
