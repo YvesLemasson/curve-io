@@ -178,18 +178,39 @@ VITE_SERVER_URL=http://localhost:3001
 - Asegúrate de que no haya `/` al final de las URLs
 - Verifica que Railway esté usando la variable de entorno correctamente
 
-### El build falla en Railway
-- Verifica que `package.json` tenga los scripts correctos (`build` y `start`)
-- En Railway, asegúrate de que el **Root Directory** sea `server` (Settings → Source → Root Directory)
-- Verifica que los archivos `server/nixpacks.toml` y `server/railway.json` estén en el repositorio
-- Si Railway muestra "Railpack could not determine how to build":
-  1. Ve a Settings → Source
-  2. Asegúrate de que **Root Directory** esté configurado como `server`
-  3. Verifica que **Build Command** esté vacío (Railway usará `nixpacks.toml`)
-  4. Verifica que **Start Command** esté vacío (Railway usará `nixpacks.toml`)
-  5. Si el problema persiste, en Settings → Deploy, configura manualmente:
-     - **Build Command**: `npm run build`
-     - **Start Command**: `npm start`
+### El build falla en Railway - "Railpack could not determine how to build"
+Este error ocurre cuando Railway analiza la raíz del repositorio en lugar del directorio `server/`.
+
+**Solución paso a paso:**
+
+1. **Configurar Root Directory en Railway:**
+   - Ve a tu proyecto en Railway
+   - Click en **Settings** → **Source**
+   - En **Root Directory**, escribe: `server`
+   - Guarda los cambios
+
+2. **Verificar archivos de configuración:**
+   - Asegúrate de que estos archivos estén en `server/`:
+     - `package.json` ✅
+     - `nixpacks.toml` ✅
+     - `railway.json` ✅
+     - `start.sh` ✅
+
+3. **Si el error persiste, configura manualmente:**
+   - Ve a **Settings** → **Deploy**
+   - **Build Command**: `npm run build`
+   - **Start Command**: `npm start` (o `bash start.sh`)
+   - Guarda y haz un redeploy
+
+4. **Asegúrate de que el código esté en GitHub:**
+   ```bash
+   git add server/
+   git commit -m "Agregar configuración de Railway"
+   git push
+   ```
+
+5. **En Railway, haz un redeploy:**
+   - Click en **Deployments** → **Redeploy** o espera a que detecte los cambios automáticamente
 
 ¡No habrá problemas para subir a internet! 🚀
 
