@@ -221,8 +221,20 @@ io.on('connection', (socket: Socket) => {
     }
     
     console.log(`🚀 Iniciando juego con ${playerCount} jugadores (solicitado por ${socket.id})`);
-    gameServer.start();
+    
+    // Iniciar el game loop (sin enviar estado inicial todavía)
+    gameServer.start(false);
+    
+    // Emitir GAME_START a todos los clientes primero
     io.emit(SERVER_EVENTS.GAME_START, {});
+    console.log(`📢 GAME_START emitido a todos los clientes`);
+    
+    // IMPORTANTE: Enviar el estado inicial DESPUÉS de emitir GAME_START
+    // Esto da tiempo a los clientes para prepararse (game.start()) antes de recibir el estado
+    // El delay asegura que los clientes hayan procesado GAME_START y estén listos
+    setTimeout(() => {
+      gameServer.sendInitialState();
+    }, 100); // Delay suficiente para que los clientes procesen GAME_START
   });
 
   // Manejar input del jugador

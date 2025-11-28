@@ -362,8 +362,12 @@ function App() {
 
     networkClient.onGameStart(() => {
       // Cuando el servidor inicia el juego, iniciar el juego local también
+      // IMPORTANTE: En modo red NO llamamos init() porque los jugadores
+      // se crean desde el estado del servidor en syncFromServer()
       if (gameRef.current) {
-        gameRef.current.init(4);
+        // Limpiar cualquier jugador local previo
+        gameRef.current.clearPlayers();
+        // Solo iniciar el game loop, los jugadores vendrán del servidor
         gameRef.current.start();
         setCurrentView('game');
       }

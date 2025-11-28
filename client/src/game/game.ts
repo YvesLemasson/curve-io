@@ -39,7 +39,7 @@ export class Game {
 
   constructor(canvasId: string = 'gameCanvas', useNetwork: boolean = false, serverUrl?: string) {
     this.canvas = new CanvasRenderer(canvasId);
-    this.input = new InputManager();
+    this.input = new InputManager(canvasId); // Pasar canvasId para detectar toques en el canvas
     this.useNetwork = useNetwork;
     
     // Generar ID único para este cliente
@@ -483,6 +483,14 @@ export class Game {
   }
 
   /**
+   * Limpia todos los jugadores locales (útil al iniciar en modo red)
+   */
+  clearPlayers(): void {
+    this.players = [];
+    this.gameState.players = [];
+  }
+
+  /**
    * Sincroniza el estado desde el servidor
    * @param serverGameState - Estado del servidor
    * @param alreadyScaled - Si es true, las posiciones ya están escaladas (viene de delta compression)
@@ -501,12 +509,20 @@ export class Game {
     const scaleX = alreadyScaled ? 1 : this.canvas.getWidth() / this.serverCanvasWidth;
     const scaleY = alreadyScaled ? 1 : this.canvas.getHeight() / this.serverCanvasHeight;
     
+    // IMPORTANTE: Si no hay jugadores locales pero el servidor tiene jugadores,
+    // limpiar cualquier jugador residual y crear todos desde cero
+    // Esto asegura que todos los jugadores del servidor aparezcan correctamente
+    if (this.players.length === 0 && serverPlayers.length > 0) {
+      console.log(`🔄 Sincronización inicial: creando ${serverPlayers.length} jugadores desde el servidor`);
+    }
+    
     // Crear o actualizar jugadores desde el servidor
     for (const serverPlayer of serverPlayers) {
       let localPlayer = this.players.find(p => p.id === serverPlayer.id);
       
        if (!localPlayer) {
          // Crear nuevo jugador si no existe
+         console.log(`➕ Creando jugador ${serverPlayer.name} (${serverPlayer.id.substring(0, 8)}...) desde servidor`);
          localPlayer = new Player(
            serverPlayer.id,
            serverPlayer.name,
@@ -539,6 +555,9 @@ export class Game {
        localPlayer.angle = serverPlayer.angle;
        localPlayer.speed = serverPlayer.speed;
        localPlayer.alive = serverPlayer.alive;
+       // IMPORTANTE: Sincronizar el color desde el servidor
+       // Esto permite que los cambios de color se reflejen durante el juego
+       localPlayer.color = serverPlayer.color;
       
       // Actualizar trail (escalar solo si es necesario)
       // IMPORTANTE: Preservar los nulls (gaps) del servidor
@@ -558,9 +577,18 @@ export class Game {
     }
     
     // Remover jugadores que ya no están en el servidor
+    const removedCount = this.players.length - serverPlayers.length;
+    if (removedCount > 0) {
+      console.log(`➖ Removiendo ${removedCount} jugador(es) que ya no están en el servidor`);
+    }
     this.players = this.players.filter(p => 
       serverPlayers.some(sp => sp.id === p.id)
     );
+    
+    // Log de sincronización cada vez que se crean nuevos jugadores
+    if (newPlayersCount > 0) {
+      console.log(`✅ Sincronización: ${newPlayersCount} jugador(es) nuevo(s), total: ${this.players.length}`);
+    }
   }
 }
 

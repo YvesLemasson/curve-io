@@ -50,13 +50,24 @@ export class GameServer {
 
   /**
    * Inicia el game loop
+   * @param sendInitialState - Si es true, envía el estado inicial inmediatamente (por defecto false)
    */
-  start(): void {
+  start(sendInitialState: boolean = false): void {
     if (this.isRunning) return;
     
     this.isRunning = true;
     this.gameState.gameStatus = 'playing';
     this.lastTickTime = Date.now();
+    
+    // Asegurar que los jugadores estén inicializados antes de empezar
+    this.initializePlayers();
+    
+    // Si se solicita, enviar estado inicial inmediatamente
+    // (normalmente se envía después de emitir GAME_START para dar tiempo a los clientes)
+    if (sendInitialState) {
+      console.log(`📡 Enviando estado inicial con ${this.gameState.players.length} jugador(es)`);
+      this.broadcastState(true); // true = forzar envío
+    }
     
     // Iniciar game loop
     this.gameLoopInterval = setInterval(() => {
@@ -64,6 +75,16 @@ export class GameServer {
     }, this.tickInterval);
     
     console.log('🎮 Game loop iniciado');
+  }
+  
+  /**
+   * Envía el estado inicial a todos los clientes
+   * Útil para enviar el estado después de que los clientes estén listos
+   */
+  sendInitialState(): void {
+    this.initializePlayers(); // Asegurar que estén inicializados
+    console.log(`📡 Enviando estado inicial con ${this.gameState.players.length} jugador(es)`);
+    this.broadcastState(true); // true = forzar envío
   }
 
   /**
@@ -655,10 +676,22 @@ export class GameServer {
       player.speed = 2;
       player.alive = true;
       player.trail = [{ ...positions[posIndex] }];
-      // Asignar un color que no esté en uso por otros jugadores
-      // Excluir el jugador actual de la verificación para que pueda obtener un color
+      
+      // IMPORTANTE: Preservar el color que el jugador ya seleccionó en el lobby
+      // Solo asignar un nuevo color si:
+      // 1. El jugador no tiene un color válido (blanco por defecto)
+      // 2. El color actual está en uso por otro jugador
       const otherPlayers = players.filter(p => p.id !== player.id);
-      player.color = this.getAvailableColor(otherPlayers);
+      const currentColorInUse = otherPlayers.some(p => p.color === player.color);
+      
+      // Si el color actual es el por defecto (#ffffff) o está en uso, asignar uno nuevo
+      if (player.color === '#ffffff' || currentColorInUse) {
+        player.color = this.getAvailableColor(otherPlayers);
+        console.log(`🎨 Asignando color ${player.color} a ${player.name} (${player.id.substring(0, 8)}...)`);
+      } else {
+        // Preservar el color que el jugador seleccionó
+        console.log(`✅ Preservando color ${player.color} de ${player.name} (${player.id.substring(0, 8)}...)`);
+      }
       
       // Inicializar estado de gaps para este jugador
       this.playerTrailTimers.set(player.id, 0);
