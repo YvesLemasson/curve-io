@@ -15,14 +15,35 @@ import { GameModel } from './models/gameModel.js';
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST'],
-  },
-});
+
+// Configurar CORS para permitir múltiples orígenes
+const allowedOrigins: string[] = [
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'https://curveio.netlify.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+];
 
 const PORT = process.env.PORT || 3001;
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: (origin, callback) => {
+      // Permitir requests sin origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+        callback(null, true);
+      } else {
+        console.warn(`⚠️  Origen no permitido: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+  transports: ['websocket', 'polling'], // Permitir ambos transportes
+});
 
 // Servir archivos estáticos (opcional)
 app.use(express.json());
@@ -390,9 +411,13 @@ io.on('connection', (socket: Socket) => {
   });
 });
 
-httpServer.listen(PORT, () => {
+// Escuchar en todas las interfaces (0.0.0.0) para que funcione en Railway/cloud
+// Railway asigna el puerto automáticamente, así que usamos process.env.PORT
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor curve.io corriendo en puerto ${PORT}`);
-  console.log(`📡 WebSocket disponible en ws://localhost:${PORT}`);
+  console.log(`📡 WebSocket disponible en ws://0.0.0.0:${PORT} (escuchando en todas las interfaces)`);
+  console.log(`🌐 Orígenes permitidos: ${allowedOrigins.join(', ')}`);
   console.log(`👥 Jugadores conectados: ${playerManager.getPlayerCount()}`);
+  console.log(`✅ Servidor listo para recibir conexiones`);
 });
 
