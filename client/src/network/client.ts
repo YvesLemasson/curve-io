@@ -201,11 +201,27 @@ export class NetworkClient {
    * Envía solicitud de unión al juego
    */
   joinGame(playerId: string, name: string): void {
-    if (!this.socket || !this.isConnected) {
-      console.warn('No conectado al servidor, no se puede unir al juego');
+    if (!this.socket) {
+      console.error('[NetworkClient] ❌ No hay socket disponible para unirse al juego');
+      if (this.onErrorCallback) {
+        this.onErrorCallback('No hay conexión al servidor. Por favor, intenta conectarte de nuevo.');
+      }
       return;
     }
 
+    if (!this.isConnected) {
+      console.error('[NetworkClient] ❌ No está conectado al servidor. Estado:', {
+        socketConnected: this.socket.connected,
+        isConnected: this.isConnected,
+        socketId: this.socket.id
+      });
+      if (this.onErrorCallback) {
+        this.onErrorCallback('No estás conectado al servidor. Por favor, espera a que se establezca la conexión.');
+      }
+      return;
+    }
+
+    console.log(`[NetworkClient] 🎮 Uniéndose al juego como ${name} (ID: ${playerId})`);
     this.socket.emit(CLIENT_EVENTS.PLAYER_JOIN, {
       playerId,
       name,

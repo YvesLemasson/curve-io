@@ -420,13 +420,22 @@ function App() {
     });
 
     networkClient.onError((error) => {
-      console.error('Error de red:', error);
-      alert(`Error: ${error}`);
+      console.error('[App] Error de red:', error);
+      // Solo mostrar alert si es un error crítico, no para errores menores
+      if (error.includes('No se pudo conectar') || error.includes('servidor no está')) {
+        alert(`Error de conexión: ${error}`);
+      } else {
+        // Para otros errores, solo loggear
+        console.warn('[App] Error de red (no crítico):', error);
+      }
     });
 
     networkClient.onConnect(() => {
+      console.log('[App] ✅ Conectado al servidor, uniéndose al lobby...');
+      
       // Enviar user_id si el usuario está autenticado
       if (user?.id) {
+        console.log('[App] 🔐 Enviando autenticación de usuario:', user.id);
         networkClient.sendAuthUser(user.id);
       }
       
@@ -434,7 +443,10 @@ function App() {
       setTimeout(() => {
         if (gameRef.current) {
           const playerName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || `Player ${Math.floor(Math.random() * 1000)}`;
+          console.log('[App] 👤 Uniéndose al lobby como:', playerName);
           gameRef.current.joinLobby(playerName);
+        } else {
+          console.error('[App] ❌ gameRef.current es null, no se puede unir al lobby');
         }
       }, 100);
     });

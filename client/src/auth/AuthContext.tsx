@@ -62,10 +62,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error);
-      throw error;
+    // Primero limpiar el estado local inmediatamente (mejor UX)
+    // Esto asegura que la UI se actualice de inmediato
+    setSession(null);
+    setUser(null);
+    
+    try {
+      // Verificar si hay una sesión antes de intentar cerrar sesión en el servidor
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // Intentar cerrar sesión en el servidor de forma silenciosa
+        // Si falla, no importa porque ya limpiamos el estado local
+        supabase.auth.signOut().catch((error) => {
+          // Solo loggear el error en modo desarrollo, no afectar la UX
+          if (import.meta.env.DEV) {
+            console.warn('Error signing out from server (ignored):', error.message);
+          }
+        });
+      }
+    } catch (err: any) {
+      // Si hay cualquier error, ignorarlo completamente
+      // El usuario ya está "deslogueado" localmente
+      if (import.meta.env.DEV) {
+        console.warn('Unexpected error during sign out (ignored):', err?.message || err);
+      }
     }
   };
 
