@@ -25,7 +25,15 @@ export class NetworkClient {
 
   constructor(serverUrl?: string) {
     // Usar variable de entorno en producción, o el parámetro, o localhost por defecto
-    this.serverUrl = serverUrl || import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+    let url = serverUrl || import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+    
+    // Asegurar que la URL tenga protocolo
+    if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+      // Si no tiene protocolo, asumir https para producción
+      url = `https://${url}`;
+    }
+    
+    this.serverUrl = url;
   }
 
   /**
