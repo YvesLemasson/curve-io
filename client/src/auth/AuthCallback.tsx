@@ -9,11 +9,12 @@ export function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // Manejar el callback de OAuth - Supabase procesa los parámetros de la URL
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting session:', error);
-          navigate('/login?error=auth_failed');
+          navigate('/?error=auth_failed');
           return;
         }
 
@@ -37,13 +38,16 @@ export function AuthCallback() {
             console.error('Error creating/updating profile:', profileError);
           }
 
+          // Limpiar la URL de los parámetros de OAuth
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
           navigate('/');
         } else {
-          navigate('/login?error=no_session');
+          navigate('/?error=no_session');
         }
       } catch (err) {
         console.error('Unexpected error:', err);
-        navigate('/login?error=unexpected');
+        navigate('/?error=unexpected');
       }
     };
 

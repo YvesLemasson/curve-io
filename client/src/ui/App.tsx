@@ -620,10 +620,9 @@ function App() {
               onClick={handleConnectToServer}
               className="start-button"
               style={{ background: '#2196F3', marginTop: '10px' }}
-              disabled={!user}
-              title={!user ? 'Please sign in to play online' : ''}
+              title={!user ? 'Play as a guest (no account required)' : 'Play online with your account'}
             >
-              Play Online
+              {user ? 'Play Online' : 'Play as Guest'}
             </button>
             <div className="controls-info">
               {isMobile ? (

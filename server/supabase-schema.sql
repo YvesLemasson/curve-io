@@ -75,8 +75,13 @@ CREATE TRIGGER update_player_stats_updated_at BEFORE UPDATE ON public.player_sta
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Función para actualizar estadísticas cuando se crea un participante
+-- SECURITY DEFINER permite que la función ejecute con permisos del propietario,
+-- bypassando RLS para poder insertar/actualizar estadísticas
 CREATE OR REPLACE FUNCTION update_player_stats_on_game_end()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   -- Actualizar o insertar estadísticas del jugador
   INSERT INTO public.player_stats (user_id, total_games, total_wins, total_score, best_score)
@@ -114,6 +119,10 @@ ALTER TABLE public.player_stats ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read own data" ON public.users
   FOR SELECT USING (auth.uid() = id);
 
+-- Los usuarios pueden insertar su propio perfil (cuando se registran)
+CREATE POLICY "Users can insert own data" ON public.users
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
 CREATE POLICY "Users can update own data" ON public.users
   FOR UPDATE USING (auth.uid() = id);
 
@@ -137,7 +146,16 @@ CREATE POLICY "Authenticated users can create participants" ON public.game_parti
 CREATE POLICY "Anyone can read stats" ON public.player_stats
   FOR SELECT USING (true);
 
--- Solo el sistema puede actualizar estadísticas (vía trigger)
+-- Permitir que los triggers inserten/actualicen estadísticas
+-- Nota: La función update_player_stats_on_game_end() usa SECURITY DEFINER,
+-- por lo que ejecuta con permisos del propietario y bypassa RLS.
+-- Estas políticas son redundantes pero útiles para claridad.
+-- En la práctica, el trigger puede insertar/actualizar sin estas políticas.
+CREATE POLICY "System can insert stats" ON public.player_stats
+  FOR INSERT WITH CHECK (true);
+
+-- Los triggers con SECURITY DEFINER pueden actualizar sin esta política,
+-- pero la incluimos por claridad y para posibles operaciones manuales del sistema
 CREATE POLICY "System can update stats" ON public.player_stats
-  FOR UPDATE USING (false); -- Las actualizaciones se hacen vía triggers
+  FOR UPDATE USING (true);
 

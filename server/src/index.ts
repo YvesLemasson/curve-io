@@ -1,4 +1,7 @@
 // Punto de entrada del servidor
+// Cargar variables de entorno primero
+import 'dotenv/config';
+
 import express from 'express';
 import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';

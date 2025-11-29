@@ -33,16 +33,20 @@ export class NetworkClient {
    */
   connect(): void {
     if (this.socket?.connected) {
-      console.log('Ya conectado al servidor');
+      console.log('[NetworkClient] Ya conectado al servidor');
       return;
     }
 
-    console.log(`Conectando a ${this.serverUrl}...`);
+    console.log(`[NetworkClient] Conectando a ${this.serverUrl}...`);
+    console.log(`[NetworkClient] URL del servidor: ${this.serverUrl}`);
+    console.log(`[NetworkClient] Variable de entorno VITE_SERVER_URL: ${import.meta.env.VITE_SERVER_URL || 'no definida'}`);
 
     this.socket = io(this.serverUrl, {
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: this.reconnectDelay,
+      transports: ['polling', 'websocket'], // Intentar polling primero, luego websocket
+      timeout: 5000, // Timeout de 5 segundos
     });
 
     this.setupEventListeners();
@@ -69,6 +73,8 @@ export class NetworkClient {
     });
 
     this.socket.on('connect', () => {
+      console.log('[NetworkClient] ✅ Conectado al servidor exitosamente');
+      console.log(`[NetworkClient] Socket ID: ${this.socket?.id}`);
       this.isConnected = true;
       this.reconnectAttempts = 0;
       if (this.onConnectCallback) {
@@ -76,7 +82,8 @@ export class NetworkClient {
       }
     });
 
-    this.socket.on('disconnect', () => {
+    this.socket.on('disconnect', (reason) => {
+      console.log(`[NetworkClient] ❌ Desconectado del servidor. Razón: ${reason}`);
       this.isConnected = false;
       if (this.onDisconnectCallback) {
         this.onDisconnectCallback();
@@ -84,10 +91,54 @@ export class NetworkClient {
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('Error de conexión:', error.message);
       this.reconnectAttempts++;
+      const errorMessage = error.message || 'Error desconocido';
+      const errorType = (error as any).type || '';
+      const errorDescription = (error as any).description || '';
+      
+      console.error(`[NetworkClient] ❌ Error de conexión (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts}):`, errorMessage);
+      console.error(`[NetworkClient] Tipo de error:`, errorType);
+      console.error(`[NetworkClient] Descripción:`, errorDescription);
+      console.error(`[NetworkClient] Detalles completos:`, error);
+      
+      // Detectar específicamente ERR_CONNECTION_REFUSED
+      const isConnectionRefused = 
+        errorMessage.includes('ERR_CONNECTION_REFUSED') || 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('xhr poll error') ||
+        errorType === 'TransportError';
+      
+      // Mensaje más específico según el tipo de error
+      let userMessage = errorMessage;
+      if (isConnectionRefused) {
+        userMessage = `❌ No se pudo conectar al servidor en ${this.serverUrl}`;
+        console.error(`[NetworkClient] ⚠️  ==========================================`);
+        console.error(`[NetworkClient] ⚠️  EL SERVIDOR NO ESTÁ CORRIENDO`);
+        console.error(`[NetworkClient] ⚠️  ==========================================`);
+        console.error(`[NetworkClient] 💡 Para iniciar el servidor, ejecuta en una terminal:`);
+        console.error(`[NetworkClient] 💡   cd server`);
+        console.error(`[NetworkClient] 💡   npm run dev`);
+        console.error(`[NetworkClient] 💡 El servidor debería iniciar en el puerto 3001`);
+        console.error(`[NetworkClient] ⚠️  ==========================================`);
+      } else if (errorMessage.includes('timeout')) {
+        userMessage = `⏱️ Timeout al conectar al servidor. El servidor puede estar sobrecargado o no disponible.`;
+      } else if (errorMessage.includes('CORS')) {
+        userMessage = `🚫 Error de CORS. Verifica la configuración del servidor.`;
+      }
+      
       if (this.onErrorCallback) {
-        this.onErrorCallback(error.message);
+        this.onErrorCallback(userMessage);
+      }
+    });
+
+    this.socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`[NetworkClient] 🔄 Intentando reconectar... (${attemptNumber}/${this.maxReconnectAttempts})`);
+    });
+
+    this.socket.on('reconnect_failed', () => {
+      console.error(`[NetworkClient] ❌ Falló la reconexión después de ${this.maxReconnectAttempts} intentos`);
+      if (this.onErrorCallback) {
+        this.onErrorCallback(`No se pudo conectar al servidor después de ${this.maxReconnectAttempts} intentos. Verifica que el servidor esté corriendo.`);
       }
     });
 
