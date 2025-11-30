@@ -3,7 +3,7 @@
   "short_name": "curve.io",
   "description": "Real-time multiplayer game",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#1a1a1a",
   "theme_color": "#1a1a1a",
   "orientation": "landscape",
@@ -25,4 +25,3 @@
   "screenshots": [],
   "shortcuts": []
 }
-

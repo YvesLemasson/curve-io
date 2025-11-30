@@ -62,8 +62,7 @@ body {
   }
   50% {
     box-shadow: 0 0 20px rgba(255, 255, 255, 0.6),
-      0 0 30px rgba(255, 255, 255, 0.3),
-      0 0 40px rgba(255, 255, 255, 0.1);
+      0 0 30px rgba(255, 255, 255, 0.3), 0 0 40px rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.8);
   }
 }
@@ -1183,8 +1182,7 @@ body {
     opacity: 0.9;
     transform: scale(1.05);
     box-shadow: 0 0 25px rgba(255, 255, 255, 0.7),
-      0 0 35px rgba(255, 255, 255, 0.4),
-      0 0 45px rgba(255, 255, 255, 0.2);
+      0 0 35px rgba(255, 255, 255, 0.4), 0 0 45px rgba(255, 255, 255, 0.2);
   }
 
   .main-menu-left h1 {
@@ -1224,7 +1222,6 @@ body {
     margin: 5px 0;
     font-size: 0.85rem;
   }
-}
 
   .lobby {
     padding: 40px;
@@ -1322,8 +1319,7 @@ body {
     opacity: 0.9;
     transform: scale(1.05);
     box-shadow: 0 0 25px rgba(255, 255, 255, 0.7),
-      0 0 35px rgba(255, 255, 255, 0.4),
-      0 0 45px rgba(255, 255, 255, 0.2);
+      0 0 35px rgba(255, 255, 255, 0.4), 0 0 45px rgba(255, 255, 255, 0.2);
   }
 
   .hud-top {
