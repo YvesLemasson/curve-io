@@ -1027,9 +1027,9 @@ body {
 .touch-feedback {
   position: fixed;
   top: 0;
-  width: 50%;
+  width: 5%;
   height: 100%;
-  z-index: 5;
+  z-index: 9;
   pointer-events: none;
   transition: opacity 0.1s ease-in-out;
 }
@@ -1039,7 +1039,6 @@ body {
   background: linear-gradient(
     to right,
     var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 0%,
-    var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 10%,
     transparent 100%
   );
 }
@@ -1049,7 +1048,6 @@ body {
   background: linear-gradient(
     to left,
     var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 0%,
-    var(--touch-feedback-color, rgba(255, 255, 255, 0.3)) 10%,
     transparent 100%
   );
 }

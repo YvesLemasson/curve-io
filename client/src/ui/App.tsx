@@ -658,7 +658,7 @@ function App() {
               {
                 opacity: touchLeft ? 1 : 0,
                 "--touch-feedback-color": touchLeft
-                  ? getLocalPlayerColorWithOpacity(0.4)
+                  ? getLocalPlayerColorWithOpacity(0.8)
                   : "transparent",
               } as React.CSSProperties
             }
@@ -670,7 +670,7 @@ function App() {
               {
                 opacity: touchRight ? 1 : 0,
                 "--touch-feedback-color": touchRight
-                  ? getLocalPlayerColorWithOpacity(0.4)
+                  ? getLocalPlayerColorWithOpacity(0.8)
                   : "transparent",
               } as React.CSSProperties
             }
