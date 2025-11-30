@@ -6,7 +6,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#1a1a1a">
+  <!-- Android Chrome status bar - negro -->
+  <meta name="theme-color" content="#000000">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
@@ -32,7 +33,7 @@
     
     body {
       font-family: 'Arial', sans-serif;
-      background: #1a1a1a;
+      background: #000000;
       color: #fff;
       -webkit-touch-callout: none;
       -webkit-user-select: none;
@@ -42,6 +43,11 @@
       height: 100vh;
       height: -webkit-fill-available;
       width: 100vw;
+      /* Ocultar barra de estado en Android */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
     }
     
     #root {
@@ -74,6 +80,25 @@
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
   <script>
+    // Activar modo inmersivo en Android
+    if (navigator.userAgent.includes('Android') || navigator.userAgent.includes('Mobile')) {
+      // Intentar ocultar barras del sistema
+      if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches) {
+        // La app está instalada, intentar modo inmersivo
+        try {
+          if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen();
+          } else if (document.documentElement.mozRequestFullScreen) {
+            document.documentElement.mozRequestFullScreen();
+          }
+        } catch (e) {
+          console.log('Fullscreen no disponible:', e);
+        }
+      }
+    }
+
     // Register Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

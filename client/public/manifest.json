@@ -4,8 +4,8 @@
   "description": "Real-time multiplayer game",
   "start_url": "/",
   "display": "fullscreen",
-  "background_color": "#1a1a1a",
-  "theme_color": "#1a1a1a",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "landscape",
   "icons": [
     {
