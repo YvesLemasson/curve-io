@@ -7,6 +7,13 @@ export interface DeltaState {
   tick: number;
   gameStatus?: string;
   winnerId?: string;
+  currentRound?: number;
+  totalRounds?: number;
+  playerPoints?: Record<string, number>;
+  roundResults?: Array<{
+    round: number;
+    deathOrder: Array<{ playerId: string; points: number }>;
+  }>;
   players: Array<{
     id: string;
     position?: { x: number; y: number };
@@ -36,6 +43,10 @@ export class DeltaDecompressor {
         tick: delta.tick,
         gameStatus,
         winnerId: delta.winnerId,
+        currentRound: delta.currentRound,
+        totalRounds: delta.totalRounds,
+        playerPoints: delta.playerPoints ? { ...delta.playerPoints } : undefined,
+        roundResults: delta.roundResults ? [...delta.roundResults] : undefined,
         players: delta.players.map(p => ({
           id: p.id,
           name: p.name || `Player ${p.id.substring(0, 8)}`,
@@ -70,6 +81,22 @@ export class DeltaDecompressor {
 
     if (delta.winnerId !== undefined) {
       this.localState.winnerId = delta.winnerId;
+    }
+
+    if (delta.currentRound !== undefined) {
+      this.localState.currentRound = delta.currentRound;
+    }
+
+    if (delta.totalRounds !== undefined) {
+      this.localState.totalRounds = delta.totalRounds;
+    }
+
+    if (delta.playerPoints !== undefined) {
+      this.localState.playerPoints = { ...delta.playerPoints };
+    }
+
+    if (delta.roundResults !== undefined) {
+      this.localState.roundResults = [...delta.roundResults];
     }
 
     // Aplicar cambios a jugadores

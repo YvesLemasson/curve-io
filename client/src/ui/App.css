@@ -358,56 +358,169 @@ body {
    ============================================ */
 .game-hud {
   pointer-events: none;
+  display: flex;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
 }
 
-.hud-top {
+.hud-left-panel {
   position: absolute;
   top: 10px;
   left: 10px;
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
+  align-items: flex-start;
   pointer-events: auto;
-  flex-wrap: wrap;
+  max-width: 140px;
+  width: 140px;
+}
+
+.hud-right-panel {
+  position: absolute;
+  top: 10px;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: auto;
+  max-width: 140px;
+  width: 140px;
 }
 
 .connection-status {
-  padding: 6px 10px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 6px;
-  font-size: 0.8rem;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+  font-size: 0.7rem;
   font-weight: bold;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.hud-bottom {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
+.round-indicator {
+  padding: 5px 10px;
+  background: rgba(33, 150, 243, 0.9);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hud-boost-container {
   pointer-events: auto;
 }
 
 .boost-bar-container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   background: rgba(0, 0, 0, 0.7);
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  width: 100%;
+  max-width: 140px;
+  box-sizing: border-box;
 }
 
-.boost-label {
-  font-size: 0.8rem;
+/* Leaderboard (Clasificación) */
+.leaderboard {
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 6px 0 0 6px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-right: none;
+  width: 100%;
+  max-width: 140px;
+  box-sizing: border-box;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.leaderboard-title {
+  font-size: 0.7rem;
   font-weight: bold;
   color: #fff;
-  min-width: 45px;
+  margin: 0 0 4px 0;
+  padding: 0;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s;
+}
+
+.leaderboard-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.leaderboard-item.eliminated {
+  opacity: 0.6;
+}
+
+.leaderboard-rank {
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: #999;
+  min-width: 20px;
+  text-align: center;
+}
+
+.leaderboard-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.leaderboard-name {
+  flex: 1;
+  font-size: 0.7rem;
+  color: #fff;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-points {
+  font-size: 0.65rem;
+  color: #4caf50;
+  font-weight: bold;
+  white-space: nowrap;
 }
 
 .boost-bar {
-  width: 120px;
-  height: 18px;
+  width: 90px;
+  height: 14px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  border-radius: 7px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
@@ -425,10 +538,10 @@ body {
 }
 
 .boost-timer {
-  font-size: 0.8rem;
+  font-size: 0.65rem;
   font-weight: bold;
   color: #ffc107;
-  min-width: 35px;
+  min-width: 28px;
   text-align: right;
 }
 
@@ -577,6 +690,13 @@ body {
   margin: 0;
 }
 
+.winner-points {
+  font-size: 0.9rem;
+  color: #ffd700;
+  margin-top: 5px;
+  font-weight: bold;
+}
+
 .tie-section {
   text-align: center;
   padding: 10px;
@@ -680,6 +800,15 @@ body {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-points {
+  font-size: 0.85rem;
+  color: #4caf50;
+  font-weight: bold;
+  margin-left: auto;
+  margin-right: 8px;
   white-space: nowrap;
 }
 
@@ -1017,31 +1146,87 @@ body {
     font-size: 1rem;
   }
 
-  .hud-top {
+  .hud-left-panel {
     top: 10px;
     left: 10px;
     gap: 8px;
+    max-width: 180px;
+    width: 180px;
   }
 
-  .menu-button,
-  .restart-button {
-    padding: 8px 16px;
-    font-size: 0.85rem;
+  .hud-right-panel {
+    top: 10px;
+    right: 0;
+    max-width: 160px;
+    width: 160px;
+  }
+
+  .boost-bar-container {
+    max-width: 120px;
+    padding: 3px 6px;
+  }
+
+  .leaderboard {
+    max-width: 120px;
+    width: 100%;
+    padding: 5px;
   }
 
   .connection-status {
-    padding: 6px 10px;
-    font-size: 0.8rem;
+    padding: 3px 6px;
+    font-size: 0.65rem;
+  }
+
+  .round-indicator {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+
+  .leaderboard-title {
+    font-size: 0.65rem;
+    margin-bottom: 3px;
+  }
+
+  .leaderboard-list {
+    gap: 3px;
+  }
+
+  .leaderboard-item {
+    padding: 2px 4px;
+    gap: 3px;
+  }
+
+  .boost-bar {
+    width: 70px;
+    height: 12px;
+  }
+
+  .boost-timer {
+    font-size: 0.6rem;
+    min-width: 24px;
+  }
+
+  .leaderboard-rank {
+    font-size: 0.7rem;
+    min-width: 20px;
+  }
+
+  .leaderboard-color {
+    width: 10px;
+    height: 10px;
+  }
+
+  .leaderboard-name {
+    font-size: 0.75rem;
+  }
+
+  .leaderboard-points {
+    font-size: 0.7rem;
   }
 
   .boost-bar-container {
     padding: 8px 12px;
     gap: 8px;
-  }
-
-  .boost-label {
-    font-size: 0.8rem;
-    min-width: 45px;
   }
 
   .boost-bar {
@@ -1340,30 +1525,88 @@ body {
       0 0 35px rgba(255, 255, 255, 0.4), 0 0 45px rgba(255, 255, 255, 0.2);
   }
 
-  .hud-top {
+  .hud-left-panel {
     top: 20px;
     left: 20px;
-    gap: 10px;
+    gap: 12px;
+    max-width: 220px;
+    width: 220px;
+  }
+
+  .hud-right-panel {
+    top: 20px;
+    right: 0;
+    max-width: 160px;
+    width: 160px;
+  }
+
+  .boost-bar-container {
+    max-width: 160px;
+    padding: 5px 8px;
   }
 
   .connection-status {
-    padding: 8px 12px;
-    font-size: 0.9rem;
+    padding: 5px 10px;
+    font-size: 0.75rem;
   }
 
-  .hud-bottom {
-    bottom: 20px;
-    left: 20px;
+  .round-indicator {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  .leaderboard {
+    padding: 8px;
+    max-width: 160px;
+    width: 100%;
+  }
+
+  .leaderboard-title {
+    font-size: 0.75rem;
+    margin-bottom: 6px;
+  }
+
+  .leaderboard-list {
+    gap: 4px;
+    max-height: 500px;
+  }
+
+  .leaderboard-item {
+    padding: 4px 6px;
+    gap: 5px;
+  }
+
+  .boost-bar {
+    width: 100px;
+    height: 16px;
+  }
+
+  .boost-timer {
+    font-size: 0.7rem;
+    min-width: 30px;
+  }
+
+  .leaderboard-rank {
+    font-size: 0.8rem;
+    min-width: 28px;
+  }
+
+  .leaderboard-color {
+    width: 14px;
+    height: 14px;
+  }
+
+  .leaderboard-name {
+    font-size: 0.85rem;
+  }
+
+  .leaderboard-points {
+    font-size: 0.8rem;
   }
 
   .boost-bar-container {
     padding: 10px 15px;
     gap: 10px;
-  }
-
-  .boost-label {
-    font-size: 0.9rem;
-    min-width: 50px;
   }
 
   .boost-bar {
@@ -1561,6 +1804,118 @@ body {
   .change-color-button:hover {
     background: #1976d2;
     transform: scale(1.05);
+  }
+}
+
+/* ============================================
+   MEDIA QUERIES - Portrait (Vertical)
+   Para cuando los usuarios entran con el móvil en vertical
+   ============================================ */
+@media screen and (orientation: portrait) {
+  .main-menu {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+    padding: 15px;
+    gap: 20px;
+  }
+
+  .main-menu-left {
+    grid-row: 1;
+    padding: 10px 0;
+    height: auto;
+    justify-content: center;
+  }
+
+  .main-menu-left-top {
+    flex: none;
+  }
+
+  .logo-image {
+    max-height: 80px;
+    margin-bottom: 0.5rem;
+  }
+
+  .welcome-text {
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+
+  .main-menu-right {
+    grid-row: 2;
+    padding: 10px 0;
+    height: auto;
+    justify-content: center;
+    gap: 15px;
+  }
+
+  .main-menu-right-top {
+    flex: none;
+  }
+
+  .menu-option {
+    font-size: 1.1rem;
+    padding: 8px 0;
+  }
+
+  .controls-info {
+    grid-row: 3;
+    margin-top: 0;
+    padding: 12px;
+  }
+
+  .controls-info h3 {
+    font-size: 0.7rem;
+    margin-bottom: 6px;
+  }
+
+  .controls-info p {
+    font-size: 0.65rem;
+    margin: 2px 0;
+  }
+
+  .install-button {
+    position: relative;
+    margin-top: 15px;
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+/* Tablets en portrait */
+@media screen and (orientation: portrait) and (min-width: 600px) {
+  .main-menu {
+    padding: 25px;
+    gap: 30px;
+  }
+
+  .logo-image {
+    max-height: 100px;
+  }
+
+  .welcome-text {
+    font-size: 1rem;
+  }
+
+  .menu-option {
+    font-size: 1.2rem;
+    padding: 10px 0;
+  }
+
+  .controls-info {
+    padding: 15px;
+  }
+
+  .controls-info h3 {
+    font-size: 0.8rem;
+  }
+
+  .controls-info p {
+    font-size: 0.75rem;
+  }
+
+  .install-button {
+    max-width: 350px;
+    padding: 10px 40px;
   }
 }
 

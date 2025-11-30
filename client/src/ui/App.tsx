@@ -23,7 +23,6 @@ function BoostBar({
 
   return (
     <div className="boost-bar-container">
-      <div className="boost-label">BOOST</div>
       <div className="boost-bar">
         <div
           className={`boost-fill ${active ? "boost-active" : ""}`}
@@ -44,6 +43,13 @@ function GameOverModal({
     players: Array<{ id: string; name: string; color: string; alive: boolean }>;
     winnerId?: string;
     tick: number;
+    currentRound?: number;
+    totalRounds?: number;
+    playerPoints?: Record<string, number>;
+    roundResults?: Array<{
+      round: number;
+      deathOrder: Array<{ playerId: string; points: number }>;
+    }>;
   } | null;
   onBackToMenu: () => void;
 }) {
@@ -52,8 +58,15 @@ function GameOverModal({
   const winner = gameState.winnerId
     ? gameState.players.find((p) => p.id === gameState.winnerId)
     : null;
-  const deadPlayers = gameState.players.filter((p) => !p.alive);
   const gameDuration = Math.floor(gameState.tick / 60); // Aproximadamente segundos (60 ticks por segundo)
+
+  // Ordenar jugadores por puntos (mayor a menor)
+  const playersWithPoints = gameState.players
+    .map((player) => ({
+      ...player,
+      points: gameState.playerPoints?.[player.id] || 0,
+    }))
+    .sort((a, b) => b.points - a.points);
 
   return (
     <div className="game-over-modal-overlay">
@@ -71,6 +84,11 @@ function GameOverModal({
                   {winner.name}
                 </div>
                 <p className="winner-label">is the winner</p>
+                {gameState.playerPoints && (
+                  <p className="winner-points">
+                    {gameState.playerPoints[winner.id] || 0} puntos totales
+                  </p>
+                )}
               </div>
             ) : (
               <div className="tie-section">
@@ -79,50 +97,53 @@ function GameOverModal({
             )}
 
             <div className="game-summary">
-              <h2>Game Summary</h2>
+              <h2>Resumen del Juego</h2>
 
               <div className="summary-stats">
                 <div className="stat-item">
-                  <span className="stat-label">Duration:</span>
+                  <span className="stat-label">Rondas:</span>
+                  <span className="stat-value">
+                    {gameState.totalRounds || 1} rondas
+                  </span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Duración:</span>
                   <span className="stat-value">{gameDuration}s</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Total players:</span>
+                  <span className="stat-label">Jugadores:</span>
                   <span className="stat-value">{gameState.players.length}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right column: Player information */}
+          {/* Right column: Player information with points */}
           <div className="game-over-right">
             <div className="players-summary">
-              <h3>Players</h3>
+              <h3>Puntos Finales</h3>
               <div className="players-list-summary">
-                {winner && (
-                  <div className="player-summary-item winner-item">
+                {playersWithPoints.map((player) => {
+                  const isWinner = player.id === gameState.winnerId;
+                  return (
                     <div
-                      className="player-color-indicator"
-                      style={{ backgroundColor: winner.color }}
-                    />
-                    <span className="player-name-summary">{winner.name}</span>
-                    <span className="player-status winner-status">
-                      🏆 Winner
-                    </span>
-                  </div>
-                )}
-                {deadPlayers.map((player) => (
-                  <div key={player.id} className="player-summary-item">
-                    <div
-                      className="player-color-indicator"
-                      style={{ backgroundColor: player.color }}
-                    />
-                    <span className="player-name-summary">{player.name}</span>
-                    <span className="player-status eliminated-status">
-                      Eliminated
-                    </span>
-                  </div>
-                ))}
+                      key={player.id}
+                      className={`player-summary-item ${
+                        isWinner ? "winner-item" : ""
+                      }`}
+                    >
+                      <div
+                        className="player-color-indicator"
+                        style={{ backgroundColor: player.color }}
+                      />
+                      <span className="player-name-summary">{player.name}</span>
+                      <span className="player-points">{player.points} pts</span>
+                      {isWinner && (
+                        <span className="player-status winner-status">🏆</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -235,6 +256,19 @@ function App() {
     charge: number;
     remaining: number;
   } | null>(null);
+  const [roundInfo, setRoundInfo] = useState<{
+    currentRound?: number;
+    totalRounds?: number;
+  } | null>(null);
+  const [leaderboardData, setLeaderboardData] = useState<
+    Array<{
+      id: string;
+      name: string;
+      color: string;
+      points: number;
+      alive: boolean;
+    }>
+  >([]);
   const [lobbyPlayers, setLobbyPlayers] = useState<
     Array<{ id: string; name: string; color: string }>
   >([]);
@@ -242,6 +276,13 @@ function App() {
     players: Array<{ id: string; name: string; color: string; alive: boolean }>;
     winnerId?: string;
     tick: number;
+    currentRound?: number;
+    totalRounds?: number;
+    playerPoints?: Record<string, number>;
+    roundResults?: Array<{
+      round: number;
+      deathOrder: Array<{ playerId: string; points: number }>;
+    }>;
   } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
@@ -341,6 +382,26 @@ function App() {
       if (gameRef.current) {
         const state = gameRef.current.getLocalPlayerBoostState();
         setBoostState(state);
+
+        // Actualizar información de ronda
+        const gameState = gameRef.current.getGameState();
+        setRoundInfo({
+          currentRound: gameState.currentRound,
+          totalRounds: gameState.totalRounds,
+        });
+
+        // Actualizar clasificación
+        const players = gameRef.current.getPlayers();
+        const playersWithPoints = players
+          .map((player) => ({
+            id: player.id,
+            name: player.name,
+            color: player.color,
+            points: gameState.playerPoints?.[player.id] || 0,
+            alive: player.alive,
+          }))
+          .sort((a, b) => b.points - a.points);
+        setLeaderboardData(playersWithPoints);
       }
     }, 16); // ~60 FPS
 
@@ -373,6 +434,10 @@ function App() {
             })),
             winnerId: gameState.winnerId,
             tick: gameState.tick,
+            currentRound: gameState.currentRound,
+            totalRounds: gameState.totalRounds,
+            playerPoints: gameState.playerPoints,
+            roundResults: gameState.roundResults,
           });
 
           // IMPORTANTE: Desactivar input cuando se muestra el modal
@@ -520,17 +585,6 @@ function App() {
     const networkClient = gameRef.current?.getNetworkClient();
     if (networkClient) {
       networkClient.requestStartGame();
-    }
-  };
-
-  // Function to restart the game
-  const handleRestart = () => {
-    if (gameRef.current) {
-      gameRef.current.stop();
-      gameRef.current.init(4);
-      gameRef.current.start();
-      setCurrentView("game");
-      setGameOverState(null);
     }
   };
 
@@ -816,22 +870,13 @@ function App() {
 
         {currentView === "game" && (
           <div className="game-hud">
-            <div className="hud-top">
-              <button
-                onClick={() => {
-                  if (gameRef.current) {
-                    gameRef.current.stop();
-                    setCurrentView("menu");
-                    setGameOverState(null);
-                  }
-                }}
-                className="menu-button"
-              >
-                Menu
-              </button>
-              <button onClick={handleRestart} className="restart-button">
-                Restart
-              </button>
+            {/* Panel izquierdo: Info del juego */}
+            <div className="hud-left-panel">
+              {roundInfo && roundInfo.currentRound && roundInfo.totalRounds && (
+                <div className="round-indicator">
+                  Ronda {roundInfo.currentRound}/{roundInfo.totalRounds}
+                </div>
+              )}
               {gameRef.current?.isUsingNetwork() && (
                 <div className="connection-status">
                   {gameRef.current?.getNetworkClient()?.getIsConnected() ? (
@@ -841,16 +886,43 @@ function App() {
                   )}
                 </div>
               )}
+              {boostState && (
+                <div className="hud-boost-container">
+                  <BoostBar
+                    charge={boostState.charge}
+                    active={boostState.active}
+                    remaining={boostState.remaining}
+                  />
+                </div>
+              )}
             </div>
-            {boostState && (
-              <div className="hud-bottom">
-                <BoostBar
-                  charge={boostState.charge}
-                  active={boostState.active}
-                  remaining={boostState.remaining}
-                />
+
+            {/* Panel derecho: Clasificación de jugadores */}
+            <div className="hud-right-panel">
+              <div className="leaderboard">
+                <h3 className="leaderboard-title">Clasificación</h3>
+                <div className="leaderboard-list">
+                  {leaderboardData.map((player, index) => (
+                    <div
+                      key={player.id}
+                      className={`leaderboard-item ${
+                        !player.alive ? "eliminated" : ""
+                      }`}
+                    >
+                      <div className="leaderboard-rank">#{index + 1}</div>
+                      <div
+                        className="leaderboard-color"
+                        style={{ backgroundColor: player.color }}
+                      />
+                      <div className="leaderboard-name">{player.name}</div>
+                      <div className="leaderboard-points">
+                        {player.points} pts
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
+            </div>
           </div>
         )}
 

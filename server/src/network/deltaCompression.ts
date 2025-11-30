@@ -7,6 +7,13 @@ export interface DeltaState {
   tick: number;
   gameStatus?: string;
   winnerId?: string;
+  currentRound?: number;
+  totalRounds?: number;
+  playerPoints?: Record<string, number>;
+  roundResults?: Array<{
+    round: number;
+    deathOrder: Array<{ playerId: string; points: number }>;
+  }>;
   players: Array<{
     id: string;
     position?: { x: number; y: number };
@@ -54,6 +61,44 @@ export class DeltaCompressor {
     // Comparar winnerId
     if (currentState.winnerId !== this.previousState.winnerId) {
       delta.winnerId = currentState.winnerId;
+    }
+
+    // Comparar currentRound
+    if (currentState.currentRound !== this.previousState.currentRound) {
+      delta.currentRound = currentState.currentRound;
+    }
+
+    // Comparar totalRounds
+    if (currentState.totalRounds !== this.previousState.totalRounds) {
+      delta.totalRounds = currentState.totalRounds;
+    }
+
+    // Comparar playerPoints (siempre incluir si hay cambios o es la primera vez)
+    if (currentState.playerPoints) {
+      const prevPoints = this.previousState.playerPoints || {};
+      const currPoints = currentState.playerPoints;
+      
+      // Verificar si hay diferencias
+      const pointsChanged = Object.keys(currPoints).some(playerId => 
+        currPoints[playerId] !== prevPoints[playerId]
+      ) || Object.keys(prevPoints).some(playerId => 
+        !(playerId in currPoints)
+      );
+      
+      if (pointsChanged || !this.previousState.playerPoints) {
+        delta.playerPoints = currPoints;
+      }
+    }
+
+    // Comparar roundResults (siempre incluir si hay cambios)
+    if (currentState.roundResults) {
+      const prevResults = this.previousState.roundResults || [];
+      const currResults = currentState.roundResults;
+      
+      if (currResults.length !== prevResults.length || 
+          JSON.stringify(currResults) !== JSON.stringify(prevResults)) {
+        delta.roundResults = currResults;
+      }
     }
 
     // Comparar jugadores
@@ -203,6 +248,10 @@ export class DeltaCompressor {
       tick: state.tick,
       gameStatus: state.gameStatus,
       winnerId: state.winnerId,
+      currentRound: state.currentRound,
+      totalRounds: state.totalRounds,
+      playerPoints: state.playerPoints,
+      roundResults: state.roundResults,
       players: state.players.map(p => ({
         id: p.id,
         position: p.position,

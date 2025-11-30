@@ -26,4 +26,11 @@ export interface GameState {
   gameStatus: 'waiting' | 'playing' | 'ended';
   tick: number;
   winnerId?: string;
+  currentRound?: number;
+  totalRounds?: number;
+  playerPoints?: Record<string, number>; // playerId -> total points
+  roundResults?: Array<{
+    round: number;
+    deathOrder: Array<{ playerId: string; points: number }>;
+  }>;
 }

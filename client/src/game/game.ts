@@ -147,6 +147,10 @@ export class Game {
       })),
       gameStatus: 'playing',
       tick: 0,
+      currentRound: 1,
+      totalRounds: 5,
+      playerPoints: {},
+      roundResults: [],
     };
   }
 

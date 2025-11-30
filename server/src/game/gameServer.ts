@@ -18,6 +18,13 @@ export class GameServer {
   private playerBoostState: Map<string, { active: boolean; charge: number; remaining: number }> = new Map(); // playerId -> boost state
   private lastBoostRequested: Map<string, boolean> = new Map(); // playerId -> último estado de boost solicitado
   
+  // Sistema de rondas
+  private readonly TOTAL_ROUNDS: number = 5;
+  private currentRound: number = 1;
+  private playerPoints: Map<string, number> = new Map(); // playerId -> total points
+  private roundResults: Array<{ round: number; deathOrder: Array<{ playerId: string; points: number }> }> = [];
+  private deathOrderThisRound: Array<string> = []; // Orden de muerte en la ronda actual
+  
   // Sistema de gaps en trails
   private playerTrailTimers: Map<string, number> = new Map(); // playerId -> trailTimer acumulado
   private playerShouldDrawTrail: Map<string, boolean> = new Map(); // playerId -> shouldDrawTrail
@@ -47,6 +54,10 @@ export class GameServer {
       players: [],
       gameStatus: 'waiting',
       tick: 0,
+      currentRound: 1,
+      totalRounds: this.TOTAL_ROUNDS,
+      playerPoints: {},
+      roundResults: [],
     };
   }
 
@@ -60,6 +71,23 @@ export class GameServer {
     this.isRunning = true;
     this.gameState.gameStatus = 'playing';
     this.lastTickTime = Date.now();
+    
+    // Inicializar sistema de rondas
+    this.currentRound = 1;
+    this.playerPoints.clear();
+    this.roundResults = [];
+    this.deathOrderThisRound = [];
+    this.gameState.currentRound = 1;
+    this.gameState.totalRounds = this.TOTAL_ROUNDS;
+    this.gameState.playerPoints = {};
+    this.gameState.roundResults = [];
+    
+    // Inicializar puntos de todos los jugadores a 0
+    const allPlayers = this.playerManager.getAllPlayers();
+    allPlayers.forEach(player => {
+      this.playerPoints.set(player.id, 0);
+      this.gameState.playerPoints![player.id] = 0;
+    });
     
     // Asegurar que los jugadores estén inicializados antes de empezar
     this.initializePlayers();
@@ -432,6 +460,18 @@ export class GameServer {
       };
     });
     
+    // Actualizar playerPoints en gameState (convertir Map a Record)
+    if (!this.gameState.playerPoints) {
+      this.gameState.playerPoints = {};
+    }
+    this.playerPoints.forEach((points, playerId) => {
+      this.gameState.playerPoints![playerId] = points;
+    });
+    
+    // Actualizar información de ronda
+    this.gameState.currentRound = this.currentRound;
+    this.gameState.totalRounds = this.TOTAL_ROUNDS;
+    
     // Log cada 60 ticks (aproximadamente 1 vez por segundo)
     if (this.gameState.tick % 60 === 0) {
       console.log(`🎮 Tick ${this.gameState.tick} | Jugadores vivos: ${aliveCount}/${players.length}`);
@@ -473,6 +513,10 @@ export class GameServer {
       // Colisión con bordes
       if (checkBoundaryCollision(player.position, this.canvasWidth, this.canvasHeight)) {
         player.alive = false;
+        // Agregar a la lista de muertos de esta ronda si no está ya
+        if (!this.deathOrderThisRound.includes(player.id)) {
+          this.deathOrderThisRound.push(player.id);
+        }
         console.log(`💀 Jugador ${player.name} (${player.id.substring(0, 8)}...) murió por colisión con borde en (${player.position.x.toFixed(0)}, ${player.position.y.toFixed(0)})`);
         continue;
       }
@@ -511,6 +555,10 @@ export class GameServer {
         
         if (trailCollision.collided) {
           player.alive = false;
+          // Agregar a la lista de muertos de esta ronda si no está ya
+          if (!this.deathOrderThisRound.includes(player.id)) {
+            this.deathOrderThisRound.push(player.id);
+          }
           console.log(`💀 Jugador ${player.name} murió por colisión con trail de ${trailCollision.collidedWith}`);
           continue;
         }
@@ -522,6 +570,10 @@ export class GameServer {
         
         if (selfCollision) {
           player.alive = false;
+          // Agregar a la lista de muertos de esta ronda si no está ya
+          if (!this.deathOrderThisRound.includes(player.id)) {
+            this.deathOrderThisRound.push(player.id);
+          }
           console.log(`💀 Jugador ${player.name} murió por colisión consigo mismo`);
         }
         
@@ -534,35 +586,145 @@ export class GameServer {
   }
 
   /**
-   * Verifica condición de victoria
+   * Verifica condición de victoria y maneja rondas
    */
   private checkWinCondition(): void {
     const alivePlayers = this.playerManager.getAlivePlayers();
     
-    if (alivePlayers.length === 1) {
-      // Hay un ganador
-      this.gameState.winnerId = alivePlayers[0].id;
-      this.gameState.gameStatus = 'ended';
-      console.log(`🏆 Ganador: ${alivePlayers[0].name}`);
-      // Enviar estado final antes de detener (forzar envío)
-      this.broadcastState(true);
-      // Ejecutar callback de fin de juego
-      if (this.onGameEndCallback) {
-        this.onGameEndCallback(this.gameState);
+    // Si hay un ganador o todos murieron, terminar la ronda
+    if (alivePlayers.length <= 1) {
+      // Calcular puntos de esta ronda
+      this.calculateRoundPoints();
+      
+      // Si es la última ronda, terminar el juego
+      if (this.currentRound >= this.TOTAL_ROUNDS) {
+        this.endGame();
+      } else {
+        // Iniciar siguiente ronda
+        this.startNextRound();
       }
-      this.stop();
-    } else if (alivePlayers.length === 0) {
-      // Empate (todos murieron)
-      this.gameState.gameStatus = 'ended';
-      console.log(`🤝 Empate: todos los jugadores murieron`);
-      // Enviar estado final antes de detener (forzar envío)
-      this.broadcastState(true);
-      // Ejecutar callback de fin de juego
-      if (this.onGameEndCallback) {
-        this.onGameEndCallback(this.gameState);
-      }
-      this.stop();
     }
+  }
+  
+  /**
+   * Calcula los puntos de la ronda actual basado en el orden de muerte
+   */
+  private calculateRoundPoints(): void {
+    const allPlayers = this.playerManager.getAllPlayers();
+    const alivePlayers = this.playerManager.getAlivePlayers();
+    
+    // El ganador (si hay) no está en deathOrder, así que lo agregamos al final
+    const totalPlayers = allPlayers.length;
+    const deathOrder: Array<{ playerId: string; points: number }> = [];
+    
+    // Agregar jugadores muertos en orden de muerte
+    this.deathOrderThisRound.forEach((playerId, index) => {
+      // Puntos = número de jugadores que murieron antes que este
+      const points = index;
+      deathOrder.push({ playerId, points });
+      
+      // Actualizar puntos totales
+      const currentPoints = this.playerPoints.get(playerId) || 0;
+      this.playerPoints.set(playerId, currentPoints + points);
+      this.gameState.playerPoints![playerId] = currentPoints + points;
+    });
+    
+    // Agregar el ganador (si hay) al final con puntos = número de jugadores que murieron
+    if (alivePlayers.length === 1) {
+      const winnerId = alivePlayers[0].id;
+      const winnerPoints = this.deathOrderThisRound.length;
+      deathOrder.push({ playerId: winnerId, points: winnerPoints });
+      
+      // Actualizar puntos totales del ganador
+      const currentPoints = this.playerPoints.get(winnerId) || 0;
+      this.playerPoints.set(winnerId, currentPoints + winnerPoints);
+      this.gameState.playerPoints![winnerId] = currentPoints + winnerPoints;
+    }
+    
+    // Guardar resultados de esta ronda
+    const roundResult = {
+      round: this.currentRound,
+      deathOrder: deathOrder,
+    };
+    this.roundResults.push(roundResult);
+    this.gameState.roundResults = [...this.roundResults];
+    
+    console.log(`📊 Ronda ${this.currentRound} terminada. Puntos asignados:`);
+    deathOrder.forEach(({ playerId, points }) => {
+      const player = allPlayers.find(p => p.id === playerId);
+      const totalPoints = this.playerPoints.get(playerId) || 0;
+      console.log(`   ${player?.name || playerId}: +${points} puntos (Total: ${totalPoints})`);
+    });
+  }
+  
+  /**
+   * Inicia la siguiente ronda
+   */
+  private startNextRound(): void {
+    this.currentRound++;
+    this.gameState.currentRound = this.currentRound;
+    this.deathOrderThisRound = [];
+    
+    // Reiniciar todos los jugadores
+    const allPlayers = this.playerManager.getAllPlayers();
+    allPlayers.forEach(player => {
+      player.alive = true;
+      player.trail = [];
+    });
+    
+    // Reinicializar posiciones
+    this.initializePlayers();
+    
+    // Reinicializar estados de boost y gaps
+    allPlayers.forEach(player => {
+      this.playerBoostState.set(player.id, {
+        active: false,
+        charge: 100,
+        remaining: 0,
+      });
+      this.initializePlayerGaps(player.id);
+    });
+    
+    console.log(`🔄 Iniciando ronda ${this.currentRound}/${this.TOTAL_ROUNDS}`);
+  }
+  
+  /**
+   * Termina el juego después de todas las rondas
+   */
+  private endGame(): void {
+    this.gameState.gameStatus = 'ended';
+    
+    // Determinar ganador final (jugador con más puntos)
+    let maxPoints = -1;
+    let winnerId: string | undefined = undefined;
+    
+    this.playerPoints.forEach((points, playerId) => {
+      if (points > maxPoints) {
+        maxPoints = points;
+        winnerId = playerId;
+      }
+    });
+    
+    this.gameState.winnerId = winnerId;
+    
+    console.log(`🏆 Juego terminado después de ${this.TOTAL_ROUNDS} rondas`);
+    console.log(`📊 Puntos finales:`);
+    const allPlayers = this.playerManager.getAllPlayers();
+    allPlayers.forEach(player => {
+      const points = this.playerPoints.get(player.id) || 0;
+      const isWinner = player.id === winnerId;
+      console.log(`   ${player.name}: ${points} puntos${isWinner ? ' 🏆' : ''}`);
+    });
+    
+    // Enviar estado final antes de detener (forzar envío)
+    this.broadcastState(true);
+    
+    // Ejecutar callback de fin de juego
+    if (this.onGameEndCallback) {
+      this.onGameEndCallback(this.gameState);
+    }
+    
+    this.stop();
   }
 
   /**
