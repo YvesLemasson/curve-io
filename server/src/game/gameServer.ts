@@ -24,6 +24,8 @@ export class GameServer {
   private playerPoints: Map<string, number> = new Map(); // playerId -> total points
   private roundResults: Array<{ round: number; deathOrder: Array<{ playerId: string; points: number }> }> = [];
   private deathOrderThisRound: Array<string> = []; // Orden de muerte en la ronda actual
+  private nextRoundCountdownInterval: NodeJS.Timeout | null = null; // Intervalo para cuenta atrás
+  private nextRoundCountdown: number = 0; // Cuenta atrás actual en segundos
   
   // Sistema de gaps en trails
   private playerTrailTimers: Map<string, number> = new Map(); // playerId -> trailTimer acumulado
@@ -126,13 +128,19 @@ export class GameServer {
     this.isRunning = false;
     // No cambiar gameStatus aquí si ya se estableció en checkWinCondition
     // Solo establecerlo si no está ya establecido
-    if (this.gameState.gameStatus === 'playing' || this.gameState.gameStatus === 'waiting') {
+    if (this.gameState.gameStatus === 'playing' || this.gameState.gameStatus === 'waiting' || this.gameState.gameStatus === 'round-ended') {
       this.gameState.gameStatus = 'ended';
     }
     
     if (this.gameLoopInterval) {
       clearInterval(this.gameLoopInterval);
       this.gameLoopInterval = null;
+    }
+    
+    // Limpiar cuenta atrás si existe
+    if (this.nextRoundCountdownInterval) {
+      clearInterval(this.nextRoundCountdownInterval);
+      this.nextRoundCountdownInterval = null;
     }
     
     console.log('🛑 Game loop detenido');
@@ -148,20 +156,29 @@ export class GameServer {
 
     this.gameState.tick++;
 
-    // Procesar inputs de la cola
-    this.processInputs();
+    // Si el juego está pausado (round-ended), solo enviar estado, no actualizar nada
+    if (this.gameState.gameStatus === 'round-ended') {
+      // Solo enviar estado actualizado (para sincronizar cuenta atrás, etc.)
+      this.broadcastState();
+      return;
+    }
 
-    // Actualizar boost de todos los jugadores cada tick (usando deltaTime real)
-    this.updateAllBoosts(deltaTime);
+    // Procesar inputs de la cola (solo si el juego está en 'playing')
+    if (this.gameState.gameStatus === 'playing') {
+      this.processInputs();
 
-    // Actualizar posiciones de jugadores
-    this.updatePlayers(deltaTime);
+      // Actualizar boost de todos los jugadores cada tick (usando deltaTime real)
+      this.updateAllBoosts(deltaTime);
 
-    // Detectar colisiones
-    this.checkCollisions();
+      // Actualizar posiciones de jugadores
+      this.updatePlayers(deltaTime);
 
-    // Verificar condición de victoria
-    this.checkWinCondition();
+      // Detectar colisiones
+      this.checkCollisions();
+
+      // Verificar condición de victoria
+      this.checkWinCondition();
+    }
 
     // Enviar estado actualizado a todos los clientes
     this.broadcastState();
@@ -593,15 +610,21 @@ export class GameServer {
     
     // Si hay un ganador o todos murieron, terminar la ronda
     if (alivePlayers.length <= 1) {
-      // Calcular puntos de esta ronda
-      this.calculateRoundPoints();
-      
-      // Si es la última ronda, terminar el juego
-      if (this.currentRound >= this.TOTAL_ROUNDS) {
-        this.endGame();
-      } else {
-        // Iniciar siguiente ronda
-        this.startNextRound();
+      // Solo procesar si no estamos ya en estado 'round-ended'
+      if (this.gameState.gameStatus === 'playing') {
+        // Calcular puntos de esta ronda
+        this.calculateRoundPoints();
+        
+        // Si es la última ronda, terminar el juego
+        if (this.currentRound >= this.TOTAL_ROUNDS) {
+          this.endGame();
+        } else {
+          // Cambiar a estado 'round-ended' y esperar a que alguien presione "Next Round"
+          this.gameState.gameStatus = 'round-ended';
+          this.gameState.nextRoundCountdown = undefined; // Sin cuenta atrás todavía
+          this.broadcastState(true); // Forzar envío del estado
+          console.log(`⏸️  Ronda ${this.currentRound} terminada. Esperando solicitud para siguiente ronda...`);
+        }
       }
     }
   }
@@ -658,34 +681,102 @@ export class GameServer {
   }
   
   /**
+   * Inicia la cuenta atrás para la siguiente ronda
+   */
+  requestNextRound(): void {
+    // Solo permitir si estamos en estado 'round-ended'
+    if (this.gameState.gameStatus !== 'round-ended') {
+      console.log(`⚠️  Intento de solicitar siguiente ronda cuando el estado es ${this.gameState.gameStatus}`);
+      return;
+    }
+    
+    // Si ya hay una cuenta atrás en curso, ignorar
+    if (this.nextRoundCountdownInterval !== null) {
+      console.log(`⚠️  Ya hay una cuenta atrás en curso`);
+      return;
+    }
+    
+    // Iniciar cuenta atrás de 3 segundos
+    this.nextRoundCountdown = 3;
+    this.gameState.nextRoundCountdown = 3;
+    this.broadcastState(true);
+    
+    console.log(`⏱️  Iniciando cuenta atrás para siguiente ronda: ${this.nextRoundCountdown} segundos`);
+    
+    this.nextRoundCountdownInterval = setInterval(() => {
+      try {
+        this.nextRoundCountdown--;
+        this.gameState.nextRoundCountdown = this.nextRoundCountdown;
+        this.broadcastState(true); // Forzar envío para actualizar cuenta atrás
+        
+        console.log(`⏱️  Cuenta atrás: ${this.nextRoundCountdown} segundos`);
+        
+        if (this.nextRoundCountdown <= 0) {
+          console.log(`✅ Cuenta atrás completada, iniciando siguiente ronda...`);
+          // Terminar cuenta atrás e iniciar siguiente ronda
+          if (this.nextRoundCountdownInterval) {
+            clearInterval(this.nextRoundCountdownInterval);
+            this.nextRoundCountdownInterval = null;
+          }
+          this.gameState.nextRoundCountdown = undefined;
+          this.startNextRound();
+        }
+      } catch (error) {
+        console.error(`❌ Error en cuenta atrás:`, error);
+        // Limpiar intervalo en caso de error
+        if (this.nextRoundCountdownInterval) {
+          clearInterval(this.nextRoundCountdownInterval);
+          this.nextRoundCountdownInterval = null;
+        }
+      }
+    }, 1000); // Actualizar cada segundo
+  }
+  
+  /**
    * Inicia la siguiente ronda
    */
   private startNextRound(): void {
-    this.currentRound++;
-    this.gameState.currentRound = this.currentRound;
-    this.deathOrderThisRound = [];
-    
-    // Reiniciar todos los jugadores
-    const allPlayers = this.playerManager.getAllPlayers();
-    allPlayers.forEach(player => {
-      player.alive = true;
-      player.trail = [];
-    });
-    
-    // Reinicializar posiciones
-    this.initializePlayers();
-    
-    // Reinicializar estados de boost y gaps
-    allPlayers.forEach(player => {
-      this.playerBoostState.set(player.id, {
-        active: false,
-        charge: 100,
-        remaining: 0,
+    try {
+      const nextRound = this.currentRound + 1;
+      console.log(`🔄 [startNextRound] Iniciando ronda ${nextRound}/${this.TOTAL_ROUNDS}`);
+      
+      this.currentRound = nextRound;
+      this.gameState.currentRound = this.currentRound;
+      this.deathOrderThisRound = [];
+      this.gameState.gameStatus = 'playing';
+      this.gameState.nextRoundCountdown = undefined;
+      
+      // Reiniciar todos los jugadores
+      const allPlayers = this.playerManager.getAllPlayers();
+      console.log(`   [startNextRound] Reiniciando ${allPlayers.length} jugadores...`);
+      allPlayers.forEach(player => {
+        player.alive = true;
+        player.trail = [];
       });
-      this.initializePlayerGaps(player.id);
-    });
-    
-    console.log(`🔄 Iniciando ronda ${this.currentRound}/${this.TOTAL_ROUNDS}`);
+      
+      // Reinicializar posiciones
+      console.log(`   [startNextRound] Reinicializando posiciones...`);
+      this.initializePlayers();
+      
+      // Reinicializar estados de boost y gaps
+      console.log(`   [startNextRound] Reinicializando boost y gaps...`);
+      allPlayers.forEach(player => {
+        this.playerBoostState.set(player.id, {
+          active: false,
+          charge: 100,
+          remaining: 0,
+        });
+        this.initializePlayerGaps(player.id);
+      });
+      
+      console.log(`✅ [startNextRound] Ronda ${this.currentRound}/${this.TOTAL_ROUNDS} iniciada correctamente`);
+      console.log(`   Estado: ${this.gameState.gameStatus}`);
+      console.log(`   Jugadores: ${allPlayers.length}`);
+      this.broadcastState(true); // Forzar envío del estado
+    } catch (error) {
+      console.error(`❌ Error en startNextRound:`, error);
+      throw error; // Re-lanzar para que se vea en los logs
+    }
   }
   
   /**

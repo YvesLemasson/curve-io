@@ -157,6 +157,123 @@ function GameOverModal({
   );
 }
 
+// Round summary modal component
+function RoundSummaryModal({
+  gameState,
+  onNextRound,
+  countdown,
+}: {
+  gameState: {
+    currentRound?: number;
+    totalRounds?: number;
+    playerPoints?: Record<string, number>;
+    roundResults?: Array<{
+      round: number;
+      deathOrder: Array<{ playerId: string; points: number }>;
+    }>;
+    players: Array<{ id: string; name: string; color: string; alive: boolean }>;
+  } | null;
+  onNextRound: () => void;
+  countdown?: number;
+}) {
+  if (!gameState) return null;
+
+  // Obtener los resultados de la ronda actual
+  const currentRound = gameState.currentRound || 1;
+  const roundResult = gameState.roundResults?.find(
+    (r) => r.round === currentRound
+  );
+
+  // Obtener jugadores con sus puntos de esta ronda
+  const playersWithRoundPoints = gameState.players.map((player) => {
+    const roundPoints = roundResult?.deathOrder.find(
+      (d) => d.playerId === player.id
+    )?.points || 0;
+    const totalPoints = gameState.playerPoints?.[player.id] || 0;
+    return {
+      ...player,
+      roundPoints,
+      totalPoints,
+    };
+  });
+
+  // Ordenar por puntos de la ronda (mayor a menor)
+  playersWithRoundPoints.sort((a, b) => b.roundPoints - a.roundPoints);
+
+  return (
+    <div className="game-over-modal-overlay">
+      <div className="game-over-modal">
+        <h1 className="game-over-title">
+          Ronda {currentRound} Terminada
+        </h1>
+
+        <div className="game-over-content">
+          {/* Left column: Round information */}
+          <div className="game-over-left">
+            <div className="round-summary">
+              <h2>Resumen de la Ronda</h2>
+              <div className="summary-stats">
+                <div className="stat-item">
+                  <span className="stat-label">Ronda:</span>
+                  <span className="stat-value">
+                    {currentRound}/{gameState.totalRounds || 5}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right column: Player points for this round */}
+          <div className="game-over-right">
+            <div className="players-summary">
+              <h3>Puntos de esta Ronda</h3>
+              <div className="players-list-summary">
+                {playersWithRoundPoints.map((player, index) => {
+                  return (
+                    <div
+                      key={player.id}
+                      className={`player-summary-item ${
+                        index === 0 ? "winner-item" : ""
+                      }`}
+                    >
+                      <div
+                        className="player-color-indicator"
+                        style={{ backgroundColor: player.color }}
+                      />
+                      <span className="player-name-summary">{player.name}</span>
+                      {index === 0 && (
+                        <span className="player-status winner-status">🏆</span>
+                      )}
+                      <span className="player-points">
+                        +{player.roundPoints} pts
+                      </span>
+                      <span className="player-total-points">
+                        (Total: {player.totalPoints})
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={onNextRound}
+          className="back-to-menu-button"
+          disabled={countdown !== undefined && countdown >= 0}
+        >
+          {countdown !== undefined && countdown > 0
+            ? `Next Round (${countdown})`
+            : countdown === 0
+            ? "Starting..."
+            : "Next Round"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Color picker modal component
 function ColorPickerModal({
   isOpen,
@@ -284,6 +401,17 @@ function App() {
       deathOrder: Array<{ playerId: string; points: number }>;
     }>;
   } | null>(null);
+  const [roundSummaryState, setRoundSummaryState] = useState<{
+    players: Array<{ id: string; name: string; color: string; alive: boolean }>;
+    currentRound?: number;
+    totalRounds?: number;
+    playerPoints?: Record<string, number>;
+    roundResults?: Array<{
+      round: number;
+      deathOrder: Array<{ playerId: string; points: number }>;
+    }>;
+    countdown?: number;
+  } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -408,7 +536,7 @@ function App() {
     return () => clearInterval(interval);
   }, [currentView]);
 
-  // Monitorear el estado del juego para detectar cuando termina
+  // Monitorear el estado del juego para detectar cuando termina una ronda o el juego
   useEffect(() => {
     if (currentView !== "game" || !gameRef.current) return;
 
@@ -416,11 +544,47 @@ function App() {
     let gameOverShown = false;
 
     const interval = setInterval(() => {
-      if (gameRef.current && !gameOverShown) {
+      if (gameRef.current) {
         const gameState = gameRef.current.getGameState();
+        
+        // Detectar cuando termina una ronda (pero no el juego completo)
+        if (gameState.gameStatus === "round-ended" && !roundSummaryState) {
+          const players = gameRef.current.getPlayers();
+          setRoundSummaryState({
+            players: players.map((p) => ({
+              id: p.id,
+              name: p.name,
+              color: p.color,
+              alive: p.alive,
+            })),
+            currentRound: gameState.currentRound,
+            totalRounds: gameState.totalRounds,
+            playerPoints: gameState.playerPoints,
+            roundResults: gameState.roundResults,
+            countdown: gameState.nextRoundCountdown,
+          });
+
+          // IMPORTANTE: Desactivar input cuando se muestra el modal
+          const inputManager = gameRef.current.getInputManager();
+          inputManager.setGameActive(false);
+        }
+        
+        // Actualizar cuenta atrás si ya está mostrando el modal
+        if (gameState.gameStatus === "round-ended" && roundSummaryState) {
+          setRoundSummaryState((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              countdown: gameState.nextRoundCountdown,
+            };
+          });
+        }
+        
+        // Detectar cuando el juego termina completamente
         if (
-          gameState.gameStatus === "finished" ||
-          gameState.gameStatus === "ended"
+          (gameState.gameStatus === "finished" ||
+            gameState.gameStatus === "ended") &&
+          !gameOverShown
         ) {
           // El juego terminó, mostrar modal
           gameOverShown = true;
@@ -441,23 +605,73 @@ function App() {
           });
 
           // IMPORTANTE: Desactivar input cuando se muestra el modal
-          // Esto permite que los toques lleguen al modal
           const inputManager = gameRef.current.getInputManager();
           inputManager.setGameActive(false);
+          
+          // Limpiar estado de resumen de ronda si existe
+          setRoundSummaryState(null);
         }
+        
+        // Nota: El cierre del modal cuando vuelve a 'playing' se maneja en un efecto separado
       }
     }, 50); // Verificar cada 50ms para detectar más rápido
 
     return () => clearInterval(interval);
-  }, [currentView]);
+  }, [currentView, roundSummaryState]);
 
   // Desactivar input cuando hay un modal abierto
   useEffect(() => {
-    if (gameRef.current && gameOverState) {
+    if (gameRef.current && (gameOverState || roundSummaryState)) {
       const inputManager = gameRef.current.getInputManager();
       inputManager.setGameActive(false);
     }
-  }, [gameOverState]);
+  }, [gameOverState, roundSummaryState]);
+
+  // Efecto separado para cerrar el modal cuando el juego vuelve a 'playing'
+  useEffect(() => {
+    if (currentView !== "game" || !gameRef.current || !roundSummaryState) return;
+
+    const checkInterval = setInterval(() => {
+      if (gameRef.current) {
+        const gameState = gameRef.current.getGameState();
+        
+        // Si el juego vuelve a 'playing', cerrar el modal
+        if (gameState.gameStatus === "playing") {
+          console.log(`🔄 [Cliente] Estado cambió a 'playing', cerrando modal de resumen de ronda`);
+          setRoundSummaryState(null);
+          
+          // Reactivar input cuando se cierra el modal
+          const inputManager = gameRef.current.getInputManager();
+          inputManager.setGameActive(true);
+        }
+      }
+    }, 50);
+
+    return () => clearInterval(checkInterval);
+  }, [currentView, roundSummaryState]);
+  
+  // Función para manejar el botón "Next Round"
+  const handleNextRound = () => {
+    if (gameRef.current && gameRef.current.isUsingNetwork()) {
+      // Verificar que el estado sea 'round-ended' antes de enviar
+      const gameState = gameRef.current.getGameState();
+      if (gameState.gameStatus !== 'round-ended') {
+        console.log(`⚠️  No se puede solicitar siguiente ronda: estado actual es ${gameState.gameStatus}`);
+        return;
+      }
+      
+      // Verificar que no haya una cuenta atrás en curso
+      if (gameState.nextRoundCountdown !== undefined && gameState.nextRoundCountdown > 0) {
+        console.log(`⚠️  Ya hay una cuenta atrás en curso: ${gameState.nextRoundCountdown}`);
+        return;
+      }
+      
+      const networkClient = gameRef.current.getNetworkClient();
+      if (networkClient) {
+        networkClient.requestNextRound();
+      }
+    }
+  };
 
   // Function to connect to server and show lobby
   const handleConnectToServer = () => {
@@ -744,7 +958,7 @@ function App() {
                       : "Play online with your account"
                   }
                 >
-                  Play Online
+                  {!user ? "Play as guest" : "Play Online"}
                 </button>
                 <button onClick={handleStartLocalGame} className="menu-option">
                   Local Game
@@ -924,6 +1138,15 @@ function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Round summary modal */}
+        {roundSummaryState && (
+          <RoundSummaryModal
+            gameState={roundSummaryState}
+            onNextRound={handleNextRound}
+            countdown={roundSummaryState.countdown}
+          />
         )}
 
         {/* Game over modal */}

@@ -23,7 +23,7 @@ export interface Player {
 
 export interface GameState {
   players: Player[];
-  gameStatus: 'waiting' | 'playing' | 'ended';
+  gameStatus: 'waiting' | 'playing' | 'round-ended' | 'ended';
   tick: number;
   winnerId?: string;
   currentRound?: number;
@@ -33,4 +33,5 @@ export interface GameState {
     round: number;
     deathOrder: Array<{ playerId: string; points: number }>;
   }>;
+  nextRoundCountdown?: number; // Cuenta atrás en segundos para la siguiente ronda
 }

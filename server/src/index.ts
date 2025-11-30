@@ -383,6 +383,26 @@ io.on('connection', (socket: Socket) => {
     }, 100); // Delay suficiente para que los clientes procesen GAME_START
   });
 
+  // Manejar solicitud de siguiente ronda
+  socket.on(CLIENT_EVENTS.REQUEST_NEXT_ROUND, () => {
+    const gameState = gameServer.getGameState();
+    const gameStatus = gameState.gameStatus;
+    
+    console.log(`📥 Solicitud de siguiente ronda recibida de ${socket.id}`);
+    console.log(`   Estado actual: ${gameStatus}`);
+    console.log(`   Ronda actual: ${gameState.currentRound}/${gameState.totalRounds}`);
+    console.log(`   Countdown: ${gameState.nextRoundCountdown}`);
+    
+    if (gameStatus !== 'round-ended') {
+      console.log(`⚠️  Intento de solicitar siguiente ronda cuando el estado es ${gameStatus}`);
+      socket.emit(SERVER_EVENTS.ERROR, 'No se puede solicitar siguiente ronda en este momento');
+      return;
+    }
+    
+    console.log(`⏭️  Procesando solicitud de siguiente ronda...`);
+    gameServer.requestNextRound();
+  });
+
   // Manejar input del jugador
   socket.on(CLIENT_EVENTS.GAME_INPUT, (message: GameInputMessage) => {
     // Agregar input a la cola del game server

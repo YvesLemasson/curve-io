@@ -101,6 +101,11 @@ export class DeltaCompressor {
       }
     }
 
+    // Comparar nextRoundCountdown
+    if (currentState.nextRoundCountdown !== this.previousState.nextRoundCountdown) {
+      delta.nextRoundCountdown = currentState.nextRoundCountdown;
+    }
+
     // Comparar jugadores
     const previousPlayersMap = new Map(
       this.previousState.players.map(p => [p.id, p])
@@ -252,6 +257,7 @@ export class DeltaCompressor {
       totalRounds: state.totalRounds,
       playerPoints: state.playerPoints,
       roundResults: state.roundResults,
+      nextRoundCountdown: state.nextRoundCountdown,
       players: state.players.map(p => ({
         id: p.id,
         position: p.position,

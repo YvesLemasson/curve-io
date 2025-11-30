@@ -321,6 +321,19 @@ export class NetworkClient {
   }
 
   /**
+   * Solicita al servidor iniciar la siguiente ronda
+   */
+  requestNextRound(): void {
+    if (!this.socket || !this.isConnected) {
+      console.warn('No conectado al servidor, no se puede solicitar siguiente ronda');
+      return;
+    }
+
+    const eventName = CLIENT_EVENTS?.REQUEST_NEXT_ROUND || 'game:request-next-round';
+    this.socket.emit(eventName);
+  }
+
+  /**
    * Solicita cambiar el color del jugador
    */
   changeColor(playerId: string, color: string): void {

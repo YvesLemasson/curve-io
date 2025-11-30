@@ -6,6 +6,7 @@ export const CLIENT_EVENTS = {
   GAME_INPUT: 'game:input',
   DISCONNECT: 'disconnect',
   REQUEST_START: 'game:request-start',
+  REQUEST_NEXT_ROUND: 'game:request-next-round',
   CHANGE_COLOR: 'player:change-color',
   AUTH_USER: 'auth:user', // Enviar user_id de Supabase
 } as const;
@@ -39,6 +40,14 @@ export interface DeltaState {
   tick: number;
   gameStatus?: string;
   winnerId?: string;
+  currentRound?: number;
+  totalRounds?: number;
+  playerPoints?: Record<string, number>;
+  roundResults?: Array<{
+    round: number;
+    deathOrder: Array<{ playerId: string; points: number }>;
+  }>;
+  nextRoundCountdown?: number;
   players: Array<{
     id: string;
     position?: { x: number; y: number };
