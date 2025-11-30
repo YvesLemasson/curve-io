@@ -679,12 +679,25 @@ export class GameServer {
   initializePlayers(): void {
     const players = this.playerManager.getAllPlayers();
     const positions = [
-      { x: this.canvasWidth * 0.25, y: this.canvasHeight * 0.25 },
-      { x: this.canvasWidth * 0.75, y: this.canvasHeight * 0.25 },
-      { x: this.canvasWidth * 0.25, y: this.canvasHeight * 0.75 },
-      { x: this.canvasWidth * 0.75, y: this.canvasHeight * 0.75 },
+      { x: this.canvasWidth * 0.25, y: this.canvasHeight * 0.25 },   // Esquina superior izquierda
+      { x: this.canvasWidth * 0.75, y: this.canvasHeight * 0.25 },   // Esquina superior derecha
+      { x: this.canvasWidth * 0.25, y: this.canvasHeight * 0.75 },   // Esquina inferior izquierda
+      { x: this.canvasWidth * 0.75, y: this.canvasHeight * 0.75 },   // Esquina inferior derecha
+      { x: this.canvasWidth * 0.5, y: this.canvasHeight * 0.25 },    // Centro superior
+      { x: this.canvasWidth * 0.5, y: this.canvasHeight * 0.75 },    // Centro inferior
+      { x: this.canvasWidth * 0.25, y: this.canvasHeight * 0.5 },    // Centro izquierdo
+      { x: this.canvasWidth * 0.75, y: this.canvasHeight * 0.5 },    // Centro derecho
     ];
-    const angles = [0, Math.PI, Math.PI / 2, -Math.PI / 2];
+    const angles = [
+      0,                    // Derecha (0°)
+      Math.PI,              // Izquierda (180°)
+      Math.PI / 2,          // Abajo (90°)
+      -Math.PI / 2,         // Arriba (270°)
+      Math.PI / 4,          // Diagonal abajo-derecha (45°)
+      -Math.PI / 4,         // Diagonal arriba-derecha (315°)
+      3 * Math.PI / 4,      // Diagonal abajo-izquierda (135°)
+      -3 * Math.PI / 4,     // Diagonal arriba-izquierda (225°)
+    ];
 
     players.forEach((player, index) => {
       const posIndex = index % positions.length;

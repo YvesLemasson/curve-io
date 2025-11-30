@@ -25,6 +25,7 @@ const allowedOrigins: string[] = [
 ];
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
+const MAX_PLAYERS = 8; // Máximo de jugadores permitidos en una partida
 
 const io = new Server(httpServer, {
   cors: {
@@ -258,6 +259,14 @@ io.on('connection', (socket: Socket) => {
       return;
     }
     
+    // Verificar límite de jugadores
+    const currentPlayerCount = playerManager.getPlayerCount();
+    if (currentPlayerCount >= MAX_PLAYERS) {
+      console.log(`⚠️  Intento de unirse con ${MAX_PLAYERS} jugadores ya conectados`);
+      socket.emit(SERVER_EVENTS.ERROR, `El juego está lleno. Máximo ${MAX_PLAYERS} jugadores permitidos.`);
+      return;
+    }
+    
     // Crear jugador
     const player: Player = {
       id: playerId, // Usar socket.id como ID único
@@ -285,12 +294,25 @@ io.on('connection', (socket: Socket) => {
       // Obtener todos los jugadores excepto el que acabamos de agregar (para verificar colores usados)
       const existingPlayers = players.filter(p => p.id !== playerId);
       const positions = [
-        { x: 1920 * 0.25, y: 1280 * 0.25 },
-        { x: 1920 * 0.75, y: 1280 * 0.25 },
-        { x: 1920 * 0.25, y: 1280 * 0.75 },
-        { x: 1920 * 0.75, y: 1280 * 0.75 },
+        { x: 1920 * 0.25, y: 1280 * 0.25 },   // Esquina superior izquierda
+        { x: 1920 * 0.75, y: 1280 * 0.25 },   // Esquina superior derecha
+        { x: 1920 * 0.25, y: 1280 * 0.75 },   // Esquina inferior izquierda
+        { x: 1920 * 0.75, y: 1280 * 0.75 },   // Esquina inferior derecha
+        { x: 1920 * 0.5, y: 1280 * 0.25 },    // Centro superior
+        { x: 1920 * 0.5, y: 1280 * 0.75 },    // Centro inferior
+        { x: 1920 * 0.25, y: 1280 * 0.5 },    // Centro izquierdo
+        { x: 1920 * 0.75, y: 1280 * 0.5 },    // Centro derecho
       ];
-      const angles = [0, Math.PI, Math.PI / 2, -Math.PI / 2];
+      const angles = [
+        0,                    // Derecha (0°)
+        Math.PI,              // Izquierda (180°)
+        Math.PI / 2,          // Abajo (90°)
+        -Math.PI / 2,         // Arriba (270°)
+        Math.PI / 4,          // Diagonal abajo-derecha (45°)
+        -Math.PI / 4,         // Diagonal arriba-derecha (315°)
+        3 * Math.PI / 4,      // Diagonal abajo-izquierda (135°)
+        -3 * Math.PI / 4,     // Diagonal arriba-izquierda (225°)
+      ];
       
       const index = players.length - 1;
       const posIndex = index % positions.length;

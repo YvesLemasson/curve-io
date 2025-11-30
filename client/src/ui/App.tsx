@@ -1,57 +1,67 @@
 // Main React application component
 // Handles routing and general UI structure
 
-import { useState, useEffect, useRef } from 'react';
-import { Game } from '../game/game';
-import { useAuth } from '../auth/AuthContext';
-import './App.css';
+import { useState, useEffect, useRef } from "react";
+import { Game } from "../game/game";
+import { useAuth } from "../auth/AuthContext";
+import "./App.css";
 
 // Import Game here to avoid circular reference error
 // import { NetworkClient } from '../network/client';
 
 // Boost bar component
-function BoostBar({ charge, active, remaining }: { charge: number; active: boolean; remaining: number }) {
+function BoostBar({
+  charge,
+  active,
+  remaining,
+}: {
+  charge: number;
+  active: boolean;
+  remaining: number;
+}) {
   const remainingSeconds = (remaining / 1000).toFixed(1);
-  
+
   return (
     <div className="boost-bar-container">
       <div className="boost-label">BOOST</div>
       <div className="boost-bar">
-        <div 
-          className={`boost-fill ${active ? 'boost-active' : ''}`}
+        <div
+          className={`boost-fill ${active ? "boost-active" : ""}`}
           style={{ width: `${charge}%` }}
         />
       </div>
-      {active && (
-        <div className="boost-timer">{remainingSeconds}s</div>
-      )}
+      {active && <div className="boost-timer">{remainingSeconds}s</div>}
     </div>
   );
 }
 
 // Game over modal component
-function GameOverModal({ 
-  gameState, 
-  onBackToMenu 
-}: { 
-  gameState: { players: Array<{ id: string; name: string; color: string; alive: boolean }>; winnerId?: string; tick: number } | null;
+function GameOverModal({
+  gameState,
+  onBackToMenu,
+}: {
+  gameState: {
+    players: Array<{ id: string; name: string; color: string; alive: boolean }>;
+    winnerId?: string;
+    tick: number;
+  } | null;
   onBackToMenu: () => void;
 }) {
   if (!gameState) return null;
 
-  const winner = gameState.winnerId 
-    ? gameState.players.find(p => p.id === gameState.winnerId)
+  const winner = gameState.winnerId
+    ? gameState.players.find((p) => p.id === gameState.winnerId)
     : null;
-  const deadPlayers = gameState.players.filter(p => !p.alive);
+  const deadPlayers = gameState.players.filter((p) => !p.alive);
   const gameDuration = Math.floor(gameState.tick / 60); // Aproximadamente segundos (60 ticks por segundo)
 
   return (
     <div className="game-over-modal-overlay">
       <div className="game-over-modal">
         <h1 className="game-over-title">
-          {winner ? '🏆 Game Over!' : '🤝 Tie'}
+          {winner ? "🏆 Game Over!" : "🤝 Tie"}
         </h1>
-        
+
         <div className="game-over-content">
           {/* Left column: Game information */}
           <div className="game-over-left">
@@ -70,7 +80,7 @@ function GameOverModal({
 
             <div className="game-summary">
               <h2>Game Summary</h2>
-              
+
               <div className="summary-stats">
                 <div className="stat-item">
                   <span className="stat-label">Duration:</span>
@@ -91,22 +101,26 @@ function GameOverModal({
               <div className="players-list-summary">
                 {winner && (
                   <div className="player-summary-item winner-item">
-                    <div 
-                      className="player-color-indicator" 
+                    <div
+                      className="player-color-indicator"
                       style={{ backgroundColor: winner.color }}
                     />
                     <span className="player-name-summary">{winner.name}</span>
-                    <span className="player-status winner-status">🏆 Winner</span>
+                    <span className="player-status winner-status">
+                      🏆 Winner
+                    </span>
                   </div>
                 )}
                 {deadPlayers.map((player) => (
                   <div key={player.id} className="player-summary-item">
-                    <div 
-                      className="player-color-indicator" 
+                    <div
+                      className="player-color-indicator"
                       style={{ backgroundColor: player.color }}
                     />
                     <span className="player-name-summary">{player.name}</span>
-                    <span className="player-status eliminated-status">Eliminated</span>
+                    <span className="player-status eliminated-status">
+                      Eliminated
+                    </span>
                   </div>
                 ))}
               </div>
@@ -114,10 +128,7 @@ function GameOverModal({
           </div>
         </div>
 
-        <button 
-          onClick={onBackToMenu}
-          className="back-to-menu-button"
-        >
+        <button onClick={onBackToMenu} className="back-to-menu-button">
           Back to Menu
         </button>
       </div>
@@ -126,13 +137,13 @@ function GameOverModal({
 }
 
 // Color picker modal component
-function ColorPickerModal({ 
-  isOpen, 
+function ColorPickerModal({
+  isOpen,
   currentColor,
   usedColors,
-  onClose, 
-  onConfirm 
-}: { 
+  onClose,
+  onConfirm,
+}: {
   isOpen: boolean;
   currentColor: string;
   usedColors: Set<string>;
@@ -143,22 +154,22 @@ function ColorPickerModal({
 
   // 16 colores predefinidos
   const availableColors = [
-    '#ff0000', // Rojo
-    '#00ff00', // Verde
-    '#0000ff', // Azul
-    '#ffff00', // Amarillo
-    '#ff00ff', // Magenta
-    '#00ffff', // Cyan
-    '#ff8000', // Naranja
-    '#8000ff', // Morado
-    '#ff0080', // Rosa
-    '#00ff80', // Verde claro
-    '#0080ff', // Azul claro
-    '#ff8080', // Rosa claro
-    '#80ff80', // Verde menta
-    '#8080ff', // Azul claro
-    '#ffff80', // Amarillo claro
-    '#ff80ff', // Rosa magenta
+    "#ff0000", // Rojo
+    "#00ff00", // Verde
+    "#0000ff", // Azul
+    "#ffff00", // Amarillo
+    "#ff00ff", // Magenta
+    "#00ffff", // Cyan
+    "#ff8000", // Naranja
+    "#8000ff", // Morado
+    "#ff0080", // Rosa
+    "#00ff80", // Verde claro
+    "#0080ff", // Azul claro
+    "#ff8080", // Rosa claro
+    "#80ff80", // Verde menta
+    "#8080ff", // Azul claro
+    "#ffff80", // Amarillo claro
+    "#ff80ff", // Rosa magenta
   ];
 
   if (!isOpen) return null;
@@ -174,11 +185,13 @@ function ColorPickerModal({
             return (
               <button
                 key={color}
-                className={`color-option ${isSelected ? 'selected' : ''} ${isUsed ? 'used' : ''}`}
+                className={`color-option ${isSelected ? "selected" : ""} ${
+                  isUsed ? "used" : ""
+                }`}
                 style={{ backgroundColor: color }}
                 onClick={() => !isUsed && setSelectedColor(color)}
                 disabled={isUsed}
-                title={isUsed ? 'Color en uso' : color}
+                title={isUsed ? "Color en uso" : color}
               >
                 {isSelected && <span className="check-mark">✓</span>}
                 {isUsed && <span className="used-mark">✗</span>}
@@ -187,20 +200,22 @@ function ColorPickerModal({
           })}
         </div>
         <div className="color-picker-actions">
-          <button 
-            className="color-picker-cancel"
-            onClick={onClose}
-          >
+          <button className="color-picker-cancel" onClick={onClose}>
             Cancel
           </button>
-          <button 
+          <button
             className="color-picker-confirm"
             onClick={() => {
-              if (selectedColor && !usedColors.has(selectedColor) || selectedColor === currentColor) {
+              if (
+                (selectedColor && !usedColors.has(selectedColor)) ||
+                selectedColor === currentColor
+              ) {
                 onConfirm(selectedColor);
               }
             }}
-            disabled={usedColors.has(selectedColor) && selectedColor !== currentColor}
+            disabled={
+              usedColors.has(selectedColor) && selectedColor !== currentColor
+            }
           >
             Confirm
           </button>
@@ -212,10 +227,22 @@ function ColorPickerModal({
 
 function App() {
   const { user, loading, signInWithGoogle, signOut } = useAuth();
-  const [currentView, setCurrentView] = useState<'menu' | 'game' | 'lobby'>('menu');
-  const [boostState, setBoostState] = useState<{ active: boolean; charge: number; remaining: number } | null>(null);
-  const [lobbyPlayers, setLobbyPlayers] = useState<Array<{ id: string; name: string; color: string }>>([]);
-  const [gameOverState, setGameOverState] = useState<{ players: Array<{ id: string; name: string; color: string; alive: boolean }>; winnerId?: string; tick: number } | null>(null);
+  const [currentView, setCurrentView] = useState<"menu" | "game" | "lobby">(
+    "menu"
+  );
+  const [boostState, setBoostState] = useState<{
+    active: boolean;
+    charge: number;
+    remaining: number;
+  } | null>(null);
+  const [lobbyPlayers, setLobbyPlayers] = useState<
+    Array<{ id: string; name: string; color: string }>
+  >([]);
+  const [gameOverState, setGameOverState] = useState<{
+    players: Array<{ id: string; name: string; color: string; alive: boolean }>;
+    winnerId?: string;
+    tick: number;
+  } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -228,14 +255,15 @@ function App() {
   // Detect if device is mobile
   useEffect(() => {
     const checkMobile = () => {
-      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isTouchDevice =
+        "ontouchstart" in window || navigator.maxTouchPoints > 0;
       const isSmallScreen = window.innerWidth <= 768;
       setIsMobile(isTouchDevice && isSmallScreen);
     };
-    
+
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Handle beforeinstallprompt event for PWA
@@ -248,15 +276,18 @@ function App() {
       setShowInstallButton(true);
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
     // Verificar si ya está instalado
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (window.matchMedia("(display-mode: standalone)").matches) {
       setShowInstallButton(false);
     }
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
     };
   }, []);
 
@@ -272,10 +303,10 @@ function App() {
     // Esperar a que el usuario responda
     const { outcome } = await deferredPrompt.userChoice;
 
-    if (outcome === 'accepted') {
-      console.log('Usuario aceptó la instalación');
+    if (outcome === "accepted") {
+      console.log("Usuario aceptó la instalación");
     } else {
-      console.log('Usuario rechazó la instalación');
+      console.log("Usuario rechazó la instalación");
     }
 
     // Limpiar el prompt
@@ -287,9 +318,9 @@ function App() {
   useEffect(() => {
     if (!gameRef.current) {
       try {
-        gameRef.current = new Game('gameCanvas');
+        gameRef.current = new Game("gameCanvas");
       } catch (error) {
-        console.error('Error al inicializar el juego:', error);
+        console.error("Error al inicializar el juego:", error);
       }
     }
 
@@ -301,46 +332,49 @@ function App() {
       }
     };
   }, []);
-  
+
   // Actualizar estado del boost cada frame
   useEffect(() => {
-    if (currentView !== 'game' || !gameRef.current) return;
-    
+    if (currentView !== "game" || !gameRef.current) return;
+
     const interval = setInterval(() => {
       if (gameRef.current) {
         const state = gameRef.current.getLocalPlayerBoostState();
         setBoostState(state);
       }
     }, 16); // ~60 FPS
-    
+
     return () => clearInterval(interval);
   }, [currentView]);
 
   // Monitorear el estado del juego para detectar cuando termina
   useEffect(() => {
-    if (currentView !== 'game' || !gameRef.current) return;
-    
+    if (currentView !== "game" || !gameRef.current) return;
+
     // Variable para evitar mostrar el modal múltiples veces
     let gameOverShown = false;
-    
+
     const interval = setInterval(() => {
       if (gameRef.current && !gameOverShown) {
         const gameState = gameRef.current.getGameState();
-        if (gameState.gameStatus === 'finished' || gameState.gameStatus === 'ended') {
+        if (
+          gameState.gameStatus === "finished" ||
+          gameState.gameStatus === "ended"
+        ) {
           // El juego terminó, mostrar modal
           gameOverShown = true;
           const players = gameRef.current.getPlayers();
           setGameOverState({
-            players: players.map(p => ({
+            players: players.map((p) => ({
               id: p.id,
               name: p.name,
               color: p.color,
-              alive: p.alive
+              alive: p.alive,
             })),
             winnerId: gameState.winnerId,
-            tick: gameState.tick
+            tick: gameState.tick,
           });
-          
+
           // IMPORTANTE: Desactivar input cuando se muestra el modal
           // Esto permite que los toques lleguen al modal
           const inputManager = gameRef.current.getInputManager();
@@ -348,7 +382,7 @@ function App() {
         }
       }
     }, 50); // Verificar cada 50ms para detectar más rápido
-    
+
     return () => clearInterval(interval);
   }, [currentView]);
 
@@ -373,8 +407,8 @@ function App() {
 
     // Crear nuevo juego con red
     try {
-      gameRef.current = new Game('gameCanvas', true);
-      
+      gameRef.current = new Game("gameCanvas", true);
+
       // Configurar callback para estado de toques (feedback visual)
       const inputManager = gameRef.current.getInputManager();
       inputManager.onTouchStateChange((left, right) => {
@@ -382,13 +416,13 @@ function App() {
         setTouchRight(right);
       });
     } catch (error) {
-      console.error('Error al inicializar el juego:', error);
+      console.error("Error al inicializar el juego:", error);
       return;
     }
 
     const networkClient = gameRef.current.getNetworkClient();
     if (!networkClient) {
-      console.error('No se pudo obtener el cliente de red');
+      console.error("No se pudo obtener el cliente de red");
       return;
     }
 
@@ -415,45 +449,53 @@ function App() {
         gameRef.current.clearPlayers();
         // Only start the game loop, players will come from the server
         gameRef.current.start();
-        setCurrentView('game');
+        setCurrentView("game");
       }
     });
 
     networkClient.onError((error) => {
-      console.error('[App] Error de red:', error);
+      console.error("[App] Error de red:", error);
       // Solo mostrar alert si es un error crítico, no para errores menores
-      if (error.includes('No se pudo conectar') || error.includes('servidor no está')) {
+      if (
+        error.includes("No se pudo conectar") ||
+        error.includes("servidor no está")
+      ) {
         alert(`Error de conexión: ${error}`);
       } else {
         // Para otros errores, solo loggear
-        console.warn('[App] Error de red (no crítico):', error);
+        console.warn("[App] Error de red (no crítico):", error);
       }
     });
 
     networkClient.onConnect(() => {
-      console.log('[App] ✅ Conectado al servidor, uniéndose al lobby...');
-      
+      console.log("[App] ✅ Conectado al servidor, uniéndose al lobby...");
+
       // Enviar user_id si el usuario está autenticado
       if (user?.id) {
-        console.log('[App] 🔐 Enviando autenticación de usuario:', user.id);
+        console.log("[App] 🔐 Enviando autenticación de usuario:", user.id);
         networkClient.sendAuthUser(user.id);
       }
-      
+
       // Cuando se conecta, unirse al lobby
       setTimeout(() => {
         if (gameRef.current) {
-          const playerName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || `Player ${Math.floor(Math.random() * 1000)}`;
-          console.log('[App] 👤 Uniéndose al lobby como:', playerName);
+          const playerName =
+            user?.user_metadata?.full_name ||
+            user?.email?.split("@")[0] ||
+            `Player ${Math.floor(Math.random() * 1000)}`;
+          console.log("[App] 👤 Uniéndose al lobby como:", playerName);
           gameRef.current.joinLobby(playerName);
         } else {
-          console.error('[App] ❌ gameRef.current es null, no se puede unir al lobby');
+          console.error(
+            "[App] ❌ gameRef.current es null, no se puede unir al lobby"
+          );
         }
       }, 100);
     });
 
     // Cambiar a vista de lobby primero
-    setCurrentView('lobby');
-    
+    setCurrentView("lobby");
+
     // Connect to server
     networkClient.connect();
   };
@@ -464,12 +506,12 @@ function App() {
       // Si ya existe, destruirlo y crear uno nuevo
       if (gameRef.current.isUsingNetwork()) {
         gameRef.current.destroy();
-        gameRef.current = new Game('gameCanvas', false);
+        gameRef.current = new Game("gameCanvas", false);
       }
-      
+
       gameRef.current.init(4); // 4 jugadores
       gameRef.current.start();
-      setCurrentView('game');
+      setCurrentView("game");
     }
   };
 
@@ -487,7 +529,7 @@ function App() {
       gameRef.current.stop();
       gameRef.current.init(4);
       gameRef.current.start();
-      setCurrentView('game');
+      setCurrentView("game");
       setGameOverState(null);
     }
   };
@@ -502,11 +544,11 @@ function App() {
           networkClient.disconnect();
         }
         gameRef.current.destroy();
-        gameRef.current = new Game('gameCanvas');
+        gameRef.current = new Game("gameCanvas");
       }
     }
     setGameOverState(null);
-    setCurrentView('menu');
+    setCurrentView("menu");
     setLobbyPlayers([]);
     // Limpiar estado de toques
     setTouchLeft(false);
@@ -517,17 +559,21 @@ function App() {
   const getLocalPlayerColor = (): string => {
     if (gameRef.current) {
       const players = gameRef.current.getPlayers();
-      const localPlayer = players.find(p => p.id === localPlayerId || (!gameRef.current?.isUsingNetwork() && players.indexOf(p) === 0));
-      return localPlayer?.color || '#ffffff';
+      const localPlayer = players.find(
+        (p) =>
+          p.id === localPlayerId ||
+          (!gameRef.current?.isUsingNetwork() && players.indexOf(p) === 0)
+      );
+      return localPlayer?.color || "#ffffff";
     }
-    return '#ffffff';
+    return "#ffffff";
   };
 
   // Convertir color hex a rgba con opacidad para el gradiente
   const getLocalPlayerColorWithOpacity = (opacity: number = 0.3): string => {
     const color = getLocalPlayerColor();
     // Si es un color hex (#rrggbb), convertirlo a rgba
-    if (color.startsWith('#')) {
+    if (color.startsWith("#")) {
       const r = parseInt(color.slice(1, 3), 16);
       const g = parseInt(color.slice(3, 5), 16);
       const b = parseInt(color.slice(5, 7), 16);
@@ -540,125 +586,144 @@ function App() {
   return (
     <div className="app">
       {/* Game canvas */}
-      <canvas 
-        id="gameCanvas" 
-        style={{ 
+      <canvas
+        id="gameCanvas"
+        style={{
           zIndex: 1,
-          display: 'block'
-        }} 
+          display: "block",
+        }}
       />
-      
+
       {/* Touch visual feedback - only in game mode */}
-      {currentView === 'game' && !gameOverState && (
+      {currentView === "game" && !gameOverState && (
         <>
           {/* Left overlay */}
-          <div 
+          <div
             className="touch-feedback touch-feedback-left"
-            style={{
-              opacity: touchLeft ? 1 : 0,
-              '--touch-feedback-color': touchLeft ? getLocalPlayerColorWithOpacity(0.4) : 'transparent',
-            } as React.CSSProperties}
+            style={
+              {
+                opacity: touchLeft ? 1 : 0,
+                "--touch-feedback-color": touchLeft
+                  ? getLocalPlayerColorWithOpacity(0.4)
+                  : "transparent",
+              } as React.CSSProperties
+            }
           />
           {/* Right overlay */}
-          <div 
+          <div
             className="touch-feedback touch-feedback-right"
-            style={{
-              opacity: touchRight ? 1 : 0,
-              '--touch-feedback-color': touchRight ? getLocalPlayerColorWithOpacity(0.4) : 'transparent',
-            } as React.CSSProperties}
+            style={
+              {
+                opacity: touchRight ? 1 : 0,
+                "--touch-feedback-color": touchRight
+                  ? getLocalPlayerColorWithOpacity(0.4)
+                  : "transparent",
+              } as React.CSSProperties
+            }
           />
         </>
       )}
-      
+
       {/* UI Overlay - React handles menus, HUD, etc. */}
-      <div 
-        className="ui-overlay" 
-        style={{ 
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          width: '100%', 
-          height: '100%',
+      <div
+        className="ui-overlay"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
           zIndex: 10,
-          pointerEvents: (currentView === 'game' && !gameOverState) ? 'none' : 'auto'
+          pointerEvents:
+            currentView === "game" && !gameOverState ? "none" : "auto",
         }}
       >
-        {currentView === 'menu' && (
+        {currentView === "menu" && (
           <div className="main-menu">
-            {showInstallButton && (
-              <button 
-                onClick={handleInstallClick}
-                className="install-button"
-                title="Install application"
-              >
-                Install
-              </button>
-            )}
-            <h1>curve.io</h1>
-            
-            {/* Auth section */}
-            {loading ? (
-              <p style={{ color: '#fff', margin: '10px 0' }}>Loading...</p>
-            ) : user ? (
-              <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-                <p style={{ color: '#fff', margin: '5px 0' }}>
-                  Welcome, {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player'}!
-                </p>
-                <button 
-                  onClick={signOut}
-                  className="start-button"
-                  style={{ background: '#f44336', marginTop: '5px', fontSize: '14px', padding: '8px 16px' }}
+            {/* Left side: Title and Welcome */}
+            <div className="main-menu-left">
+              <div className="main-menu-left-top">
+                <h1>curve.io</h1>
+                {loading ? (
+                  <p className="welcome-text">Loading...</p>
+                ) : (
+                  <p className="welcome-text">
+                    Welcome,{" "}
+                    {user
+                      ? user.user_metadata?.full_name ||
+                        user.email?.split("@")[0] ||
+                        "Player"
+                      : "Player One"}
+                    .
+                  </p>
+                )}
+              </div>
+
+              {/* Bottom: Controls info */}
+              <div className="controls-info">
+                <h3>CONTROLS</h3>
+                {isMobile ? (
+                  <>
+                    <p>Tap left side : Turn left</p>
+                    <p>Tap right side : Turn right</p>
+                    <p>Tap both sides : Activate boost (speed +50%)</p>
+                  </>
+                ) : (
+                  <>
+                    <p>A / ← : Turn left</p>
+                    <p>D / → : Turn right</p>
+                    <p>A + D : Activate boost (speed +50%)</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Right side: Menu options */}
+            <div className="main-menu-right">
+              <div className="main-menu-right-top">
+                <button
+                  onClick={handleConnectToServer}
+                  className="menu-option"
+                  title={
+                    !user
+                      ? "Play as a guest (no account required)"
+                      : "Play online with your account"
+                  }
                 >
-                  Sign Out
+                  Play Online
+                </button>
+                <button onClick={handleStartLocalGame} className="menu-option">
+                  Local Game
+                </button>
+                <button
+                  onClick={() => {
+                    if (user) {
+                      signOut();
+                    } else {
+                      signInWithGoogle();
+                    }
+                  }}
+                  className="menu-option"
+                >
+                  {user ? "Sign Out" : "Sign In"}
                 </button>
               </div>
-            ) : (
-              <button 
-                onClick={signInWithGoogle}
-                className="start-button"
-                style={{ background: '#4285F4', marginTop: '10px' }}
-              >
-                Sign in with Google
-              </button>
-            )}
-            
-            <button 
-              onClick={handleStartLocalGame}
-              className="start-button"
-            >
-              Local Game
-            </button>
-            <button 
-              onClick={handleConnectToServer}
-              className="start-button"
-              style={{ background: '#2196F3', marginTop: '10px' }}
-              title={!user ? 'Play as a guest (no account required)' : 'Play online with your account'}
-            >
-              {user ? 'Play Online' : 'Play as Guest'}
-            </button>
-            <div className="controls-info">
-              {isMobile ? (
-                <>
-                  <p>Controls:</p>
-                  <p>Tap left side : Turn left</p>
-                  <p>Tap right side : Turn right</p>
-                  <p>Tap both sides : Activate boost (speed +50%)</p>
-                </>
-              ) : (
-                <>
-                  <p>Controls:</p>
-                  <p>A / ← : Turn left</p>
-                  <p>D / → : Turn right</p>
-                  <p>A + D : Activate boost (speed +50%)</p>
-                </>
+              
+              {showInstallButton && (
+                <button
+                  onClick={handleInstallClick}
+                  className="install-button"
+                  title="Install application"
+                >
+                  Install
+                </button>
               )}
             </div>
           </div>
         )}
 
-        {currentView === 'lobby' && (
+        {currentView === "lobby" && (
           <div className="lobby">
-            <h1>Waiting Room</h1>
             <div className="lobby-content">
               {/* Left column: Player list */}
               <div className="lobby-players">
@@ -669,8 +734,8 @@ function App() {
                   ) : (
                     lobbyPlayers.map((player) => (
                       <div key={player.id} className="player-item">
-                        <div 
-                          className="player-color-indicator" 
+                        <div
+                          className="player-color-indicator"
                           style={{ backgroundColor: player.color }}
                         />
                         <span className="player-name">{player.name}</span>
@@ -681,9 +746,12 @@ function App() {
               </div>
               {/* Right column: Actions */}
               <div className="lobby-actions">
-                <button 
+                <h1>Lobby</h1>
+                <button
                   onClick={() => {
-                    const currentPlayer = lobbyPlayers.find(p => p.id === localPlayerId);
+                    const currentPlayer = lobbyPlayers.find(
+                      (p) => p.id === localPlayerId
+                    );
                     if (currentPlayer) {
                       setShowColorPicker(true);
                     }
@@ -692,14 +760,16 @@ function App() {
                 >
                   Change Color
                 </button>
-                <button 
+                <button
                   onClick={handleStartGameFromLobby}
                   className="start-button"
                   disabled={lobbyPlayers.length < 2}
                 >
-                  {lobbyPlayers.length < 2 ? 'Waiting for more players...' : 'Start'}
+                  {lobbyPlayers.length < 2
+                    ? "Waiting for more players..."
+                    : "Start"}
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     if (gameRef.current) {
                       const networkClient = gameRef.current.getNetworkClient();
@@ -707,9 +777,9 @@ function App() {
                         networkClient.disconnect();
                       }
                       gameRef.current.destroy();
-                      gameRef.current = new Game('gameCanvas');
+                      gameRef.current = new Game("gameCanvas");
                     }
-                    setCurrentView('menu');
+                    setCurrentView("menu");
                     setLobbyPlayers([]);
                     setLocalPlayerId(null);
                   }}
@@ -719,13 +789,16 @@ function App() {
                 </button>
               </div>
             </div>
-            
+
             {/* Color picker modal */}
             {showColorPicker && (
               <ColorPickerModal
                 isOpen={showColorPicker}
-                currentColor={lobbyPlayers.find(p => p.id === localPlayerId)?.color || '#ffffff'}
-                usedColors={new Set(lobbyPlayers.map(p => p.color))}
+                currentColor={
+                  lobbyPlayers.find((p) => p.id === localPlayerId)?.color ||
+                  "#ffffff"
+                }
+                usedColors={new Set(lobbyPlayers.map((p) => p.color))}
                 onClose={() => setShowColorPicker(false)}
                 onConfirm={(color) => {
                   if (localPlayerId && gameRef.current) {
@@ -740,15 +813,15 @@ function App() {
             )}
           </div>
         )}
-        
-        {currentView === 'game' && (
+
+        {currentView === "game" && (
           <div className="game-hud">
             <div className="hud-top">
-              <button 
+              <button
                 onClick={() => {
                   if (gameRef.current) {
                     gameRef.current.stop();
-                    setCurrentView('menu');
+                    setCurrentView("menu");
                     setGameOverState(null);
                   }
                 }}
@@ -756,26 +829,23 @@ function App() {
               >
                 Menu
               </button>
-              <button 
-                onClick={handleRestart}
-                className="restart-button"
-              >
+              <button onClick={handleRestart} className="restart-button">
                 Restart
               </button>
               {gameRef.current?.isUsingNetwork() && (
                 <div className="connection-status">
                   {gameRef.current?.getNetworkClient()?.getIsConnected() ? (
-                    <span style={{ color: '#4CAF50' }}>● Connected</span>
+                    <span style={{ color: "#4CAF50" }}>● Connected</span>
                   ) : (
-                    <span style={{ color: '#f44336' }}>● Disconnected</span>
+                    <span style={{ color: "#f44336" }}>● Disconnected</span>
                   )}
                 </div>
               )}
             </div>
             {boostState && (
               <div className="hud-bottom">
-                <BoostBar 
-                  charge={boostState.charge} 
+                <BoostBar
+                  charge={boostState.charge}
                   active={boostState.active}
                   remaining={boostState.remaining}
                 />
@@ -786,7 +856,7 @@ function App() {
 
         {/* Game over modal */}
         {gameOverState && (
-          <GameOverModal 
+          <GameOverModal
             gameState={gameOverState}
             onBackToMenu={handleBackToMenuFromGameOver}
           />
@@ -797,4 +867,3 @@ function App() {
 }
 
 export default App;
-
