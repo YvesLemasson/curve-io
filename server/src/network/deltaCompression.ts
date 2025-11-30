@@ -14,6 +14,7 @@ export interface DeltaState {
     round: number;
     deathOrder: Array<{ playerId: string; points: number }>;
   }>;
+  nextRoundCountdown?: number;
   players: Array<{
     id: string;
     position?: { x: number; y: number };

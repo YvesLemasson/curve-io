@@ -6,6 +6,7 @@ export const CLIENT_EVENTS = {
   GAME_INPUT: 'game:input',
   DISCONNECT: 'disconnect',
   REQUEST_START: 'game:request-start',
+  REQUEST_NEXT_ROUND: 'game:request-next-round',
   CHANGE_COLOR: 'player:change-color',
   AUTH_USER: 'auth:user', // Enviar user_id de Supabase
 } as const;
