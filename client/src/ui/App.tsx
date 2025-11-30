@@ -643,7 +643,7 @@ function App() {
             {/* Left side: Title and Welcome */}
             <div className="main-menu-left">
               <div className="main-menu-left-top">
-                <h1>curve.io</h1>
+                <img src="/curveIO.png" alt="curve.io" className="logo-image" />
                 {loading ? (
                   <p className="welcome-text">Loading...</p>
                 ) : (
@@ -708,7 +708,7 @@ function App() {
                   {user ? "Sign Out" : "Sign In"}
                 </button>
               </div>
-              
+
               {showInstallButton && (
                 <button
                   onClick={handleInstallClick}

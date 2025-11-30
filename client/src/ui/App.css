@@ -90,6 +90,16 @@ body {
   flex: 1;
 }
 
+.logo-image {
+  max-width: 100%;
+  height: auto;
+  width: auto;
+  max-height: 120px;
+  margin: 0 0 0.5rem 0;
+  display: block;
+  object-fit: contain;
+}
+
 .main-menu-left h1 {
   font-size: 4rem;
   margin: 0 0 0.5rem 0;
@@ -932,6 +942,10 @@ body {
     min-width: 220px;
   }
 
+  .logo-image {
+    max-height: 100px;
+  }
+
   .main-menu-left h1 {
     font-size: 4rem;
   }
@@ -1183,6 +1197,10 @@ body {
     transform: scale(1.05);
     box-shadow: 0 0 25px rgba(255, 255, 255, 0.7),
       0 0 35px rgba(255, 255, 255, 0.4), 0 0 45px rgba(255, 255, 255, 0.2);
+  }
+
+  .logo-image {
+    max-height: 150px;
   }
 
   .main-menu-left h1 {
