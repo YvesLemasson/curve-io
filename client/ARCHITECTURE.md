@@ -70,3 +70,5 @@ Esta arquitectura permite fácilmente agregar:
 
 El juego sigue siendo Vanilla TS para máximo rendimiento.
 
+
+

@@ -14,3 +14,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Cliente de Supabase para el cliente (usa anon key, respeta RLS)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+
+

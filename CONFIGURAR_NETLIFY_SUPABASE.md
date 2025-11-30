@@ -4,20 +4,27 @@ Este error ocurre porque el dominio de Netlify (`curveio.netlify.app`) no está 
 
 ## 📋 Pasos para Configurar Supabase con Netlify
 
-### 1. Agregar Redirect URLs en Supabase
+### 1. Agregar Redirect URLs en Supabase (Producción + Desarrollo Local)
+
+Para que funcione tanto en producción como en desarrollo local, agrega **ambas URLs**:
 
 1. Ve a tu proyecto en [Supabase Dashboard](https://app.supabase.com)
 2. Navega a **Authentication** → **URL Configuration**
-3. En la sección **Redirect URLs**, agrega:
-   - `https://curveio.netlify.app/auth/callback`
-   - `https://curveio.netlify.app/**` (wildcard para todas las rutas)
+3. En la sección **Redirect URLs**, agrega **todas estas URLs** (una por línea):
+   - `https://curveio.netlify.app/auth/callback` (producción)
+   - `http://localhost:3000/auth/callback` (desarrollo local)
+   - `https://curveio.netlify.app/**` (wildcard para todas las rutas de producción)
+   - `http://localhost:3000/**` (wildcard para todas las rutas de desarrollo)
 4. Haz clic en **Save**
 
-### 2. Agregar Site URL (Opcional pero recomendado)
+**💡 Nota**: Supabase permite múltiples Redirect URLs, así que puedes tener ambas configuradas a la vez.
+
+### 2. Agregar Site URL
 
 En la misma página de **URL Configuration**:
-1. En **Site URL**, agrega: `https://curveio.netlify.app`
+1. En **Site URL**, agrega: `https://curveio.netlify.app` (tu dominio de producción)
 2. Esto ayuda con el manejo de sesiones
+3. **Nota**: El Site URL es principalmente para producción, pero las Redirect URLs permiten múltiples dominios
 
 ### 3. Configurar Variables de Entorno en Netlify
 
@@ -74,6 +81,30 @@ Después de configurar todo:
 
 ## 🔍 Solución de Problemas
 
+### Error 500 en el callback de autenticación
+
+**Síntoma**: Al hacer login con Google, aparece un error 500 en la consola del navegador:
+```
+GET https://nujwbmtbbhyesosokggr.supabase.co/auth/v1/callback?... 500 (Internal Server Error)
+```
+
+**Causa**: La URL de redirect no está configurada en Supabase o el dominio no coincide.
+
+**Solución**:
+1. Ve a [Supabase Dashboard](https://app.supabase.com) → Tu proyecto
+2. Navega a **Authentication** → **URL Configuration**
+3. En **Redirect URLs**, asegúrate de tener **ambas URLs** (producción y desarrollo):
+   - `https://curveio.netlify.app/auth/callback` (producción)
+   - `http://localhost:3000/auth/callback` (desarrollo local)
+   - `https://curveio.netlify.app/**` (wildcard para producción)
+   - `http://localhost:3000/**` (wildcard para desarrollo)
+4. En **Site URL**, agrega: `https://curveio.netlify.app` (producción)
+5. Haz clic en **Save**
+6. **IMPORTANTE**: Espera unos minutos para que los cambios se propaguen
+7. Intenta hacer login de nuevo (tanto en producción como en local)
+
+**Nota**: El código del cliente ahora maneja mejor estos errores y muestra mensajes más descriptivos en la consola.
+
 ### Error 403 en logout
 
 - **Causa**: El dominio no está en las Redirect URLs de Supabase
@@ -98,10 +129,27 @@ Después de configurar todo:
 
 ## 🎯 Resumen Rápido
 
-1. ✅ Agregar `https://curveio.netlify.app/auth/callback` a Redirect URLs en Supabase
+### Para Producción + Desarrollo Local:
+
+1. ✅ Agregar **ambas URLs** a Redirect URLs en Supabase:
+   - `https://curveio.netlify.app/auth/callback` (producción)
+   - `http://localhost:3000/auth/callback` (desarrollo)
 2. ✅ Agregar variables de entorno en Netlify (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`)
-3. ✅ Configurar Google OAuth con el dominio de Netlify (si aplica)
-4. ✅ Redeploy en Netlify
+3. ✅ Crear archivo `.env` en `client/` para desarrollo local con las mismas variables
+4. ✅ Configurar Google OAuth con ambos dominios en Google Cloud Console (si aplica)
+5. ✅ Redeploy en Netlify
+
+### Configuración para Desarrollo Local
+
+Crea un archivo `client/.env` con:
+
+```env
+VITE_SUPABASE_URL=https://nujwbmtbbhyesosokggr.supabase.co
+VITE_SUPABASE_ANON_KEY=tu-anon-key-aqui
+```
+
+**Nota**: Usa las mismas credenciales que en producción. El cliente de Supabase detectará automáticamente si está en `localhost:3000` o en `curveio.netlify.app` y usará la URL de redirect correspondiente.
 
 ¡Listo! 🎉
+
 

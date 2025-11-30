@@ -70,3 +70,5 @@ Si ves un error sobre variables de entorno faltantes, verifica que:
 2. Las variables están escritas correctamente (sin espacios extra)
 3. No hay comillas alrededor de los valores (a menos que sean necesarias)
 
+
+

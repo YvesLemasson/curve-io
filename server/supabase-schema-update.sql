@@ -42,3 +42,5 @@ DROP POLICY IF EXISTS "System can update stats" ON public.player_stats;
 CREATE POLICY "System can update stats" ON public.player_stats
   FOR UPDATE USING (true);
 
+
+

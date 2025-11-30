@@ -48,9 +48,26 @@ const io = new Server(httpServer, {
 // Servir archivos estáticos (opcional)
 app.use(express.json());
 
-// Ruta de salud
+// Ruta de salud (para verificar que el servidor está corriendo)
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'curve.io server is running' });
+  res.json({ 
+    status: 'ok', 
+    message: 'curve.io server is running',
+    timestamp: new Date().toISOString(),
+    port: PORT
+  });
+});
+
+// Ruta raíz también responde (útil para Railway health checks)
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'curve.io server is running',
+    endpoints: {
+      health: '/health',
+      websocket: `ws://0.0.0.0:${PORT}`
+    }
+  });
 });
 
 // Instancia del gestor de jugadores y game server

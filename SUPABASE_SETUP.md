@@ -149,3 +149,5 @@ Para verificar que las tablas se crearon correctamente:
 - Las políticas RLS están configuradas en el schema
 - Si necesitas ajustarlas, ve a **Authentication** → **Policies** en Supabase
 
+
+

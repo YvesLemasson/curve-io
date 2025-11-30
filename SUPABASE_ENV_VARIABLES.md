@@ -103,3 +103,5 @@ VITE_SERVER_URL=https://tu-servidor-production.up.railway.app
 - Haz un **Redeploy manual** después de agregar las variables
 - Verifica que el Scope sea "All scopes" o "Production"
 
+
+
