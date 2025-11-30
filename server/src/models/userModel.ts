@@ -98,6 +98,36 @@ export class UserModel {
   }
 
   /**
+   * Actualiza el nombre de visualización del usuario
+   */
+  static async updateDisplayName(
+    userId: string,
+    displayName: string
+  ): Promise<User> {
+    // Validar que el nombre no esté vacío y tenga longitud razonable
+    if (!displayName || displayName.trim().length === 0) {
+      throw new Error('El nombre no puede estar vacío');
+    }
+    if (displayName.trim().length > 50) {
+      throw new Error('El nombre no puede tener más de 50 caracteres');
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ name: displayName.trim() })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating display name:', error);
+      throw new Error(`Failed to update display name: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  /**
    * Obtiene el leaderboard (top jugadores)
    */
   static async getLeaderboard(

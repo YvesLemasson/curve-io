@@ -26,6 +26,7 @@ export const SERVER_EVENTS = {
 export interface PlayerJoinMessage {
   playerId: string;
   name: string;
+  preferredColor?: string; // Color preferido del jugador
 }
 
 export interface GameInputMessage {

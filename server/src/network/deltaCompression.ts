@@ -1,7 +1,7 @@
 // FASE 2: Delta Compression - Solo enviar cambios en lugar de estado completo
 // Reduce ancho de banda en 70-90%
 
-import type { GameState, Player } from '../shared/types.js';
+import type { GameState, Player } from "../shared/types.js";
 
 export interface DeltaState {
   tick: number;
@@ -40,9 +40,11 @@ export class DeltaCompressor {
    */
   compress(currentState: GameState): DeltaState {
     // Si no hay estado anterior o es necesario un resync, enviar estado completo
-    if (!this.previousState || 
-        currentState.tick - this.lastFullStateTick >= this.FULL_STATE_INTERVAL ||
-        currentState.gameStatus !== this.previousState.gameStatus) {
+    if (
+      !this.previousState ||
+      currentState.tick - this.lastFullStateTick >= this.FULL_STATE_INTERVAL ||
+      currentState.gameStatus !== this.previousState.gameStatus
+    ) {
       this.previousState = JSON.parse(JSON.stringify(currentState)); // Deep copy
       this.lastFullStateTick = currentState.tick;
       return this.createFullState(currentState);
@@ -78,14 +80,14 @@ export class DeltaCompressor {
     if (currentState.playerPoints) {
       const prevPoints = this.previousState.playerPoints || {};
       const currPoints = currentState.playerPoints;
-      
+
       // Verificar si hay diferencias
-      const pointsChanged = Object.keys(currPoints).some(playerId => 
-        currPoints[playerId] !== prevPoints[playerId]
-      ) || Object.keys(prevPoints).some(playerId => 
-        !(playerId in currPoints)
-      );
-      
+      const pointsChanged =
+        Object.keys(currPoints).some(
+          (playerId) => currPoints[playerId] !== prevPoints[playerId]
+        ) ||
+        Object.keys(prevPoints).some((playerId) => !(playerId in currPoints));
+
       if (pointsChanged || !this.previousState.playerPoints) {
         delta.playerPoints = currPoints;
       }
@@ -95,26 +97,30 @@ export class DeltaCompressor {
     if (currentState.roundResults) {
       const prevResults = this.previousState.roundResults || [];
       const currResults = currentState.roundResults;
-      
-      if (currResults.length !== prevResults.length || 
-          JSON.stringify(currResults) !== JSON.stringify(prevResults)) {
+
+      if (
+        currResults.length !== prevResults.length ||
+        JSON.stringify(currResults) !== JSON.stringify(prevResults)
+      ) {
         delta.roundResults = currResults;
       }
     }
 
     // Comparar nextRoundCountdown
-    if (currentState.nextRoundCountdown !== this.previousState.nextRoundCountdown) {
+    if (
+      currentState.nextRoundCountdown !== this.previousState.nextRoundCountdown
+    ) {
       delta.nextRoundCountdown = currentState.nextRoundCountdown;
     }
 
     // Comparar jugadores
     const previousPlayersMap = new Map(
-      this.previousState.players.map(p => [p.id, p])
+      this.previousState.players.map((p) => [p.id, p])
     );
 
     for (const currentPlayer of currentState.players) {
       const previousPlayer = previousPlayersMap.get(currentPlayer.id);
-      
+
       if (!previousPlayer) {
         // Jugador nuevo - enviar todo
         delta.players.push({
@@ -131,12 +137,14 @@ export class DeltaCompressor {
         });
       } else {
         // Jugador existente - solo cambios
-        const playerDelta: DeltaState['players'][0] = { id: currentPlayer.id };
+        const playerDelta: DeltaState["players"][0] = { id: currentPlayer.id };
         let hasChanges = false;
 
         // Posición
-        if (currentPlayer.position.x !== previousPlayer.position.x ||
-            currentPlayer.position.y !== previousPlayer.position.y) {
+        if (
+          currentPlayer.position.x !== previousPlayer.position.x ||
+          currentPlayer.position.y !== previousPlayer.position.y
+        ) {
           playerDelta.position = currentPlayer.position;
           hasChanges = true;
         }
@@ -164,7 +172,7 @@ export class DeltaCompressor {
         // porque se agregan nuevos puntos pero se eliminan los antiguos (slice)
         const previousTrailLength = previousPlayer.trail.length;
         const currentTrailLength = currentPlayer.trail.length;
-        
+
         if (currentTrailLength > previousTrailLength) {
           // Trail creció - enviar solo los nuevos puntos
           playerDelta.trailNew = currentPlayer.trail.slice(previousTrailLength);
@@ -175,14 +183,17 @@ export class DeltaCompressor {
           playerDelta.trailNew = currentPlayer.trail;
           playerDelta.trailLength = currentTrailLength;
           hasChanges = true;
-        } else if (currentTrailLength === previousTrailLength && currentTrailLength > 0) {
+        } else if (
+          currentTrailLength === previousTrailLength &&
+          currentTrailLength > 0
+        ) {
           // Trail tiene la misma longitud (probablemente está en el máximo)
           // Comparar los últimos N puntos para detectar si hay cambios
           // Si el trail está en el máximo, los últimos puntos deberían ser diferentes
           const COMPARE_LAST_N = 10; // Comparar últimos 10 puntos
           const prevLastN = previousPlayer.trail.slice(-COMPARE_LAST_N);
           const currLastN = currentPlayer.trail.slice(-COMPARE_LAST_N);
-          
+
           // Verificar si los últimos puntos son diferentes
           let trailsAreDifferent = false;
           if (prevLastN.length !== currLastN.length) {
@@ -197,14 +208,17 @@ export class DeltaCompressor {
                 break;
               }
               if (prev !== null && curr !== null) {
-                if (Math.abs(prev.x - curr.x) > 0.01 || Math.abs(prev.y - curr.y) > 0.01) {
+                if (
+                  Math.abs(prev.x - curr.x) > 0.01 ||
+                  Math.abs(prev.y - curr.y) > 0.01
+                ) {
                   trailsAreDifferent = true;
                   break;
                 }
               }
             }
           }
-          
+
           if (trailsAreDifferent) {
             // Los últimos puntos son diferentes - hay nuevos puntos
             // Cuando el trail está en el máximo, se agregan puntos al final y se eliminan del inicio
@@ -220,10 +234,12 @@ export class DeltaCompressor {
         // Boost
         if (currentPlayer.boost) {
           const prevBoost = previousPlayer.boost;
-          if (!prevBoost ||
-              currentPlayer.boost.active !== prevBoost.active ||
-              Math.abs(currentPlayer.boost.charge - prevBoost.charge) > 1 ||
-              Math.abs(currentPlayer.boost.remaining - prevBoost.remaining) > 10) {
+          if (
+            !prevBoost ||
+            currentPlayer.boost.active !== prevBoost.active ||
+            Math.abs(currentPlayer.boost.charge - prevBoost.charge) > 1 ||
+            Math.abs(currentPlayer.boost.remaining - prevBoost.remaining) > 10
+          ) {
             playerDelta.boost = currentPlayer.boost;
             hasChanges = true;
           }
@@ -259,7 +275,7 @@ export class DeltaCompressor {
       playerPoints: state.playerPoints,
       roundResults: state.roundResults,
       nextRoundCountdown: state.nextRoundCountdown,
-      players: state.players.map(p => ({
+      players: state.players.map((p) => ({
         id: p.id,
         position: p.position,
         angle: p.angle,
@@ -283,4 +299,3 @@ export class DeltaCompressor {
     this.lastFullStateTick = 0;
   }
 }
-

@@ -1,9 +1,15 @@
 // Cliente de red para comunicación con el servidor
 // Maneja conexión WebSocket y envío/recepción de mensajes
 
-import { io, Socket } from 'socket.io-client';
-import { CLIENT_EVENTS, SERVER_EVENTS, type GameStateMessage, type PlayerJoinMessage, type LobbyPlayersMessage } from '@shared/protocol';
-import type { GameState } from '@shared/types';
+import { io, Socket } from "socket.io-client";
+import {
+  CLIENT_EVENTS,
+  SERVER_EVENTS,
+  type GameStateMessage,
+  type PlayerJoinMessage,
+  type LobbyPlayersMessage,
+} from "@shared/protocol";
+import type { GameState } from "@shared/types";
 
 export class NetworkClient {
   private socket: Socket | null = null;
@@ -19,20 +25,24 @@ export class NetworkClient {
   private onConnectCallback?: () => void;
   private onDisconnectCallback?: () => void;
   private onErrorCallback?: (error: string) => void;
-  private onPlayerJoinedCallback?: (data: { playerId: string; socketId: string }) => void;
+  private onPlayerJoinedCallback?: (data: {
+    playerId: string;
+    socketId: string;
+  }) => void;
   private onLobbyPlayersCallback?: (data: LobbyPlayersMessage) => void;
   private onGameStartCallback?: () => void;
 
   constructor(serverUrl?: string) {
     // Usar variable de entorno en producción, o el parámetro, o localhost por defecto
-    let url = serverUrl || import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
-    
+    let url =
+      serverUrl || import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+
     // Asegurar que la URL tenga protocolo
-    if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+    if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
       // Si no tiene protocolo, asumir https para producción
       url = `https://${url}`;
     }
-    
+
     this.serverUrl = url;
   }
 
@@ -41,19 +51,23 @@ export class NetworkClient {
    */
   connect(): void {
     if (this.socket?.connected) {
-      console.log('[NetworkClient] Ya conectado al servidor');
+      console.log("[NetworkClient] Ya conectado al servidor");
       return;
     }
 
     console.log(`[NetworkClient] Conectando a ${this.serverUrl}...`);
     console.log(`[NetworkClient] URL del servidor: ${this.serverUrl}`);
-    console.log(`[NetworkClient] Variable de entorno VITE_SERVER_URL: ${import.meta.env.VITE_SERVER_URL || 'no definida'}`);
+    console.log(
+      `[NetworkClient] Variable de entorno VITE_SERVER_URL: ${
+        import.meta.env.VITE_SERVER_URL || "no definida"
+      }`
+    );
 
     this.socket = io(this.serverUrl, {
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: this.reconnectDelay,
-      transports: ['polling', 'websocket'], // Intentar polling primero, luego websocket
+      transports: ["polling", "websocket"], // Intentar polling primero, luego websocket
       timeout: 5000, // Timeout de 5 segundos
     });
 
@@ -66,7 +80,7 @@ export class NetworkClient {
   private setupEventListeners(): void {
     if (!this.socket) return;
 
-    const lobbyPlayersEvent = SERVER_EVENTS?.LOBBY_PLAYERS || 'lobby:players';
+    const lobbyPlayersEvent = SERVER_EVENTS?.LOBBY_PLAYERS || "lobby:players";
 
     this.socket.on(lobbyPlayersEvent, (data: LobbyPlayersMessage) => {
       if (this.onLobbyPlayersCallback) {
@@ -74,14 +88,14 @@ export class NetworkClient {
       }
     });
 
-    this.socket.on(SERVER_EVENTS?.GAME_START || 'game:start', () => {
+    this.socket.on(SERVER_EVENTS?.GAME_START || "game:start", () => {
       if (this.onGameStartCallback) {
         this.onGameStartCallback();
       }
     });
 
-    this.socket.on('connect', () => {
-      console.log('[NetworkClient] ✅ Conectado al servidor exitosamente');
+    this.socket.on("connect", () => {
+      console.log("[NetworkClient] ✅ Conectado al servidor exitosamente");
       console.log(`[NetworkClient] Socket ID: ${this.socket?.id}`);
       this.isConnected = true;
       this.reconnectAttempts = 0;
@@ -90,63 +104,84 @@ export class NetworkClient {
       }
     });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log(`[NetworkClient] ❌ Desconectado del servidor. Razón: ${reason}`);
+    this.socket.on("disconnect", (reason) => {
+      console.log(
+        `[NetworkClient] ❌ Desconectado del servidor. Razón: ${reason}`
+      );
       this.isConnected = false;
       if (this.onDisconnectCallback) {
         this.onDisconnectCallback();
       }
     });
 
-    this.socket.on('connect_error', (error) => {
+    this.socket.on("connect_error", (error) => {
       this.reconnectAttempts++;
-      const errorMessage = error.message || 'Error desconocido';
-      const errorType = (error as any).type || '';
-      const errorDescription = (error as any).description || '';
-      
-      console.error(`[NetworkClient] ❌ Error de conexión (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts}):`, errorMessage);
+      const errorMessage = error.message || "Error desconocido";
+      const errorType = (error as any).type || "";
+      const errorDescription = (error as any).description || "";
+
+      console.error(
+        `[NetworkClient] ❌ Error de conexión (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts}):`,
+        errorMessage
+      );
       console.error(`[NetworkClient] Tipo de error:`, errorType);
       console.error(`[NetworkClient] Descripción:`, errorDescription);
       console.error(`[NetworkClient] Detalles completos:`, error);
-      
+
       // Detectar específicamente ERR_CONNECTION_REFUSED
-      const isConnectionRefused = 
-        errorMessage.includes('ERR_CONNECTION_REFUSED') || 
-        errorMessage.includes('ECONNREFUSED') ||
-        errorMessage.includes('xhr poll error') ||
-        errorType === 'TransportError';
-      
+      const isConnectionRefused =
+        errorMessage.includes("ERR_CONNECTION_REFUSED") ||
+        errorMessage.includes("ECONNREFUSED") ||
+        errorMessage.includes("xhr poll error") ||
+        errorType === "TransportError";
+
       // Mensaje más específico según el tipo de error
       let userMessage = errorMessage;
       if (isConnectionRefused) {
         userMessage = `❌ No se pudo conectar al servidor en ${this.serverUrl}`;
-        console.error(`[NetworkClient] ⚠️  ==========================================`);
+        console.error(
+          `[NetworkClient] ⚠️  ==========================================`
+        );
         console.error(`[NetworkClient] ⚠️  EL SERVIDOR NO ESTÁ CORRIENDO`);
-        console.error(`[NetworkClient] ⚠️  ==========================================`);
-        console.error(`[NetworkClient] 💡 Para iniciar el servidor, ejecuta en una terminal:`);
+        console.error(
+          `[NetworkClient] ⚠️  ==========================================`
+        );
+        console.error(
+          `[NetworkClient] 💡 Para iniciar el servidor, ejecuta en una terminal:`
+        );
         console.error(`[NetworkClient] 💡   cd server`);
         console.error(`[NetworkClient] 💡   npm run dev`);
-        console.error(`[NetworkClient] 💡 El servidor debería iniciar en el puerto 3001`);
-        console.error(`[NetworkClient] ⚠️  ==========================================`);
-      } else if (errorMessage.includes('timeout')) {
+        console.error(
+          `[NetworkClient] 💡 El servidor debería iniciar en el puerto 3001`
+        );
+        console.error(
+          `[NetworkClient] ⚠️  ==========================================`
+        );
+      } else if (errorMessage.includes("timeout")) {
         userMessage = `⏱️ Timeout al conectar al servidor. El servidor puede estar sobrecargado o no disponible.`;
-      } else if (errorMessage.includes('CORS')) {
+      } else if (errorMessage.includes("CORS")) {
         userMessage = `🚫 Error de CORS. Verifica la configuración del servidor.`;
       }
-      
+
       if (this.onErrorCallback) {
         this.onErrorCallback(userMessage);
       }
     });
 
-    this.socket.on('reconnect_attempt', (attemptNumber) => {
-      console.log(`[NetworkClient] 🔄 Intentando reconectar... (${attemptNumber}/${this.maxReconnectAttempts})`);
+    this.socket.on("reconnect_attempt", (attemptNumber) => {
+      console.log(
+        `[NetworkClient] 🔄 Intentando reconectar... (${attemptNumber}/${this.maxReconnectAttempts})`
+      );
     });
 
-    this.socket.on('reconnect_failed', () => {
-      console.error(`[NetworkClient] ❌ Falló la reconexión después de ${this.maxReconnectAttempts} intentos`);
+    this.socket.on("reconnect_failed", () => {
+      console.error(
+        `[NetworkClient] ❌ Falló la reconexión después de ${this.maxReconnectAttempts} intentos`
+      );
       if (this.onErrorCallback) {
-        this.onErrorCallback(`No se pudo conectar al servidor después de ${this.maxReconnectAttempts} intentos. Verifica que el servidor esté corriendo.`);
+        this.onErrorCallback(
+          `No se pudo conectar al servidor después de ${this.maxReconnectAttempts} intentos. Verifica que el servidor esté corriendo.`
+        );
       }
     });
 
@@ -163,14 +198,17 @@ export class NetworkClient {
       }
     });
 
-    this.socket.on(SERVER_EVENTS.PLAYER_JOINED, (data: { playerId: string; socketId: string }) => {
-      if (this.onPlayerJoinedCallback) {
-        this.onPlayerJoinedCallback(data);
+    this.socket.on(
+      SERVER_EVENTS.PLAYER_JOINED,
+      (data: { playerId: string; socketId: string }) => {
+        if (this.onPlayerJoinedCallback) {
+          this.onPlayerJoinedCallback(data);
+        }
       }
-    });
+    );
 
     this.socket.on(SERVER_EVENTS.ERROR, (error: string) => {
-      console.error('Error del servidor:', error);
+      console.error("Error del servidor:", error);
       if (this.onErrorCallback) {
         this.onErrorCallback(error);
       }
@@ -191,9 +229,14 @@ export class NetworkClient {
   /**
    * Envía un input al servidor
    */
-  sendInput(playerId: string, key: 'left' | 'right' | null, boost: boolean, timestamp: number = Date.now()): void {
+  sendInput(
+    playerId: string,
+    key: "left" | "right" | null,
+    boost: boolean,
+    timestamp: number = Date.now()
+  ): void {
     if (!this.socket || !this.isConnected) {
-      console.warn('No conectado al servidor, no se puede enviar input');
+      console.warn("No conectado al servidor, no se puede enviar input");
       return;
     }
 
@@ -208,31 +251,45 @@ export class NetworkClient {
   /**
    * Envía solicitud de unión al juego
    */
-  joinGame(playerId: string, name: string): void {
+  joinGame(playerId: string, name: string, preferredColor?: string): void {
     if (!this.socket) {
-      console.error('[NetworkClient] ❌ No hay socket disponible para unirse al juego');
+      console.error(
+        "[NetworkClient] ❌ No hay socket disponible para unirse al juego"
+      );
       if (this.onErrorCallback) {
-        this.onErrorCallback('No hay conexión al servidor. Por favor, intenta conectarte de nuevo.');
+        this.onErrorCallback(
+          "No hay conexión al servidor. Por favor, intenta conectarte de nuevo."
+        );
       }
       return;
     }
 
     if (!this.isConnected) {
-      console.error('[NetworkClient] ❌ No está conectado al servidor. Estado:', {
-        socketConnected: this.socket.connected,
-        isConnected: this.isConnected,
-        socketId: this.socket.id
-      });
+      console.error(
+        "[NetworkClient] ❌ No está conectado al servidor. Estado:",
+        {
+          socketConnected: this.socket.connected,
+          isConnected: this.isConnected,
+          socketId: this.socket.id,
+        }
+      );
       if (this.onErrorCallback) {
-        this.onErrorCallback('No estás conectado al servidor. Por favor, espera a que se establezca la conexión.');
+        this.onErrorCallback(
+          "No estás conectado al servidor. Por favor, espera a que se establezca la conexión."
+        );
       }
       return;
     }
 
-    console.log(`[NetworkClient] 🎮 Uniéndose al juego como ${name} (ID: ${playerId})`);
+    console.log(
+      `[NetworkClient] 🎮 Uniéndose al juego como ${name} (ID: ${playerId})${
+        preferredColor ? ` con color preferido ${preferredColor}` : ""
+      }`
+    );
     this.socket.emit(CLIENT_EVENTS.PLAYER_JOIN, {
       playerId,
       name,
+      preferredColor,
     } as PlayerJoinMessage);
   }
 
@@ -289,7 +346,9 @@ export class NetworkClient {
   /**
    * Callback para cuando el servidor confirma la unión del jugador
    */
-  onPlayerJoined(callback: (data: { playerId: string; socketId: string }) => void): void {
+  onPlayerJoined(
+    callback: (data: { playerId: string; socketId: string }) => void
+  ): void {
     this.onPlayerJoinedCallback = callback;
   }
 
@@ -312,11 +371,13 @@ export class NetworkClient {
    */
   requestStartGame(): void {
     if (!this.socket || !this.isConnected) {
-      console.warn('No conectado al servidor, no se puede solicitar inicio del juego');
+      console.warn(
+        "No conectado al servidor, no se puede solicitar inicio del juego"
+      );
       return;
     }
 
-    const eventName = CLIENT_EVENTS?.REQUEST_START || 'game:request-start';
+    const eventName = CLIENT_EVENTS?.REQUEST_START || "game:request-start";
     this.socket.emit(eventName);
   }
 
@@ -325,11 +386,14 @@ export class NetworkClient {
    */
   requestNextRound(): void {
     if (!this.socket || !this.isConnected) {
-      console.warn('No conectado al servidor, no se puede solicitar siguiente ronda');
+      console.warn(
+        "No conectado al servidor, no se puede solicitar siguiente ronda"
+      );
       return;
     }
 
-    const eventName = CLIENT_EVENTS?.REQUEST_NEXT_ROUND || 'game:request-next-round';
+    const eventName =
+      CLIENT_EVENTS?.REQUEST_NEXT_ROUND || "game:request-next-round";
     this.socket.emit(eventName);
   }
 
@@ -338,11 +402,11 @@ export class NetworkClient {
    */
   changeColor(playerId: string, color: string): void {
     if (!this.socket || !this.isConnected) {
-      console.warn('No conectado al servidor, no se puede cambiar el color');
+      console.warn("No conectado al servidor, no se puede cambiar el color");
       return;
     }
 
-    const eventName = CLIENT_EVENTS?.CHANGE_COLOR || 'player:change-color';
+    const eventName = CLIENT_EVENTS?.CHANGE_COLOR || "player:change-color";
     this.socket.emit(eventName, { playerId, color });
   }
 
@@ -351,12 +415,11 @@ export class NetworkClient {
    */
   sendAuthUser(userId: string): void {
     if (!this.socket || !this.isConnected) {
-      console.warn('No conectado al servidor, no se puede enviar auth');
+      console.warn("No conectado al servidor, no se puede enviar auth");
       return;
     }
 
-    const eventName = CLIENT_EVENTS?.AUTH_USER || 'auth:user';
+    const eventName = CLIENT_EVENTS?.AUTH_USER || "auth:user";
     this.socket.emit(eventName, { userId });
   }
 }
-

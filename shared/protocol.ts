@@ -2,35 +2,36 @@
 
 // Eventos del cliente al servidor
 export const CLIENT_EVENTS = {
-  PLAYER_JOIN: 'player:join',
-  GAME_INPUT: 'game:input',
-  DISCONNECT: 'disconnect',
-  REQUEST_START: 'game:request-start',
-  REQUEST_NEXT_ROUND: 'game:request-next-round',
-  CHANGE_COLOR: 'player:change-color',
-  AUTH_USER: 'auth:user', // Enviar user_id de Supabase
+  PLAYER_JOIN: "player:join",
+  GAME_INPUT: "game:input",
+  DISCONNECT: "disconnect",
+  REQUEST_START: "game:request-start",
+  REQUEST_NEXT_ROUND: "game:request-next-round",
+  CHANGE_COLOR: "player:change-color",
+  AUTH_USER: "auth:user", // Enviar user_id de Supabase
 } as const;
 
 // Eventos del servidor al cliente
 export const SERVER_EVENTS = {
-  PLAYER_JOINED: 'player:joined',
-  GAME_STATE: 'game:state',
-  GAME_START: 'game:start',
-  GAME_END: 'game:end',
-  PLAYER_DEAD: 'player:dead',
-  ERROR: 'error',
-  LOBBY_PLAYERS: 'lobby:players',
+  PLAYER_JOINED: "player:joined",
+  GAME_STATE: "game:state",
+  GAME_START: "game:start",
+  GAME_END: "game:end",
+  PLAYER_DEAD: "player:dead",
+  ERROR: "error",
+  LOBBY_PLAYERS: "lobby:players",
 } as const;
 
 // Tipos de mensajes
 export interface PlayerJoinMessage {
   playerId: string;
   name: string;
+  preferredColor?: string; // Color preferido del jugador
 }
 
 export interface GameInputMessage {
   playerId: string;
-  key: 'left' | 'right' | null;
+  key: "left" | "right" | null;
   boost: boolean; // Si el jugador está presionando ambas teclas para boost
   timestamp: number;
 }
@@ -56,7 +57,7 @@ export interface DeltaState {
 }
 
 export interface GameStateMessage {
-  gameState?: import('./types').GameState; // Mantener para compatibilidad
+  gameState?: import("./types").GameState; // Mantener para compatibilidad
   delta?: DeltaState; // Delta comprimido (preferido)
   serverTime: number;
 }
@@ -87,4 +88,3 @@ export interface ChangeColorMessage {
 export interface AuthUserMessage {
   userId: string; // user_id de Supabase
 }
-

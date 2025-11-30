@@ -1,18 +1,18 @@
 // Game Loop principal
 // Integra renderizado, input, jugadores y colisiones
 
-import { CanvasRenderer } from '../render/canvas';
-import { InputManager } from './input';
-import { Player } from './player';
+import { CanvasRenderer } from "../render/canvas";
+import { InputManager } from "./input";
+import { Player } from "./player";
 import {
   checkBoundaryCollision,
   checkTrailCollision,
   checkSelfCollision,
-} from './collision';
-import { NetworkClient } from '../network/client';
-import { SpatialHash } from './spatialHash';
-import { DeltaDecompressor } from '../network/deltaCompression';
-import type { GameState, Position } from '@shared/types';
+} from "./collision";
+import { NetworkClient } from "../network/client";
+import { SpatialHash } from "./spatialHash";
+import { DeltaDecompressor } from "../network/deltaCompression";
+import type { GameState, Position } from "@shared/types";
 
 export class Game {
   private canvas: CanvasRenderer;
@@ -30,27 +30,33 @@ export class Game {
   // Tamaño del juego en el servidor (fijo, proporción 3:2)
   private readonly serverCanvasWidth: number = 1920;
   private readonly serverCanvasHeight: number = 1280; // 1920 / 1.5 = 1280 (proporción 3:2)
-  
+
   // FASE 2: Spatial Hash para optimización de colisiones (solo modo local)
   private spatialHash: SpatialHash | null = null;
-  
+
   // FASE 2: Delta Compression - Descomprimir deltas del servidor
   private deltaDecompressor: DeltaDecompressor | null = null;
 
-  constructor(canvasId: string = 'gameCanvas', useNetwork: boolean = false, serverUrl?: string) {
+  constructor(
+    canvasId: string = "gameCanvas",
+    useNetwork: boolean = false,
+    serverUrl?: string
+  ) {
     this.canvas = new CanvasRenderer(canvasId);
     this.input = new InputManager(canvasId); // Pasar canvasId para detectar toques en el canvas
     this.useNetwork = useNetwork;
-    
+
     // Generar ID único para este cliente
-    this.localPlayerId = `player-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+    this.localPlayerId = `player-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
     this.gameState = {
       players: [],
-      gameStatus: 'waiting',
+      gameStatus: "waiting",
       tick: 0,
     };
-    
+
     // Inicializar cliente de red si se solicita
     if (useNetwork) {
       this.networkClient = new NetworkClient(serverUrl);
@@ -58,33 +64,37 @@ export class Game {
       this.setupNetworkCallbacks();
     }
   }
-  
+
   /**
    * Configura los callbacks del cliente de red
    */
   private setupNetworkCallbacks(): void {
     if (!this.networkClient) return;
-    
+
     this.networkClient.onConnect(() => {
       // No unirse automáticamente - esperar a que se inicie desde el lobby
     });
-    
+
     // Escuchar cuando el servidor confirma nuestra unión y nos da el playerId real
     this.networkClient.onPlayerJoined((data) => {
       this.localPlayerId = data.playerId; // Usar el playerId que el servidor asignó (socket.id)
     });
-    
+
     this.networkClient.onError((error) => {
-      console.error('Error de red:', error);
+      console.error("Error de red:", error);
     });
-    
+
     // FASE 2: Delta Compression - Usar mensaje completo para descomprimir delta
     this.networkClient.onGameStateMessage((message) => {
       if (message.delta && this.deltaDecompressor) {
         // Descomprimir delta (ya escala las posiciones)
         const scaleX = this.canvas.getWidth() / this.serverCanvasWidth;
         const scaleY = this.canvas.getHeight() / this.serverCanvasHeight;
-        const decompressedState = this.deltaDecompressor.applyDelta(message.delta, scaleX, scaleY);
+        const decompressedState = this.deltaDecompressor.applyDelta(
+          message.delta,
+          scaleX,
+          scaleY
+        );
         // Sincronizar con estado descomprimido (ya escalado, no escalar de nuevo)
         this.syncFromServer(decompressedState, true); // true = ya escalado
       } else if (message.gameState) {
@@ -92,7 +102,7 @@ export class Game {
         this.syncFromServer(message.gameState, false); // false = necesita escalado
       }
     });
-    
+
     // Mantener callback antiguo para compatibilidad
     this.networkClient.onGameState((gameState) => {
       // Solo usar si no hay delta (compatibilidad hacia atrás)
@@ -111,8 +121,15 @@ export class Game {
     const height = this.canvas.getHeight();
 
     // Colores para los jugadores
-    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
-    
+    const colors = [
+      "#ff0000",
+      "#00ff00",
+      "#0000ff",
+      "#ffff00",
+      "#ff00ff",
+      "#00ffff",
+    ];
+
     // Posiciones iniciales distribuidas
     const positions = [
       { x: width * 0.25, y: height * 0.25 }, // Esquina superior izquierda
@@ -135,7 +152,7 @@ export class Game {
     }
 
     this.gameState = {
-      players: this.players.map(p => ({
+      players: this.players.map((p) => ({
         id: p.id,
         name: p.name,
         color: p.color,
@@ -145,7 +162,7 @@ export class Game {
         alive: p.alive,
         trail: p.getTrail(),
       })),
-      gameStatus: 'playing',
+      gameStatus: "playing",
       tick: 0,
       currentRound: 1,
       totalRounds: 5,
@@ -158,7 +175,11 @@ export class Game {
    * Actualiza el estado del juego
    */
   private update(): void {
-    if (this.gameState.gameStatus !== 'playing' && this.gameState.gameStatus !== 'waiting') return;
+    if (
+      this.gameState.gameStatus !== "playing" &&
+      this.gameState.gameStatus !== "waiting"
+    )
+      return;
 
     // Si está en modo red, el servidor es la autoridad
     // Solo procesamos input local y lo enviamos al servidor
@@ -177,13 +198,13 @@ export class Game {
   private updateNetworkMode(): void {
     // En modo red, NO actualizamos posiciones localmente
     // Solo enviamos input al servidor y el servidor nos envía las posiciones actualizadas
-    
+
     // Procesar input del jugador local y enviarlo al servidor
     const bothKeysPressed = this.input.areBothKeysPressed();
-    
+
     // Buscar el jugador local
-    const localPlayer = this.players.find(p => p.id === this.localPlayerId);
-    
+    const localPlayer = this.players.find((p) => p.id === this.localPlayerId);
+
     if (localPlayer && localPlayer.alive) {
       // Enviar input al servidor (con throttling)
       const currentTime = performance.now();
@@ -192,18 +213,28 @@ export class Game {
           if (bothKeysPressed) {
             // Si se presionan ambas teclas, enviar boost al servidor
             // NO activar boost localmente - el servidor es la autoridad
-            this.networkClient.sendInput(this.localPlayerId, null, true, currentTime);
+            this.networkClient.sendInput(
+              this.localPlayerId,
+              null,
+              true,
+              currentTime
+            );
           } else {
             // Si no se presionan ambos, procesar giro normal
             const action = this.input.getCurrentAction();
             if (action) {
-              this.networkClient.sendInput(this.localPlayerId, action, false, currentTime);
+              this.networkClient.sendInput(
+                this.localPlayerId,
+                action,
+                false,
+                currentTime
+              );
             }
           }
           this.lastInputSendTime = currentTime;
         }
       }
-      
+
       // NO actualizar boost localmente en modo red
       // El boost se sincroniza desde el servidor en syncFromServer()
       // El servidor es la única autoridad para el consumo del boost
@@ -218,7 +249,7 @@ export class Game {
 
     // Procesar input del jugador 0 (local) - giro continuo y boost
     const bothKeysPressed = this.input.areBothKeysPressed();
-    
+
     if (this.players.length > 0 && this.players[0].alive) {
       // Verificar si se presionan ambos botones para boost
       if (bothKeysPressed) {
@@ -227,7 +258,7 @@ export class Game {
       } else {
         // Si no se presionan ambos, procesar giro normal
         const action = this.input.getCurrentAction();
-        
+
         // Aplicar rotación continua mientras se mantiene la tecla presionada
         // Ángulo más pequeño = giro menos cerrado (radio más amplio)
         this.players[0].applyRotation(action, Math.PI / 50); // Giro muy fuerte (4x el original)
@@ -236,30 +267,38 @@ export class Game {
 
     // Calcular deltaTime (tiempo transcurrido desde el último frame)
     const currentTime = performance.now();
-    const deltaTime = this.lastFrameTime === 0 ? 16.67 : currentTime - this.lastFrameTime;
+    const deltaTime =
+      this.lastFrameTime === 0 ? 16.67 : currentTime - this.lastFrameTime;
     this.lastFrameTime = currentTime;
 
     // FASE 2: Actualizar Spatial Hash con todos los trails
     if (!this.spatialHash) {
-      this.spatialHash = new SpatialHash(100, this.canvas.getWidth(), this.canvas.getHeight());
+      this.spatialHash = new SpatialHash(
+        100,
+        this.canvas.getWidth(),
+        this.canvas.getHeight()
+      );
     }
     this.spatialHash.clear();
     for (const player of this.players) {
       if (player.alive) {
-        this.spatialHash.addTrail(player.id, player.getTrail() as Array<Position | null>);
+        this.spatialHash.addTrail(
+          player.id,
+          player.getTrail() as Array<Position | null>
+        );
       }
     }
-    
+
     // Actualizar todos los jugadores vivos
-    const alivePlayers = this.players.filter(p => p.alive);
-    
+    const alivePlayers = this.players.filter((p) => p.alive);
+
     for (let i = 0; i < alivePlayers.length; i++) {
       const player = alivePlayers[i];
       const oldPos = player.getCurrentPosition();
-      
+
       // Solo el jugador local (índice 0) puede usar boost
       const isBoostRequested = i === 0 ? bothKeysPressed : false;
-      
+
       player.update(deltaTime, isBoostRequested);
       const newPos = player.getCurrentPosition();
 
@@ -277,13 +316,21 @@ export class Game {
       }
 
       // FASE 2: Usar Spatial Hash para obtener solo jugadores cercanos
-      const nearbyPlayerIds = this.spatialHash.getPlayersForLine(oldPos, newPos);
+      const nearbyPlayerIds = this.spatialHash.getPlayersForLine(
+        oldPos,
+        newPos
+      );
       nearbyPlayerIds.delete(player.id); // Excluir el propio jugador
-      
+
       // Colisión con otros trails (solo verificar jugadores cercanos)
       const otherTrails = this.players
-        .filter(p => nearbyPlayerIds.has(p.id) && p.id !== player.id && p.alive)
-        .map(p => ({ trail: p.getTrail() as Array<Position | null>, playerId: p.id }));
+        .filter(
+          (p) => nearbyPlayerIds.has(p.id) && p.id !== player.id && p.alive
+        )
+        .map((p) => ({
+          trail: p.getTrail() as Array<Position | null>,
+          playerId: p.id,
+        }));
 
       const trailCollision = checkTrailCollision(
         oldPos,
@@ -301,7 +348,13 @@ export class Game {
       }
 
       // Colisión consigo mismo
-      if (checkSelfCollision(oldPos, newPos, player.getTrail() as Array<Position | null>)) {
+      if (
+        checkSelfCollision(
+          oldPos,
+          newPos,
+          player.getTrail() as Array<Position | null>
+        )
+      ) {
         player.kill();
         if (this.spatialHash) {
           this.spatialHash.removePlayer(player.id);
@@ -327,7 +380,7 @@ export class Game {
         if (trail.length >= 2) {
           this.canvas.drawTrail(trail, player.color, 3);
         }
-        
+
         // Dibujar posición actual
         const pos = player.getCurrentPosition();
         this.canvas.drawPoint(pos.x, pos.y, player.color, 5);
@@ -352,7 +405,7 @@ export class Game {
    */
   start(): void {
     if (this.isRunning) return;
-    
+
     // Conectar al servidor si se usa red
     if (this.useNetwork && this.networkClient) {
       this.networkClient.connect();
@@ -361,12 +414,12 @@ export class Game {
         this.deltaDecompressor.reset();
       }
     }
-    
+
     // Activar procesamiento de toques
     this.input.setGameActive(true);
-    
+
     this.isRunning = true;
-    this.gameState.gameStatus = 'playing';
+    this.gameState.gameStatus = "playing";
     this.lastFrameTime = 0; // Resetear tiempo
     this.lastInputSendTime = 0; // Resetear tiempo de último input enviado
     this.gameLoop();
@@ -378,7 +431,7 @@ export class Game {
   stop(): void {
     // Desactivar procesamiento de toques
     this.input.setGameActive(false);
-    
+
     this.isRunning = false;
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
@@ -390,10 +443,10 @@ export class Game {
    * Verifica si hay un ganador
    */
   private checkWinCondition(): void {
-    const alivePlayers = this.players.filter(p => p.alive);
-    
+    const alivePlayers = this.players.filter((p) => p.alive);
+
     if (alivePlayers.length <= 1) {
-      this.gameState.gameStatus = 'finished';
+      this.gameState.gameStatus = "finished";
       if (alivePlayers.length === 1) {
         this.gameState.winnerId = alivePlayers[0].id;
       }
@@ -414,14 +467,18 @@ export class Game {
   getPlayers(): Player[] {
     return [...this.players];
   }
-  
+
   /**
    * Obtiene el estado del boost del jugador local
    */
-  getLocalPlayerBoostState(): { active: boolean; charge: number; remaining: number } | null {
+  getLocalPlayerBoostState(): {
+    active: boolean;
+    charge: number;
+    remaining: number;
+  } | null {
     if (this.useNetwork) {
       // En modo red, buscar por localPlayerId
-      const localPlayer = this.players.find(p => p.id === this.localPlayerId);
+      const localPlayer = this.players.find((p) => p.id === this.localPlayerId);
       if (localPlayer) {
         return localPlayer.getBoostState();
       }
@@ -444,7 +501,7 @@ export class Game {
       this.networkClient.disconnect();
     }
   }
-  
+
   /**
    * Obtiene el cliente de red (para verificar estado de conexión)
    */
@@ -469,22 +526,22 @@ export class Game {
   /**
    * Une al jugador al lobby del servidor
    */
-  joinLobby(playerName: string): void {
+  joinLobby(playerName: string, preferredColor?: string): void {
     if (!this.networkClient) return;
     const socketId = this.networkClient.getSocketId();
     if (socketId) {
-      this.networkClient.joinGame(socketId, playerName);
+      this.networkClient.joinGame(socketId, playerName, preferredColor);
     } else {
       // Si el socketId no está disponible, esperar un poco
       setTimeout(() => {
         const id = this.networkClient?.getSocketId();
         if (id) {
-          this.networkClient?.joinGame(id, playerName);
+          this.networkClient?.joinGame(id, playerName, preferredColor);
         }
       }, 100);
     }
   }
-  
+
   /**
    * Verifica si está usando red
    */
@@ -512,7 +569,10 @@ export class Game {
    * @param serverGameState - Estado del servidor
    * @param alreadyScaled - Si es true, las posiciones ya están escaladas (viene de delta compression)
    */
-  private syncFromServer(serverGameState: GameState, alreadyScaled: boolean = false): void {
+  private syncFromServer(
+    serverGameState: GameState,
+    alreadyScaled: boolean = false
+  ): void {
     if (!this.useNetwork) return;
 
     // Actualizar gameState
@@ -521,91 +581,113 @@ export class Game {
     // Sincronizar jugadores
     const serverPlayers = serverGameState.players;
     let newPlayersCount = 0;
-    
+
     // Calcular escalado solo si es necesario
-    const scaleX = alreadyScaled ? 1 : this.canvas.getWidth() / this.serverCanvasWidth;
-    const scaleY = alreadyScaled ? 1 : this.canvas.getHeight() / this.serverCanvasHeight;
-    
+    const scaleX = alreadyScaled
+      ? 1
+      : this.canvas.getWidth() / this.serverCanvasWidth;
+    const scaleY = alreadyScaled
+      ? 1
+      : this.canvas.getHeight() / this.serverCanvasHeight;
+
     // IMPORTANTE: Si no hay jugadores locales pero el servidor tiene jugadores,
     // limpiar cualquier jugador residual y crear todos desde cero
     // Esto asegura que todos los jugadores del servidor aparezcan correctamente
     if (this.players.length === 0 && serverPlayers.length > 0) {
-      console.log(`🔄 Sincronización inicial: creando ${serverPlayers.length} jugadores desde el servidor`);
+      console.log(
+        `🔄 Sincronización inicial: creando ${serverPlayers.length} jugadores desde el servidor`
+      );
     }
-    
+
     // Crear o actualizar jugadores desde el servidor
     for (const serverPlayer of serverPlayers) {
-      let localPlayer = this.players.find(p => p.id === serverPlayer.id);
-      
-       if (!localPlayer) {
-         // Crear nuevo jugador si no existe
-         console.log(`➕ Creando jugador ${serverPlayer.name} (${serverPlayer.id.substring(0, 8)}...) desde servidor`);
-         localPlayer = new Player(
-           serverPlayer.id,
-           serverPlayer.name,
-           serverPlayer.color,
-           {
-             x: serverPlayer.position.x * scaleX,
-             y: serverPlayer.position.y * scaleY
-           },
-           serverPlayer.angle,
-           serverPlayer.speed
-         );
+      let localPlayer = this.players.find((p) => p.id === serverPlayer.id);
+
+      if (!localPlayer) {
+        // Crear nuevo jugador si no existe
+        console.log(
+          `➕ Creando jugador ${serverPlayer.name} (${serverPlayer.id.substring(
+            0,
+            8
+          )}...) desde servidor`
+        );
+        localPlayer = new Player(
+          serverPlayer.id,
+          serverPlayer.name,
+          serverPlayer.color,
+          {
+            x: serverPlayer.position.x * scaleX,
+            y: serverPlayer.position.y * scaleY,
+          },
+          serverPlayer.angle,
+          serverPlayer.speed
+        );
         // Escalar trail inicial si es necesario
         // IMPORTANTE: Preservar los nulls (gaps) del servidor
-        localPlayer.trail = serverPlayer.trail.map(pos => pos ? { 
-          x: pos.x * scaleX, 
-          y: pos.y * scaleY 
-        } : null);
+        localPlayer.trail = serverPlayer.trail.map((pos) =>
+          pos
+            ? {
+                x: pos.x * scaleX,
+                y: pos.y * scaleY,
+              }
+            : null
+        );
         this.players.push(localPlayer);
         newPlayersCount++;
       }
-      
+
       // En modo red, TODOS los jugadores (incluido el local) usan las posiciones del servidor
       // El servidor es la única autoridad
-      
-       // Actualizar posición y estado desde el servidor
-       localPlayer.position = { 
-         x: serverPlayer.position.x * scaleX, 
-         y: serverPlayer.position.y * scaleY 
-       };
-       localPlayer.angle = serverPlayer.angle;
-       localPlayer.speed = serverPlayer.speed;
-       localPlayer.alive = serverPlayer.alive;
-       // IMPORTANTE: Sincronizar el color desde el servidor
-       // Esto permite que los cambios de color se reflejen durante el juego
-       localPlayer.color = serverPlayer.color;
-      
+
+      // Actualizar posición y estado desde el servidor
+      localPlayer.position = {
+        x: serverPlayer.position.x * scaleX,
+        y: serverPlayer.position.y * scaleY,
+      };
+      localPlayer.angle = serverPlayer.angle;
+      localPlayer.speed = serverPlayer.speed;
+      localPlayer.alive = serverPlayer.alive;
+      // IMPORTANTE: Sincronizar el color desde el servidor
+      // Esto permite que los cambios de color se reflejen durante el juego
+      localPlayer.color = serverPlayer.color;
+
       // Actualizar trail (escalar solo si es necesario)
       // IMPORTANTE: Preservar los nulls (gaps) del servidor
-      localPlayer.trail = serverPlayer.trail.map(pos => pos ? { 
-        x: pos.x * scaleX, 
-        y: pos.y * scaleY 
-      } : null);
-      
+      localPlayer.trail = serverPlayer.trail.map((pos) =>
+        pos
+          ? {
+              x: pos.x * scaleX,
+              y: pos.y * scaleY,
+            }
+          : null
+      );
+
       // Sincronizar estado del boost desde el servidor
       if (serverPlayer.boost) {
         localPlayer.setBoostState(
-          serverPlayer.boost.active, 
-          serverPlayer.boost.charge, 
+          serverPlayer.boost.active,
+          serverPlayer.boost.charge,
           serverPlayer.boost.remaining
         );
       }
     }
-    
+
     // Remover jugadores que ya no están en el servidor
     const removedCount = this.players.length - serverPlayers.length;
     if (removedCount > 0) {
-      console.log(`➖ Removiendo ${removedCount} jugador(es) que ya no están en el servidor`);
+      console.log(
+        `➖ Removiendo ${removedCount} jugador(es) que ya no están en el servidor`
+      );
     }
-    this.players = this.players.filter(p => 
-      serverPlayers.some(sp => sp.id === p.id)
+    this.players = this.players.filter((p) =>
+      serverPlayers.some((sp) => sp.id === p.id)
     );
-    
+
     // Log de sincronización cada vez que se crean nuevos jugadores
     if (newPlayersCount > 0) {
-      console.log(`✅ Sincronización: ${newPlayersCount} jugador(es) nuevo(s), total: ${this.players.length}`);
+      console.log(
+        `✅ Sincronización: ${newPlayersCount} jugador(es) nuevo(s), total: ${this.players.length}`
+      );
     }
   }
 }
-

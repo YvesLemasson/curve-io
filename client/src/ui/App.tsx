@@ -4,6 +4,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Game } from "../game/game";
 import { useAuth } from "../auth/AuthContext";
+import { supabase } from "../config/supabase";
+import curvePhrasesData from "../data/curvePhrases.json";
 import "./App.css";
 
 // Import Game here to avoid circular reference error
@@ -186,9 +188,9 @@ function RoundSummaryModal({
 
   // Obtener jugadores con sus puntos de esta ronda
   const playersWithRoundPoints = gameState.players.map((player) => {
-    const roundPoints = roundResult?.deathOrder.find(
-      (d) => d.playerId === player.id
-    )?.points || 0;
+    const roundPoints =
+      roundResult?.deathOrder.find((d) => d.playerId === player.id)?.points ||
+      0;
     const totalPoints = gameState.playerPoints?.[player.id] || 0;
     return {
       ...player,
@@ -203,9 +205,7 @@ function RoundSummaryModal({
   return (
     <div className="game-over-modal-overlay">
       <div className="game-over-modal">
-        <h1 className="game-over-title">
-          Ronda {currentRound} Terminada
-        </h1>
+        <h1 className="game-over-title">Ronda {currentRound} Terminada</h1>
 
         <div className="game-over-content">
           {/* Left column: Round information */}
@@ -363,6 +363,9 @@ function ColorPickerModal({
   );
 }
 
+// Frases aleatorias sobre curves (cargadas desde JSON)
+const curvePhrases = curvePhrasesData.curve_phrases;
+
 function App() {
   const { user, loading, signInWithGoogle, signOut } = useAuth();
   const [currentView, setCurrentView] = useState<"menu" | "game" | "lobby">(
@@ -419,7 +422,50 @@ function App() {
   const [touchLeft, setTouchLeft] = useState<boolean>(false);
   const [touchRight, setTouchRight] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [showPlayerSidebar, setShowPlayerSidebar] = useState<boolean>(false);
+  const [preferredColor, setPreferredColor] = useState<string>(() => {
+    // Cargar color preferido desde localStorage
+    const savedColor = localStorage.getItem("preferredColor");
+    return savedColor || "#ff0000"; // Color por defecto: rojo
+  });
+  const [hasCustomColor, setHasCustomColor] = useState<boolean>(() => {
+    // Verificar si el jugador ha cambiado su color manualmente
+    return localStorage.getItem("hasCustomColor") === "true";
+  });
+  const [playerDisplayName, setPlayerDisplayName] = useState<string>("");
+  const [isEditingName, setIsEditingName] = useState<boolean>(false);
+  const [nameEditValue, setNameEditValue] = useState<string>("");
+  const [randomCurvePhrase, setRandomCurvePhrase] = useState<string>("");
   const gameRef = useRef<Game | null>(null);
+
+  // Seleccionar una frase aleatoria al cargar y reemplazar {player} con el nombre del jugador
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * curvePhrases.length);
+    const selectedPhrase = curvePhrases[randomIndex];
+
+    // Obtener el nombre del jugador para reemplazar {player}
+    const playerName =
+      playerDisplayName ||
+      (user
+        ? user.user_metadata?.full_name || user.email?.split("@")[0] || "Player"
+        : "Guest Player");
+
+    // Reemplazar {player} con el nombre del jugador
+    const phraseWithPlayer = selectedPhrase.replace(/{player}/g, playerName);
+    setRandomCurvePhrase(phraseWithPlayer);
+  }, [playerDisplayName, user]);
+
+  // Cerrar menú lateral con la tecla Escape
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && showPlayerSidebar) {
+        setShowPlayerSidebar(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [showPlayerSidebar]);
 
   // Detect if device is mobile
   useEffect(() => {
@@ -434,6 +480,54 @@ function App() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Cargar nombre del jugador desde BD al iniciar sesión
+  useEffect(() => {
+    const loadPlayerName = async () => {
+      if (user?.id) {
+        try {
+          const { data, error } = await supabase
+            .from("users")
+            .select("name")
+            .eq("id", user.id)
+            .single();
+
+          if (error && error.code !== "PGRST116") {
+            console.error("Error loading player name:", error);
+          }
+
+          if (data?.name) {
+            setPlayerDisplayName(data.name);
+          } else {
+            // Si no hay nombre en BD, usar el nombre por defecto
+            const defaultName =
+              user.user_metadata?.full_name ||
+              user.email?.split("@")[0] ||
+              "Player";
+            setPlayerDisplayName(defaultName);
+          }
+        } catch (err) {
+          console.error("Error loading player name:", err);
+          // Fallback al nombre por defecto
+          const defaultName =
+            user.user_metadata?.full_name ||
+            user.email?.split("@")[0] ||
+            "Player";
+          setPlayerDisplayName(defaultName);
+        }
+      } else {
+        // Usuario no autenticado - cargar desde localStorage
+        const savedGuestName = localStorage.getItem("guestPlayerName");
+        if (savedGuestName) {
+          setPlayerDisplayName(savedGuestName);
+        } else {
+          setPlayerDisplayName("Guest Player");
+        }
+      }
+    };
+
+    loadPlayerName();
+  }, [user]);
 
   // Handle beforeinstallprompt event for PWA
   useEffect(() => {
@@ -481,6 +575,59 @@ function App() {
     // Limpiar el prompt
     setDeferredPrompt(null);
     setShowInstallButton(false);
+  };
+
+  // Function to save display name
+  const handleSaveDisplayName = async () => {
+    const trimmedName = nameEditValue.trim();
+    if (trimmedName.length === 0) {
+      alert("El nombre no puede estar vacío");
+      return;
+    }
+
+    if (trimmedName.length > 50) {
+      alert("El nombre no puede tener más de 50 caracteres");
+      return;
+    }
+
+    try {
+      // Verificar que no estemos en una partida activa
+      if (currentView === "game" && !gameOverState) {
+        alert("No puedes cambiar tu nombre durante una partida activa");
+        setIsEditingName(false);
+        return;
+      }
+
+      if (user?.id) {
+        // Usuario autenticado - guardar en Supabase
+        const { error } = await supabase
+          .from("users")
+          .update({ name: trimmedName })
+          .eq("id", user.id)
+          .select()
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        setPlayerDisplayName(trimmedName);
+        setIsEditingName(false);
+        console.log("✅ Nombre actualizado en BD:", trimmedName);
+      } else {
+        // Usuario guest - guardar en localStorage
+        localStorage.setItem("guestPlayerName", trimmedName);
+        setPlayerDisplayName(trimmedName);
+        setIsEditingName(false);
+        console.log(
+          "✅ Nombre de guest guardado en localStorage:",
+          trimmedName
+        );
+      }
+    } catch (error: any) {
+      console.error("Error saving display name:", error);
+      alert(`Error al guardar el nombre: ${error.message}`);
+    }
   };
 
   // Inicializar juego cuando se monta el componente
@@ -546,7 +693,7 @@ function App() {
     const interval = setInterval(() => {
       if (gameRef.current) {
         const gameState = gameRef.current.getGameState();
-        
+
         // Detectar cuando termina una ronda (pero no el juego completo)
         if (gameState.gameStatus === "round-ended" && !roundSummaryState) {
           const players = gameRef.current.getPlayers();
@@ -568,7 +715,7 @@ function App() {
           const inputManager = gameRef.current.getInputManager();
           inputManager.setGameActive(false);
         }
-        
+
         // Actualizar cuenta atrás si ya está mostrando el modal
         if (gameState.gameStatus === "round-ended" && roundSummaryState) {
           setRoundSummaryState((prev) => {
@@ -579,7 +726,7 @@ function App() {
             };
           });
         }
-        
+
         // Detectar cuando el juego termina completamente
         if (
           (gameState.gameStatus === "finished" ||
@@ -607,11 +754,11 @@ function App() {
           // IMPORTANTE: Desactivar input cuando se muestra el modal
           const inputManager = gameRef.current.getInputManager();
           inputManager.setGameActive(false);
-          
+
           // Limpiar estado de resumen de ronda si existe
           setRoundSummaryState(null);
         }
-        
+
         // Nota: El cierre del modal cuando vuelve a 'playing' se maneja en un efecto separado
       }
     }, 50); // Verificar cada 50ms para detectar más rápido
@@ -629,17 +776,20 @@ function App() {
 
   // Efecto separado para cerrar el modal cuando el juego vuelve a 'playing'
   useEffect(() => {
-    if (currentView !== "game" || !gameRef.current || !roundSummaryState) return;
+    if (currentView !== "game" || !gameRef.current || !roundSummaryState)
+      return;
 
     const checkInterval = setInterval(() => {
       if (gameRef.current) {
         const gameState = gameRef.current.getGameState();
-        
+
         // Si el juego vuelve a 'playing', cerrar el modal
         if (gameState.gameStatus === "playing") {
-          console.log(`🔄 [Cliente] Estado cambió a 'playing', cerrando modal de resumen de ronda`);
+          console.log(
+            `🔄 [Cliente] Estado cambió a 'playing', cerrando modal de resumen de ronda`
+          );
           setRoundSummaryState(null);
-          
+
           // Reactivar input cuando se cierra el modal
           const inputManager = gameRef.current.getInputManager();
           inputManager.setGameActive(true);
@@ -649,23 +799,30 @@ function App() {
 
     return () => clearInterval(checkInterval);
   }, [currentView, roundSummaryState]);
-  
+
   // Función para manejar el botón "Next Round"
   const handleNextRound = () => {
     if (gameRef.current && gameRef.current.isUsingNetwork()) {
       // Verificar que el estado sea 'round-ended' antes de enviar
       const gameState = gameRef.current.getGameState();
-      if (gameState.gameStatus !== 'round-ended') {
-        console.log(`⚠️  No se puede solicitar siguiente ronda: estado actual es ${gameState.gameStatus}`);
+      if (gameState.gameStatus !== "round-ended") {
+        console.log(
+          `⚠️  No se puede solicitar siguiente ronda: estado actual es ${gameState.gameStatus}`
+        );
         return;
       }
-      
+
       // Verificar que no haya una cuenta atrás en curso
-      if (gameState.nextRoundCountdown !== undefined && gameState.nextRoundCountdown > 0) {
-        console.log(`⚠️  Ya hay una cuenta atrás en curso: ${gameState.nextRoundCountdown}`);
+      if (
+        gameState.nextRoundCountdown !== undefined &&
+        gameState.nextRoundCountdown > 0
+      ) {
+        console.log(
+          `⚠️  Ya hay una cuenta atrás en curso: ${gameState.nextRoundCountdown}`
+        );
         return;
       }
-      
+
       const networkClient = gameRef.current.getNetworkClient();
       if (networkClient) {
         networkClient.requestNextRound();
@@ -708,6 +865,16 @@ function App() {
     // IMPORTANTE: Configurar callbacks ANTES de conectar para que estén listos cuando lleguen los eventos
     networkClient.onLobbyPlayers((data) => {
       setLobbyPlayers(data.players);
+      // Actualizar color preferido si el jugador local tiene un color asignado
+      const localPlayer = data.players.find((p) => p.id === localPlayerId);
+      if (localPlayer && localPlayer.color !== "#ffffff") {
+        const currentPreferred =
+          localStorage.getItem("preferredColor") || "#ff0000";
+        if (localPlayer.color !== currentPreferred) {
+          setPreferredColor(localPlayer.color);
+          localStorage.setItem("preferredColor", localPlayer.color);
+        }
+      }
     });
 
     networkClient.onPlayerJoined((data) => {
@@ -758,12 +925,24 @@ function App() {
       // Cuando se conecta, unirse al lobby
       setTimeout(() => {
         if (gameRef.current) {
+          // Usar el nombre guardado (BD para autenticados, localStorage para guests)
           const playerName =
-            user?.user_metadata?.full_name ||
-            user?.email?.split("@")[0] ||
-            `Player ${Math.floor(Math.random() * 1000)}`;
-          console.log("[App] 👤 Uniéndose al lobby como:", playerName);
-          gameRef.current.joinLobby(playerName);
+            playerDisplayName ||
+            (user
+              ? user.user_metadata?.full_name ||
+                user.email?.split("@")[0] ||
+                "Player"
+              : localStorage.getItem("guestPlayerName") || "Guest Player");
+          // Obtener color preferido desde localStorage
+          const savedPreferredColor =
+            localStorage.getItem("preferredColor") || preferredColor;
+          console.log(
+            "[App] 👤 Uniéndose al lobby como:",
+            playerName,
+            "con color preferido:",
+            savedPreferredColor
+          );
+          gameRef.current.joinLobby(playerName, savedPreferredColor);
         } else {
           console.error(
             "[App] ❌ gameRef.current es null, no se puede unir al lobby"
@@ -911,18 +1090,27 @@ function App() {
             {/* Left side: Title and Welcome */}
             <div className="main-menu-left">
               <div className="main-menu-left-top">
-                <img src="/curveIO.png" alt="curve.io" className="logo-image" />
+                <div
+                  className="logo-image-wrapper"
+                  style={
+                    {
+                      "--preferred-color": hasCustomColor
+                        ? preferredColor
+                        : "#ffffff",
+                    } as React.CSSProperties
+                  }
+                >
+                  <img
+                    src="/curveIO.png"
+                    alt="curve.io"
+                    className="logo-image"
+                  />
+                </div>
                 {loading ? (
                   <p className="welcome-text">Loading...</p>
                 ) : (
                   <p className="welcome-text">
-                    Welcome,{" "}
-                    {user
-                      ? user.user_metadata?.full_name ||
-                        user.email?.split("@")[0] ||
-                        "Player"
-                      : "Player One"}
-                    .
+                    {randomCurvePhrase || "Loading..."}
                   </p>
                 )}
               </div>
@@ -948,6 +1136,20 @@ function App() {
 
             {/* Right side: Menu options */}
             <div className="main-menu-right">
+              {/* Player Menu Button */}
+              <button
+                className="player-menu-button"
+                onClick={() => setShowPlayerSidebar(true)}
+                aria-label="Open player menu"
+                title="Player information"
+              >
+                <div
+                  className="player-menu-button-color"
+                  style={{ backgroundColor: preferredColor }}
+                />
+                <span className="player-menu-button-icon">☰</span>
+              </button>
+
               <div className="main-menu-right-top">
                 <button
                   onClick={handleConnectToServer}
@@ -1032,6 +1234,9 @@ function App() {
                   onClick={handleStartGameFromLobby}
                   className="start-button"
                   disabled={lobbyPlayers.length < 2}
+                  style={{
+                    backgroundColor: preferredColor,
+                  }}
                 >
                   {lobbyPlayers.length < 2
                     ? "Waiting for more players..."
@@ -1057,29 +1262,171 @@ function App() {
                 </button>
               </div>
             </div>
-
-            {/* Color picker modal */}
-            {showColorPicker && (
-              <ColorPickerModal
-                isOpen={showColorPicker}
-                currentColor={
-                  lobbyPlayers.find((p) => p.id === localPlayerId)?.color ||
-                  "#ffffff"
-                }
-                usedColors={new Set(lobbyPlayers.map((p) => p.color))}
-                onClose={() => setShowColorPicker(false)}
-                onConfirm={(color) => {
-                  if (localPlayerId && gameRef.current) {
-                    const networkClient = gameRef.current.getNetworkClient();
-                    if (networkClient) {
-                      networkClient.changeColor(localPlayerId, color);
-                    }
-                  }
-                  setShowColorPicker(false);
-                }}
-              />
-            )}
           </div>
+        )}
+
+        {/* Player Sidebar Menu */}
+        {showPlayerSidebar && (
+          <>
+            <div
+              className="player-sidebar-overlay"
+              onClick={() => setShowPlayerSidebar(false)}
+            />
+            <div className="player-sidebar">
+              <div className="player-sidebar-header">
+                <h2 className="player-sidebar-title">Player Info</h2>
+                <button
+                  className="player-sidebar-close"
+                  onClick={() => setShowPlayerSidebar(false)}
+                  aria-label="Close menu"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="player-sidebar-content">
+                <div className="player-sidebar-section">
+                  <div className="player-sidebar-avatar">
+                    <div
+                      className="player-sidebar-avatar-color"
+                      style={{ backgroundColor: preferredColor }}
+                    />
+                  </div>
+                  <div className="player-sidebar-info">
+                    {isEditingName ? (
+                      <div className="player-sidebar-name-edit">
+                        <input
+                          type="text"
+                          value={nameEditValue}
+                          onChange={(e) => setNameEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveDisplayName();
+                            } else if (e.key === "Escape") {
+                              setIsEditingName(false);
+                              setNameEditValue(playerDisplayName);
+                            }
+                          }}
+                          className="player-sidebar-name-input"
+                          maxLength={50}
+                          autoFocus
+                        />
+                        <div className="player-sidebar-name-actions">
+                          <button
+                            onClick={handleSaveDisplayName}
+                            className="player-sidebar-name-save"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditingName(false);
+                              setNameEditValue(playerDisplayName);
+                            }}
+                            className="player-sidebar-name-cancel"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="player-sidebar-name"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevenir que el click se propague
+                          // Solo permitir editar si no estamos en una partida activa
+                          if (currentView === "game" && !gameOverState) {
+                            return; // No hacer nada si estamos en partida activa
+                          }
+                          console.log("Click en nombre, activando edición");
+                          setNameEditValue(
+                            playerDisplayName ||
+                              (user
+                                ? user.user_metadata?.full_name ||
+                                  user.email?.split("@")[0] ||
+                                  "Player"
+                                : "Guest Player")
+                          );
+                          setIsEditingName(true);
+                        }}
+                        style={{
+                          cursor:
+                            currentView === "game" && !gameOverState
+                              ? "default"
+                              : "pointer",
+                          opacity:
+                            currentView === "game" && !gameOverState ? 0.6 : 1,
+                        }}
+                        title={
+                          currentView === "game" && !gameOverState
+                            ? "No puedes cambiar tu nombre durante una partida"
+                            : "Click para editar"
+                        }
+                      >
+                        <span className="player-sidebar-name-text">
+                          {playerDisplayName ||
+                            (user
+                              ? user.user_metadata?.full_name ||
+                                user.email?.split("@")[0] ||
+                                "Player"
+                              : "Guest Player")}
+                        </span>
+                        {!(currentView === "game" && !gameOverState) && (
+                          <span
+                            className="player-sidebar-name-edit-icon"
+                            title="Click para editar"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (currentView === "game" && !gameOverState) {
+                                return;
+                              }
+                              console.log("Click en icono, activando edición");
+                              setNameEditValue(
+                                playerDisplayName ||
+                                  (user
+                                    ? user.user_metadata?.full_name ||
+                                      user.email?.split("@")[0] ||
+                                      "Player"
+                                    : "Guest Player")
+                              );
+                              setIsEditingName(true);
+                            }}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="player-sidebar-email">
+                      {user?.email || "Playing as guest"}
+                    </div>
+                  </div>
+                </div>
+                <div className="player-sidebar-section">
+                  <div className="player-sidebar-color-display">
+                    <div
+                      className="player-sidebar-color-preview"
+                      style={{ backgroundColor: preferredColor }}
+                    />
+                    <span className="player-sidebar-color-value">
+                      {preferredColor.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {currentView === "game" && (
@@ -1138,6 +1485,212 @@ function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Player Sidebar Menu */}
+        {showPlayerSidebar && (
+          <>
+            <div
+              className="player-sidebar-overlay"
+              onClick={() => setShowPlayerSidebar(false)}
+            />
+            <div className="player-sidebar">
+              <div className="player-sidebar-header">
+                <h2 className="player-sidebar-title">Player Info</h2>
+                <button
+                  className="player-sidebar-close"
+                  onClick={() => setShowPlayerSidebar(false)}
+                  aria-label="Close menu"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="player-sidebar-content">
+                <div className="player-sidebar-section">
+                  <div className="player-sidebar-avatar">
+                    <div
+                      className="player-sidebar-avatar-color"
+                      style={{ backgroundColor: preferredColor }}
+                    />
+                  </div>
+                  <div className="player-sidebar-info">
+                    {isEditingName ? (
+                      <div className="player-sidebar-name-edit">
+                        <input
+                          type="text"
+                          value={nameEditValue}
+                          onChange={(e) => setNameEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveDisplayName();
+                            } else if (e.key === "Escape") {
+                              setIsEditingName(false);
+                              setNameEditValue(playerDisplayName);
+                            }
+                          }}
+                          className="player-sidebar-name-input"
+                          maxLength={50}
+                          autoFocus
+                        />
+                        <div className="player-sidebar-name-actions">
+                          <button
+                            onClick={handleSaveDisplayName}
+                            className="player-sidebar-name-save"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditingName(false);
+                              setNameEditValue(playerDisplayName);
+                            }}
+                            className="player-sidebar-name-cancel"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="player-sidebar-name"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevenir que el click se propague
+                          // Solo permitir editar si no estamos en una partida activa
+                          if (currentView === "game" && !gameOverState) {
+                            return; // No hacer nada si estamos en partida activa
+                          }
+                          console.log("Click en nombre, activando edición");
+                          setNameEditValue(
+                            playerDisplayName ||
+                              (user
+                                ? user.user_metadata?.full_name ||
+                                  user.email?.split("@")[0] ||
+                                  "Player"
+                                : "Guest Player")
+                          );
+                          setIsEditingName(true);
+                        }}
+                        style={{
+                          cursor:
+                            currentView === "game" && !gameOverState
+                              ? "default"
+                              : "pointer",
+                          opacity:
+                            currentView === "game" && !gameOverState ? 0.6 : 1,
+                        }}
+                        title={
+                          currentView === "game" && !gameOverState
+                            ? "No puedes cambiar tu nombre durante una partida"
+                            : "Click para editar"
+                        }
+                      >
+                        <span className="player-sidebar-name-text">
+                          {playerDisplayName ||
+                            (user
+                              ? user.user_metadata?.full_name ||
+                                user.email?.split("@")[0] ||
+                                "Player"
+                              : "Guest Player")}
+                        </span>
+                        {!(currentView === "game" && !gameOverState) && (
+                          <span
+                            className="player-sidebar-name-edit-icon"
+                            title="Click para editar"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (currentView === "game" && !gameOverState) {
+                                return;
+                              }
+                              console.log("Click en icono, activando edición");
+                              setNameEditValue(
+                                playerDisplayName ||
+                                  (user
+                                    ? user.user_metadata?.full_name ||
+                                      user.email?.split("@")[0] ||
+                                      "Player"
+                                    : "Guest Player")
+                              );
+                              setIsEditingName(true);
+                            }}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="player-sidebar-email">
+                      {user?.email || "Playing as guest"}
+                    </div>
+                  </div>
+                </div>
+                <div className="player-sidebar-section">
+                  <div
+                    className="player-sidebar-color-display player-sidebar-color-clickable"
+                    onClick={() => setShowColorPicker(true)}
+                    title="Click to change color"
+                  >
+                    <div
+                      className="player-sidebar-color-preview"
+                      style={{ backgroundColor: preferredColor }}
+                    />
+                    <span className="player-sidebar-color-value">
+                      {preferredColor.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Color picker modal - Available from menu and lobby */}
+        {showColorPicker && (
+          <ColorPickerModal
+            isOpen={showColorPicker}
+            currentColor={
+              // Si estamos en el lobby, usar el color del jugador en el lobby
+              // Si estamos en el menú, usar el color preferido
+              currentView === "lobby" && localPlayerId
+                ? lobbyPlayers.find((p) => p.id === localPlayerId)?.color ||
+                  preferredColor
+                : preferredColor
+            }
+            usedColors={
+              // Solo considerar colores usados si estamos en el lobby
+              currentView === "lobby"
+                ? new Set(lobbyPlayers.map((p) => p.color))
+                : new Set()
+            }
+            onClose={() => setShowColorPicker(false)}
+            onConfirm={(color) => {
+              // Si estamos en el lobby y hay un jugador local, cambiar el color en el juego
+              if (currentView === "lobby" && localPlayerId && gameRef.current) {
+                const networkClient = gameRef.current.getNetworkClient();
+                if (networkClient) {
+                  networkClient.changeColor(localPlayerId, color);
+                }
+              }
+              // Siempre guardar como color preferido
+              setPreferredColor(color);
+              localStorage.setItem("preferredColor", color);
+              // Marcar que el jugador ha cambiado su color manualmente
+              setHasCustomColor(true);
+              localStorage.setItem("hasCustomColor", "true");
+              setShowColorPicker(false);
+            }}
+          />
         )}
 
         {/* Round summary modal */}

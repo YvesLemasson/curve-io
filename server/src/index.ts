@@ -267,11 +267,32 @@ io.on('connection', (socket: Socket) => {
       return;
     }
     
+    // Obtener color preferido del mensaje o asignar uno disponible
+    const existingPlayers = playerManager.getAllPlayers();
+    let initialColor = '#ffffff';
+    
+    if (message.preferredColor) {
+      // Verificar si el color preferido está disponible
+      const colorInUse = existingPlayers.some(p => p.color === message.preferredColor);
+      if (!colorInUse) {
+        initialColor = message.preferredColor;
+        console.log(`🎨 Usando color preferido ${initialColor} para ${message.name}`);
+      } else {
+        // Color preferido está en uso, asignar uno disponible
+        initialColor = getAvailableColor(existingPlayers);
+        console.log(`⚠️  Color preferido ${message.preferredColor} está en uso, asignando ${initialColor} a ${message.name}`);
+      }
+    } else {
+      // No hay color preferido, asignar uno disponible
+      initialColor = getAvailableColor(existingPlayers);
+      console.log(`🎨 Asignando color ${initialColor} a ${message.name} (sin preferencia)`);
+    }
+    
     // Crear jugador
     const player: Player = {
       id: playerId, // Usar socket.id como ID único
       name: message.name,
-      color: '#ffffff', // Se asignará en initializePlayers
+      color: initialColor,
       position: { x: 0, y: 0 }, // Se inicializará en initializePlayers
       angle: 0,
       speed: 2,
@@ -318,8 +339,20 @@ io.on('connection', (socket: Socket) => {
       const posIndex = index % positions.length;
       player.position = { ...positions[posIndex] };
       player.angle = angles[posIndex];
-      // Asignar un color que no esté en uso
-      player.color = getAvailableColor(existingPlayers);
+      
+      // Usar color preferido si está disponible, sino asignar uno disponible
+      if (message.preferredColor && !existingPlayers.some(p => p.color === message.preferredColor)) {
+        player.color = message.preferredColor;
+        console.log(`🎨 Usando color preferido ${player.color} para ${message.name}`);
+      } else {
+        player.color = getAvailableColor(existingPlayers);
+        if (message.preferredColor) {
+          console.log(`⚠️  Color preferido ${message.preferredColor} está en uso, asignando ${player.color} a ${message.name}`);
+        } else {
+          console.log(`🎨 Asignando color ${player.color} a ${message.name}`);
+        }
+      }
+      
       player.trail = [{ ...positions[posIndex] }]; // Inicializar trail con posición inicial
       
       // Inicializar estado de gaps para este jugador
