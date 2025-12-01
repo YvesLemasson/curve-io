@@ -26,7 +26,6 @@ export class Player {
   private boostCharge: number = 100; // Carga del boost (0-100)
   private readonly boostDuration: number = 5000; // 5 segundos en ms
   private readonly boostSpeedMultiplier: number = 1.5; // 50% más rápido
-  private readonly boostRechargeRate: number = 100 / 20000; // Porcentaje por ms (20 segundos para recargar completamente)
   
   // EXPERIMENTO: Sin límite de trail - monitorear rendimiento
   // FASE 1: Límite de trail para optimización
