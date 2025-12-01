@@ -89,6 +89,12 @@ export class GameServer {
     allPlayers.forEach(player => {
       this.playerPoints.set(player.id, 0);
       this.gameState.playerPoints![player.id] = 0;
+      // Inicializar boost: 5 segundos disponibles para la ronda
+      this.playerBoostState.set(player.id, {
+        active: false,
+        charge: 100, // 100% = 5 segundos disponibles
+        remaining: 5000, // 5 segundos totales para la ronda
+      });
     });
     
     // Asegurar que los jugadores estén inicializados antes de empezar
@@ -243,42 +249,40 @@ export class GameServer {
     if (!boostState) {
       boostState = {
         active: false,
-        charge: 100,
-        remaining: 0,
+        charge: 100, // Se mantiene para compatibilidad con UI, pero no se usa para la lógica
+        remaining: 5000, // 5 segundos totales disponibles para la ronda
       };
       this.playerBoostState.set(playerId, boostState);
     }
     
-    // Si se solicita boost y hay carga suficiente, activarlo
-    if (isBoostRequested && !boostState.active && boostState.charge > 0) {
-      boostState.active = true;
-      boostState.remaining = 5000; // 5 segundos
-    }
-    
     // Si el boost está activo
     if (boostState.active) {
-      // Si no se está solicitando boost, desactivarlo
+      // Si no se está solicitando boost, desactivarlo inmediatamente (sin consumir tiempo)
       if (!isBoostRequested) {
         boostState.active = false;
-        boostState.remaining = 0;
+        // Actualizar charge para la UI sin consumir tiempo
+        boostState.charge = (boostState.remaining / 5000) * 100;
       } else {
-        // Consumir carga y tiempo usando deltaTime real
-        const chargeConsumed = (100 / 5000) * deltaTime;
-        boostState.charge = Math.max(0, boostState.charge - chargeConsumed);
-        boostState.remaining -= deltaTime;
+        // Solo consumir tiempo si está activo Y se están presionando ambos botones
+        boostState.remaining = Math.max(0, boostState.remaining - deltaTime);
         
-        // Si se agotó la carga o el tiempo, desactivarlo
-        if (boostState.remaining <= 0 || boostState.charge <= 0) {
+        // Actualizar charge para la UI (porcentaje del tiempo restante)
+        boostState.charge = (boostState.remaining / 5000) * 100;
+        
+        // Si se agotó el tiempo, desactivarlo
+        if (boostState.remaining <= 0) {
           boostState.active = false;
           boostState.remaining = 0;
           boostState.charge = 0;
         }
       }
     } else {
-      // Si no está activo, recargar lentamente
-      if (boostState.charge < 100) {
-        boostState.charge = Math.min(100, boostState.charge + (100 / 20000) * deltaTime);
+      // Si no está activo, verificar si se solicita boost para activarlo
+      if (isBoostRequested && boostState.remaining > 0) {
+        boostState.active = true;
       }
+      // Actualizar charge para la UI (pero no recargar)
+      boostState.charge = (boostState.remaining / 5000) * 100;
     }
   }
 
@@ -763,8 +767,8 @@ export class GameServer {
       allPlayers.forEach(player => {
         this.playerBoostState.set(player.id, {
           active: false,
-          charge: 100,
-          remaining: 0,
+          charge: 100, // 100% = 5 segundos disponibles
+          remaining: 5000, // 5 segundos totales para la ronda
         });
         this.initializePlayerGaps(player.id);
       });

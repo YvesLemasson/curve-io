@@ -52,8 +52,8 @@ export class Player {
     this.shouldDrawTrail = true;
     this.wasDrawingTrail = true;
     this.boostActive = false;
-    this.boostRemaining = 0;
-    this.boostCharge = 100;
+    this.boostRemaining = 5000; // 5 segundos disponibles para la ronda
+    this.boostCharge = 100; // 100% = 5 segundos disponibles
   }
 
   /**
@@ -112,49 +112,51 @@ export class Player {
    */
   updateBoost(deltaTime: number, isBoostRequested: boolean): void {
     if (this.boostActive) {
-      // Si el boost está activo pero no se están presionando ambas teclas, desactivarlo
+      // Si no se están presionando ambas teclas, desactivar inmediatamente (sin consumir tiempo)
       if (!isBoostRequested) {
         this.boostActive = false;
-        this.boostRemaining = 0;
-        // No consumir toda la carga, solo la que se usó
+        // Actualizar charge para la UI sin consumir tiempo
+        this.boostCharge = (this.boostRemaining / this.boostDuration) * 100;
       } else {
-        // Consumir carga mientras está activo
-        const chargeConsumed = (100 / this.boostDuration) * deltaTime;
-        this.boostCharge = Math.max(0, this.boostCharge - chargeConsumed);
-        this.boostRemaining -= deltaTime;
+        // Solo consumir tiempo si está activo Y se están presionando ambos botones
+        this.boostRemaining = Math.max(0, this.boostRemaining - deltaTime);
         
-        // Si se agotó la carga o el tiempo, desactivarlo
-        if (this.boostRemaining <= 0 || this.boostCharge <= 0) {
+        // Actualizar charge para la UI (porcentaje del tiempo restante)
+        this.boostCharge = (this.boostRemaining / this.boostDuration) * 100;
+        
+        // Si se agotó el tiempo, desactivarlo
+        if (this.boostRemaining <= 0) {
           this.boostActive = false;
           this.boostRemaining = 0;
           this.boostCharge = 0;
         }
       }
     } else {
-      // Si no está activo, recargar lentamente
-      if (this.boostCharge < 100) {
-        this.boostCharge = Math.min(100, this.boostCharge + (this.boostRechargeRate * deltaTime));
+      // Si no está activo, verificar si se solicita boost para activarlo
+      if (isBoostRequested && this.boostRemaining > 0) {
+        this.boostActive = true;
       }
+      // Actualizar charge para la UI (pero no recargar)
+      this.boostCharge = (this.boostRemaining / this.boostDuration) * 100;
     }
   }
   
   /**
    * Intenta activar el boost
-   * @returns true si se activó, false si no hay suficiente carga
+   * @returns true si se activó, false si no hay tiempo restante
    */
   activateBoost(): boolean {
     if (this.boostActive) {
       return true; // Ya está activo
     }
     
-    // Necesita al menos algo de carga para activar (puede ser menos del 100%)
-    if (this.boostCharge > 0) {
+    // Necesita tiempo restante para activar
+    if (this.boostRemaining > 0) {
       this.boostActive = true;
-      this.boostRemaining = this.boostDuration;
       return true;
     }
     
-    return false; // No hay suficiente carga
+    return false; // No hay tiempo restante
   }
   
   /**

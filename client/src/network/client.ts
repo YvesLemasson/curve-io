@@ -2,6 +2,7 @@
 // Maneja conexión WebSocket y envío/recepción de mensajes
 
 import { io, Socket } from "socket.io-client";
+import { t } from "../utils/i18n";
 import {
   CLIENT_EVENTS,
   SERVER_EVENTS,
@@ -138,7 +139,9 @@ export class NetworkClient {
       // Mensaje más específico según el tipo de error
       let userMessage = errorMessage;
       if (isConnectionRefused) {
-        userMessage = `❌ No se pudo conectar al servidor en ${this.serverUrl}`;
+        userMessage = t("errors.serverConnectionFailed", {
+          url: this.serverUrl,
+        });
         console.error(
           `[NetworkClient] ⚠️  ==========================================`
         );
@@ -158,9 +161,9 @@ export class NetworkClient {
           `[NetworkClient] ⚠️  ==========================================`
         );
       } else if (errorMessage.includes("timeout")) {
-        userMessage = `⏱️ Timeout al conectar al servidor. El servidor puede estar sobrecargado o no disponible.`;
+        userMessage = t("errors.connectionTimeout");
       } else if (errorMessage.includes("CORS")) {
-        userMessage = `🚫 Error de CORS. Verifica la configuración del servidor.`;
+        userMessage = t("errors.corsError");
       }
 
       if (this.onErrorCallback) {
@@ -170,7 +173,10 @@ export class NetworkClient {
 
     this.socket.on("reconnect_attempt", (attemptNumber) => {
       console.log(
-        `[NetworkClient] 🔄 Intentando reconectar... (${attemptNumber}/${this.maxReconnectAttempts})`
+        t("errors.reconnecting", {
+          attempt: attemptNumber.toString(),
+          maxAttempts: this.maxReconnectAttempts.toString(),
+        })
       );
     });
 
@@ -180,7 +186,9 @@ export class NetworkClient {
       );
       if (this.onErrorCallback) {
         this.onErrorCallback(
-          `No se pudo conectar al servidor después de ${this.maxReconnectAttempts} intentos. Verifica que el servidor esté corriendo.`
+          t("errors.reconnectionFailed", {
+            attempts: this.maxReconnectAttempts.toString(),
+          })
         );
       }
     });

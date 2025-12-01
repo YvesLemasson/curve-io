@@ -220,16 +220,15 @@ export class Game {
               currentTime
             );
           } else {
-            // Si no se presionan ambos, procesar giro normal
+            // Si no se presionan ambos, enviar boost: false y la acción de giro (si hay)
             const action = this.input.getCurrentAction();
-            if (action) {
-              this.networkClient.sendInput(
-                this.localPlayerId,
-                action,
-                false,
-                currentTime
-              );
-            }
+            // Siempre enviar el estado de boost (false) incluso si no hay acción de giro
+            this.networkClient.sendInput(
+              this.localPlayerId,
+              action,
+              false,
+              currentTime
+            );
           }
           this.lastInputSendTime = currentTime;
         }
@@ -471,6 +470,13 @@ export class Game {
   /**
    * Obtiene el estado del boost del jugador local
    */
+  /**
+   * Obtiene el ancho del canvas
+   */
+  getCanvasWidth(): number {
+    return this.canvas.getWidth();
+  }
+
   getLocalPlayerBoostState(): {
     active: boolean;
     charge: number;

@@ -9,6 +9,7 @@ import { CLIENT_EVENTS, SERVER_EVENTS } from './shared/protocol.js';
 import type { PlayerJoinMessage, GameInputMessage, GameStateMessage, LobbyPlayersMessage, AuthUserMessage } from './shared/protocol.js';
 import type { Player } from './shared/types.js';
 import { GameModel } from './models/gameModel.js';
+import { UserModel } from './models/userModel.js';
 import { supabase } from './config/supabase.js';
 import { MatchmakingManager } from './matchmaking/matchmakingManager.js';
 
@@ -298,7 +299,19 @@ io.on('connection', (socket: Socket) => {
       console.log(`🎨 [${roomId}] Asignando color ${initialColor} a ${message.name} (sin preferencia)`);
     }
     
-    // 5. Crear jugador
+    // 5. Si el usuario está autenticado, asegurar que su nombre esté guardado en la BD
+    const userId = socketToUserId.get(socket.id);
+    if (userId && message.name) {
+      // Usuario autenticado - guardar nombre en BD si no existe
+      try {
+        await UserModel.ensureUserHasName(userId, message.name);
+      } catch (error) {
+        console.error(`❌ [${roomId}] Error al guardar nombre del usuario ${userId}:`, error);
+        // Continuar aunque falle (no queremos bloquear el juego)
+      }
+    }
+    
+    // 6. Crear jugador
     const player: Player = {
       id: playerId,
       name: message.name,
@@ -310,7 +323,7 @@ io.on('connection', (socket: Socket) => {
       trail: [],
     };
     
-    // 6. Agregar jugador a la sala
+    // 7. Agregar jugador a la sala
     room.playerManager.addPlayer(player);
     socketToPlayerId.set(socket.id, playerId);
     matchmakingManager.incrementPlayerCount(roomId);

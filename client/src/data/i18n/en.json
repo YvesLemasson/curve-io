@@ -1,0 +1,127 @@
+{
+  "gameOver": {
+    "title": "Game Over!",
+    "tie": "🤝 Tie",
+    "winnerLabel": "is the winner",
+    "totalPoints": "total points",
+    "allPlayersEliminated": "All players were eliminated",
+    "gameSummary": "Game Summary",
+    "rounds": "Rounds",
+    "roundsPlural": "rounds",
+    "duration": "Duration",
+    "players": "Players",
+    "finalPoints": "Final Points",
+    "points": "points",
+    "elo": "ELO",
+    "backToMenu": "Back to Menu",
+    "nextMatch": "Next Match"
+  },
+  "roundSummary": {
+    "roundFinished": "Round {round} Finished",
+    "roundSummary": "Round Summary",
+    "round": "Round",
+    "roundPoints": "Round Points",
+    "pts": "pts",
+    "total": "Total",
+    "nextRound": "Next Round",
+    "nextRoundCountdown": "Next Round ({countdown})",
+    "starting": "Starting..."
+  },
+  "colorPicker": {
+    "title": "Select Color",
+    "colorInUse": "Color in use",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "menu": {
+    "loading": "Loading...",
+    "controls": "CONTROLS",
+    "mobile": {
+      "tapLeft": "Tap left side : Turn left",
+      "tapRight": "Tap right side : Turn right",
+      "tapBoth": "Tap both sides : Activate boost (speed +50%)"
+    },
+    "desktop": {
+      "turnLeft": "A / ← : Turn left",
+      "turnRight": "D / → : Turn right",
+      "activateBoost": "A + D : Activate boost (speed +50%)"
+    },
+    "playAsGuest": "Play as guest",
+    "playOnline": "Play Online",
+    "playAsGuestTooltip": "Play as a guest (no account required)",
+    "playOnlineTooltip": "Play online with your account",
+    "leaderboard": "LeaderBoard",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "install": "Install",
+    "installTooltip": "Install application",
+    "playerMenu": "Player information",
+    "openPlayerMenu": "Open player menu",
+    "changeLanguage": "Change language",
+    "language": "Language"
+  },
+  "lobby": {
+    "players": "Players",
+    "waitingForPlayers": "Waiting for players...",
+    "changeColor": "Change Color",
+    "start": "Start",
+    "waitingForMorePlayers": "Waiting for more players...",
+    "backToMenu": "Back to Menu"
+  },
+  "leaderboard": {
+    "loading": "Loading leaderboard...",
+    "noPlayers": "No players found",
+    "rank": "Rank",
+    "player": "Player",
+    "elo": "ELO",
+    "winRate": "Win Rate",
+    "close": "Close",
+    "closeTooltip": "Close leaderboard",
+    "allTime": "All-time",
+    "month": "Month",
+    "day": "Day",
+    "eloChange": "ELO Change"
+  },
+  "gameHud": {
+    "round": "Round",
+    "connected": "● Connected",
+    "disconnected": "● Disconnected",
+    "classification": "Classification",
+    "pts": "pts"
+  },
+  "playerSidebar": {
+    "changeColorTooltip": "Click to change color",
+    "playingAsGuest": "Playing as guest",
+    "editNameTooltip": "Click to edit",
+    "cannotEditDuringGame": "You cannot change your name during an active game",
+    "stats": "Statistics",
+    "rating": "Rating",
+    "peakRating": "Peak Rating",
+    "games": "Games",
+    "wins": "Wins",
+    "loadingStats": "Loading statistics..."
+  },
+  "errors": {
+    "nameEmpty": "The name cannot be empty",
+    "nameTooLong": "The name cannot be longer than 50 characters",
+    "cannotChangeNameDuringGame": "You cannot change your name during an active game",
+    "errorSavingName": "Error saving name: {error}",
+    "connectionError": "Connection error: {error}",
+    "serverConnectionFailed": "❌ Could not connect to server at {url}",
+    "serverNotRunning": "The server is not running",
+    "connectionTimeout": "⏱️ Timeout connecting to server. The server may be overloaded or unavailable.",
+    "corsError": "🚫 CORS error. Check server configuration.",
+    "reconnectionFailed": "Could not connect to server after {attempts} attempts. Make sure the server is running.",
+    "reconnecting": "🔄 Reconnecting... ({attempt}/{maxAttempts})"
+  },
+  "defaults": {
+    "player": "Player",
+    "guestPlayer": "Guest Player",
+    "unknownPlayer": "Unknown Player"
+  },
+  "languageSelector": {
+    "title": "Select Language",
+    "selectLanguage": "Select a language",
+    "close": "Close"
+  }
+}

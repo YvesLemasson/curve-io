@@ -6,6 +6,13 @@ import { Game } from "../game/game";
 import { useAuth } from "../auth/AuthContext";
 import { supabase } from "../config/supabase";
 import curvePhrasesData from "../data/curvePhrases.json";
+import {
+  t,
+  setLanguage,
+  getCurrentLanguage,
+  onLanguageChange,
+  type Language,
+} from "../utils/i18n";
 import "./App.css";
 
 // Import Game here to avoid circular reference error
@@ -24,7 +31,7 @@ function BoostBar({
   const remainingSeconds = (remaining / 1000).toFixed(1);
 
   return (
-    <div className="boost-bar-container">
+    <div className="boost-bar-wrapper">
       <div className="boost-bar">
         <div
           className={`boost-fill ${active ? "boost-active" : ""}`}
@@ -98,7 +105,9 @@ function GameOverModal({
   return (
     <div className="game-over-modal-overlay">
       <div className="game-over-modal">
-        <h1 className="game-over-title">{winner ? "Game Over!" : "🤝 Tie"}</h1>
+        <h1 className="game-over-title">
+          {winner ? t("gameOver.title") : t("gameOver.tie")}
+        </h1>
 
         <div className="game-over-content">
           {/* Left column: Game information */}
@@ -108,35 +117,36 @@ function GameOverModal({
                 <div className="winner-name" style={{ color: winner.color }}>
                   {winner.name}
                 </div>
-                <p className="winner-label">is the winner</p>
+                <p className="winner-label">{t("gameOver.winnerLabel")}</p>
                 {gameState.playerPoints && (
                   <p className="winner-points">
-                    {gameState.playerPoints[winner.id] || 0} puntos totales
+                    {gameState.playerPoints[winner.id] || 0}{" "}
+                    {t("gameOver.totalPoints")}
                   </p>
                 )}
               </div>
             ) : (
               <div className="tie-section">
-                <p>All players were eliminated</p>
+                <p>{t("gameOver.allPlayersEliminated")}</p>
               </div>
             )}
 
             <div className="game-summary">
-              <h2>Resumen del Juego</h2>
+              <h2>{t("gameOver.gameSummary")}</h2>
 
               <div className="summary-stats">
                 <div className="stat-item">
-                  <span className="stat-label">Rondas:</span>
+                  <span className="stat-label">{t("gameOver.rounds")}:</span>
                   <span className="stat-value">
-                    {gameState.totalRounds || 1} rondas
+                    {gameState.totalRounds || 1} {t("gameOver.roundsPlural")}
                   </span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Duración:</span>
+                  <span className="stat-label">{t("gameOver.duration")}:</span>
                   <span className="stat-value">{gameDuration}s</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Jugadores:</span>
+                  <span className="stat-label">{t("gameOver.players")}:</span>
                   <span className="stat-value">{gameState.players.length}</span>
                 </div>
               </div>
@@ -146,7 +156,7 @@ function GameOverModal({
           {/* Right column: Player information with points */}
           <div className="game-over-right">
             <div className="players-summary">
-              <h3>Puntos Finales</h3>
+              <h3>{t("gameOver.finalPoints")}</h3>
               <div className="players-list-summary">
                 {playersWithPoints.map((player) => {
                   const isWinner = player.id === gameState.winnerId;
@@ -171,7 +181,7 @@ function GameOverModal({
                               : undefined
                           }
                         >
-                          {Math.round(player.eloRating)} ELO
+                          {Math.round(player.eloRating)} {t("gameOver.elo")}
                         </span>
                       )}
                       {player.ratingChange !== undefined && (
@@ -189,7 +199,7 @@ function GameOverModal({
                         </span>
                       )}
                       <span className="player-points">
-                        {player.points} points
+                        {player.points} {t("gameOver.points")}
                       </span>
                     </div>
                   );
@@ -201,7 +211,7 @@ function GameOverModal({
 
         <div className="game-over-actions">
           <button onClick={onBackToMenu} className="back-to-menu-button">
-            Back to Menu
+            {t("gameOver.backToMenu")}
           </button>
           <button
             onClick={onNextMatch}
@@ -215,7 +225,7 @@ function GameOverModal({
               )}, 0 0 25px ${hexToRgba(localPlayerColor, 0.2)}`,
             }}
           >
-            Next Match
+            {t("gameOver.nextMatch")}
           </button>
         </div>
       </div>
@@ -228,6 +238,8 @@ function RoundSummaryModal({
   gameState,
   onNextRound,
   countdown,
+  localPlayerId,
+  preferredColor,
 }: {
   gameState: {
     currentRound?: number;
@@ -241,8 +253,16 @@ function RoundSummaryModal({
   } | null;
   onNextRound: () => void;
   countdown?: number;
+  localPlayerId?: string | null;
+  preferredColor?: string;
 }) {
   if (!gameState) return null;
+
+  // Obtener el color del jugador local
+  const localPlayer = localPlayerId
+    ? gameState.players.find((p) => p.id === localPlayerId)
+    : null;
+  const localPlayerColor = localPlayer?.color || preferredColor || "#4caf50";
 
   // Obtener los resultados de la ronda actual
   const currentRound = gameState.currentRound || 1;
@@ -269,16 +289,18 @@ function RoundSummaryModal({
   return (
     <div className="game-over-modal-overlay">
       <div className="game-over-modal">
-        <h1 className="game-over-title">Ronda {currentRound} Terminada</h1>
+        <h1 className="game-over-title">
+          {t("roundSummary.roundFinished", { round: currentRound.toString() })}
+        </h1>
 
         <div className="game-over-content">
           {/* Left column: Round information */}
           <div className="game-over-left">
             <div className="round-summary">
-              <h2>Resumen de la Ronda</h2>
+              <h2>{t("roundSummary.roundSummary")}</h2>
               <div className="summary-stats">
                 <div className="stat-item">
-                  <span className="stat-label">Ronda:</span>
+                  <span className="stat-label">{t("roundSummary.round")}:</span>
                   <span className="stat-value">
                     {currentRound}/{gameState.totalRounds || 5}
                   </span>
@@ -290,7 +312,7 @@ function RoundSummaryModal({
           {/* Right column: Player points for this round */}
           <div className="game-over-right">
             <div className="players-summary">
-              <h3>Puntos de esta Ronda</h3>
+              <h3>{t("roundSummary.roundPoints")}</h3>
               <div className="players-list-summary">
                 {playersWithRoundPoints.map((player, index) => {
                   return (
@@ -305,14 +327,11 @@ function RoundSummaryModal({
                         style={{ backgroundColor: player.color }}
                       />
                       <span className="player-name-summary">{player.name}</span>
-                      {index === 0 && (
-                        <span className="player-status winner-status">🏆</span>
-                      )}
                       <span className="player-points">
-                        +{player.roundPoints} pts
+                        +{player.roundPoints} {t("roundSummary.pts")}
                       </span>
                       <span className="player-total-points">
-                        (Total: {player.totalPoints})
+                        ({t("roundSummary.total")}: {player.totalPoints})
                       </span>
                     </div>
                   );
@@ -322,17 +341,107 @@ function RoundSummaryModal({
           </div>
         </div>
 
-        <button
-          onClick={onNextRound}
-          className="back-to-menu-button"
-          disabled={countdown !== undefined && countdown >= 0}
+        <div className="round-summary-button-container">
+          <button
+            onClick={onNextRound}
+            className="back-to-menu-button round-summary-button"
+            disabled={countdown !== undefined && countdown >= 0}
+            style={{
+              backgroundColor: localPlayerColor,
+              borderColor: localPlayerColor,
+              boxShadow: `0 0 15px ${hexToRgba(
+                localPlayerColor,
+                0.3
+              )}, 0 0 25px ${hexToRgba(localPlayerColor, 0.2)}`,
+            }}
+          >
+            {countdown !== undefined && countdown > 0
+              ? t("roundSummary.nextRoundCountdown", {
+                  countdown: countdown.toString(),
+                })
+              : countdown === 0
+              ? t("roundSummary.starting")
+              : t("roundSummary.nextRound")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Language selector modal component
+function LanguageSelectorModal({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const [currentLang, setCurrentLang] = useState<Language>(
+    getCurrentLanguage()
+  );
+  const [, forceUpdate] = useState({});
+
+  // Subscribe to language changes
+  useEffect(() => {
+    const unsubscribe = onLanguageChange(() => {
+      setCurrentLang(getCurrentLanguage());
+      forceUpdate({});
+    });
+    return unsubscribe;
+  }, []);
+
+  const languages: Array<{ code: Language; name: string; flag: string }> = [
+    { code: "en", name: "English", flag: "🇺🇸" },
+    { code: "es", name: "Español", flag: "🇪🇸" },
+    { code: "fr", name: "Français", flag: "🇫🇷" },
+    { code: "de", name: "Deutsch", flag: "🇩🇪" },
+    { code: "it", name: "Italiano", flag: "🇮🇹" },
+    { code: "pt", name: "Português", flag: "🇵🇹" },
+  ];
+
+  const handleLanguageSelect = async (lang: Language) => {
+    await setLanguage(lang);
+    setCurrentLang(lang);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="color-picker-modal-overlay" onClick={onClose}>
+      <div className="color-picker-modal" onClick={(e) => e.stopPropagation()}>
+        <h2>{t("languageSelector.title")}</h2>
+        <p
+          style={{
+            marginBottom: "20px",
+            color: "rgba(255, 255, 255, 0.7)",
+            fontSize: "0.9rem",
+          }}
         >
-          {countdown !== undefined && countdown > 0
-            ? `Next Round (${countdown})`
-            : countdown === 0
-            ? "Starting..."
-            : "Next Round"}
-        </button>
+          {t("languageSelector.selectLanguage")}
+        </p>
+        <div className="language-selector-list">
+          {languages.map((lang) => (
+            <button
+              key={lang.code}
+              className={`language-option ${
+                currentLang === lang.code ? "selected" : ""
+              }`}
+              onClick={() => handleLanguageSelect(lang.code)}
+            >
+              <span className="language-flag">{lang.flag}</span>
+              <span className="language-name">{lang.name}</span>
+              {currentLang === lang.code && (
+                <span className="check-mark">✓</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="color-picker-actions">
+          <button className="color-picker-cancel" onClick={onClose}>
+            {t("languageSelector.close")}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -379,7 +488,7 @@ function ColorPickerModal({
   return (
     <div className="color-picker-modal-overlay" onClick={onClose}>
       <div className="color-picker-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Seleccionar Color</h2>
+        <h2>{t("colorPicker.title")}</h2>
         <div className="color-picker-grid">
           {availableColors.map((color) => {
             const isUsed = usedColors.has(color) && color !== currentColor;
@@ -393,7 +502,7 @@ function ColorPickerModal({
                 style={{ backgroundColor: color }}
                 onClick={() => !isUsed && setSelectedColor(color)}
                 disabled={isUsed}
-                title={isUsed ? "Color en uso" : color}
+                title={isUsed ? t("colorPicker.colorInUse") : color}
               >
                 {isSelected && <span className="check-mark">✓</span>}
                 {isUsed && <span className="used-mark">✗</span>}
@@ -403,7 +512,7 @@ function ColorPickerModal({
         </div>
         <div className="color-picker-actions">
           <button className="color-picker-cancel" onClick={onClose}>
-            Cancel
+            {t("colorPicker.cancel")}
           </button>
           <button
             className="color-picker-confirm"
@@ -419,7 +528,7 @@ function ColorPickerModal({
               usedColors.has(selectedColor) && selectedColor !== currentColor
             }
           >
-            Confirm
+            {t("colorPicker.confirm")}
           </button>
         </div>
       </div>
@@ -483,6 +592,8 @@ function App() {
     countdown?: number;
   } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
+  const [showLanguageSelector, setShowLanguageSelector] =
+    useState<boolean>(false);
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState<boolean>(false);
@@ -510,11 +621,15 @@ function App() {
     total_games: number;
     total_wins: number;
   } | null>(null);
+  const [leaderboardCategory, setLeaderboardCategory] = useState<
+    "all-time" | "month" | "day"
+  >("day");
   const [leaderboardPlayers, setLeaderboardPlayers] = useState<
     Array<{
       user_id: string;
       name: string | null;
       elo_rating: number;
+      elo_change?: number; // Para month/day
       total_games: number;
       total_wins: number;
       win_rate: number;
@@ -522,6 +637,72 @@ function App() {
   >([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState<boolean>(false);
   const gameRef = useRef<Game | null>(null);
+  const [, forceUpdate] = useState<{}>({});
+  const [hudLeftPanelWidth, setHudLeftPanelWidth] = useState<number>(0);
+  const [hudRightPanelWidth, setHudRightPanelWidth] = useState<number>(0);
+
+  // Subscribe to language changes to force re-render
+  useEffect(() => {
+    const unsubscribe = onLanguageChange(() => {
+      forceUpdate({});
+    });
+    return unsubscribe;
+  }, []);
+
+  // Calcular ancho de los paneles HUD basado en el espacio disponible
+  useEffect(() => {
+    const calculateHudWidth = () => {
+      if (currentView !== "game" || !gameRef.current) {
+        setHudLeftPanelWidth(0);
+        setHudRightPanelWidth(0);
+        return;
+      }
+
+      // Obtener la posición real del canvas usando getBoundingClientRect
+      const canvasElement = document.getElementById("gameCanvas");
+      if (!canvasElement) {
+        setHudLeftPanelWidth(0);
+        setHudRightPanelWidth(0);
+        return;
+      }
+
+      const canvasRect = canvasElement.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+
+      // Calcular espacio disponible a la izquierda (desde el borde izquierdo hasta el canvas)
+      const leftSpace = canvasRect.left;
+
+      // Calcular espacio disponible a la derecha (desde el borde derecho del canvas hasta el borde derecho de la ventana)
+      const rightSpace = windowWidth - canvasRect.right;
+
+      // Logs para debugging del espacio morado
+      console.log("=== Debug espacio morado ===");
+      console.log("windowWidth:", windowWidth);
+      console.log("canvasRect.right:", canvasRect.right);
+      console.log("rightSpace calculado:", rightSpace);
+      console.log("hudRightPanelWidth actual:", hudRightPanelWidth);
+      console.log(
+        "Diferencia:",
+        windowWidth - (canvasRect.right + (hudRightPanelWidth || 0))
+      );
+      console.log("============================");
+
+      // Asignar cada espacio a su respectivo panel
+      setHudLeftPanelWidth(Math.max(0, leftSpace));
+      setHudRightPanelWidth(Math.max(0, rightSpace));
+    };
+
+    calculateHudWidth();
+
+    // Recalcular periódicamente y en resize para mantener sincronizado
+    const interval = setInterval(calculateHudWidth, 100);
+    window.addEventListener("resize", calculateHudWidth);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("resize", calculateHudWidth);
+    };
+  }, [currentView]);
 
   // Seleccionar una frase aleatoria al cargar y reemplazar {player} con el nombre del jugador
   useEffect(() => {
@@ -536,7 +717,7 @@ function App() {
         playerDisplayName ||
         user.user_metadata?.full_name ||
         user.email?.split("@")[0] ||
-        "Player";
+        t("defaults.player");
       const phraseWithPlayer = selectedPhrase.replace(/{player}/g, playerName);
       setRandomCurvePhrase(phraseWithPlayer);
     } else {
@@ -673,7 +854,7 @@ function App() {
             const defaultName =
               user.user_metadata?.full_name ||
               user.email?.split("@")[0] ||
-              "Player";
+              t("defaults.player");
             setPlayerDisplayName(defaultName);
           }
         } catch (err) {
@@ -682,7 +863,7 @@ function App() {
           const defaultName =
             user.user_metadata?.full_name ||
             user.email?.split("@")[0] ||
-            "Player";
+            t("defaults.player");
           setPlayerDisplayName(defaultName);
         }
       } else {
@@ -691,7 +872,7 @@ function App() {
         if (savedGuestName) {
           setPlayerDisplayName(savedGuestName);
         } else {
-          setPlayerDisplayName("Guest Player");
+          setPlayerDisplayName(t("defaults.guestPlayer"));
         }
       }
     };
@@ -751,19 +932,19 @@ function App() {
   const handleSaveDisplayName = async () => {
     const trimmedName = nameEditValue.trim();
     if (trimmedName.length === 0) {
-      alert("El nombre no puede estar vacío");
+      alert(t("errors.nameEmpty"));
       return;
     }
 
     if (trimmedName.length > 50) {
-      alert("El nombre no puede tener más de 50 caracteres");
+      alert(t("errors.nameTooLong"));
       return;
     }
 
     try {
       // Verificar que no estemos en una partida activa
       if (currentView === "game" && !gameOverState) {
-        alert("No puedes cambiar tu nombre durante una partida activa");
+        alert(t("errors.cannotChangeNameDuringGame"));
         setIsEditingName(false);
         return;
       }
@@ -791,7 +972,7 @@ function App() {
       }
     } catch (error: any) {
       console.error("Error saving display name:", error);
-      alert(`Error al guardar el nombre: ${error.message}`);
+      alert(t("errors.errorSavingName", { error: error.message }));
     }
   };
 
@@ -1274,7 +1455,7 @@ function App() {
         error.includes("No se pudo conectar") ||
         error.includes("servidor no está")
       ) {
-        alert(`Error de conexión: ${error}`);
+        alert(t("errors.connectionError", { error }));
       } else {
         // Para otros errores, solo loggear
         console.warn("[App] Error de red (no crítico):", error);
@@ -1297,7 +1478,8 @@ function App() {
               ? user.user_metadata?.full_name ||
                 user.email?.split("@")[0] ||
                 "Player"
-              : localStorage.getItem("guestPlayerName") || "Guest Player");
+              : localStorage.getItem("guestPlayerName") ||
+                t("defaults.guestPlayer"));
           // Obtener color preferido desde localStorage
           const savedPreferredColor =
             localStorage.getItem("preferredColor") || preferredColor;
@@ -1331,15 +1513,100 @@ function App() {
   // };
 
   // Function to load leaderboard
-  const loadLeaderboard = async () => {
+  const loadLeaderboard = async (
+    category: "all-time" | "month" | "day" = leaderboardCategory
+  ) => {
     setLoadingLeaderboard(true);
     try {
-      // Obtener estadísticas ordenadas por ELO
-      const { data: stats, error: statsError } = await supabase
-        .from("player_stats")
-        .select("user_id, elo_rating, total_games, total_wins")
-        .order("elo_rating", { ascending: false })
-        .limit(100); // Top 100 jugadores
+      let stats: any[] = [];
+      let statsError: any = null;
+
+      if (category === "all-time") {
+        // All-time: ordenado por ELO actual
+        const result = await supabase
+          .from("player_stats")
+          .select(
+            "user_id, elo_rating, total_games, total_wins, users!inner(name)"
+          )
+          .order("elo_rating", { ascending: false })
+          .limit(100);
+        stats = result.data || [];
+        statsError = result.error;
+      } else {
+        // Month o Day: ordenado por cambio de ELO
+        // Obtener stats y luego calcular el cambio desde el inicio del período
+        const statsResult = await supabase
+          .from("player_stats")
+          .select(
+            "user_id, elo_rating, total_games, total_wins, users!inner(name)"
+          )
+          .limit(1000); // Obtener más para filtrar después
+
+        if (statsResult.error) {
+          statsError = statsResult.error;
+        } else {
+          const userIds = (statsResult.data || []).map((s: any) => s.user_id);
+
+          // Obtener cambios de rating desde el inicio del período (UTC)
+          const now = new Date();
+          let periodDate: string;
+          if (category === "day") {
+            // Inicio del día actual en UTC
+            const startOfDay = new Date(
+              Date.UTC(
+                now.getUTCFullYear(),
+                now.getUTCMonth(),
+                now.getUTCDate(),
+                0,
+                0,
+                0
+              )
+            );
+            periodDate = startOfDay.toISOString();
+          } else {
+            // Inicio del mes actual en UTC
+            const startOfMonth = new Date(
+              Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0)
+            );
+            periodDate = startOfMonth.toISOString();
+          }
+
+          const { data: ratingChanges, error: changesError } = await supabase
+            .from("rating_history")
+            .select("user_id, rating_change")
+            .in("user_id", userIds)
+            .gte("created_at", periodDate);
+
+          if (changesError) {
+            console.error("Error fetching rating changes:", changesError);
+          }
+
+          // Agrupar cambios por usuario
+          const changesMap = new Map<string, number>();
+          (ratingChanges || []).forEach((change: any) => {
+            const current = changesMap.get(change.user_id) || 0;
+            changesMap.set(
+              change.user_id,
+              current + (change.rating_change || 0)
+            );
+          });
+
+          // Combinar stats con cambios y filtrar solo los que tienen actividad
+          stats = (statsResult.data || [])
+            .map((stat: any) => {
+              const eloChange = changesMap.get(stat.user_id) || 0;
+              return {
+                ...stat,
+                elo_change: eloChange,
+              };
+            })
+            .filter((stat: any) => stat.elo_change !== 0) // Solo mostrar activos en month/day
+            .sort((a: any, b: any) => {
+              return (b.elo_change || 0) - (a.elo_change || 0);
+            })
+            .slice(0, 100);
+        }
+      }
 
       if (statsError) {
         console.error("Error fetching leaderboard:", statsError);
@@ -1352,27 +1619,17 @@ function App() {
         return;
       }
 
-      // Obtener información de usuarios
-      const userIds = stats.map((s) => s.user_id);
-      const { data: users, error: usersError } = await supabase
-        .from("users")
-        .select("id, name")
-        .in("id", userIds);
+      // Los datos ya vienen con el nombre del usuario en users.name
+      const leaderboard = stats.map((stat: any) => {
+        // En Supabase, cuando haces JOIN con foreign key, el resultado viene como un objeto anidado
+        // Para relaciones uno-a-uno, viene como un objeto, no como array
+        const userName = stat.users?.name || null;
 
-      if (usersError) {
-        console.error("Error fetching users:", usersError);
-        setLeaderboardPlayers([]);
-        return;
-      }
-
-      // Combinar datos
-      const userMap = new Map(users?.map((u) => [u.id, u]) || []);
-      const leaderboard = stats.map((stat) => {
-        const user = userMap.get(stat.user_id);
         return {
           user_id: stat.user_id,
-          name: user?.name || "Unknown Player",
+          name: userName || t("defaults.unknownPlayer"),
           elo_rating: stat.elo_rating || 1000,
+          elo_change: stat.elo_change,
           total_games: stat.total_games || 0,
           total_wins: stat.total_wins || 0,
           win_rate:
@@ -1389,12 +1646,80 @@ function App() {
     }
   };
 
-  // Cargar leaderboard cuando se abre la vista
+  // Función para calcular tiempo restante hasta el final del período (UTC)
+  const getTimeRemaining = (period: "day" | "month"): string => {
+    const now = new Date();
+    const nowUTC = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        now.getUTCHours(),
+        now.getUTCMinutes(),
+        now.getUTCSeconds()
+      )
+    );
+
+    let endTime: Date;
+    if (period === "day") {
+      // Fin del día actual en UTC (próxima medianoche UTC)
+      endTime = new Date(
+        Date.UTC(
+          nowUTC.getUTCFullYear(),
+          nowUTC.getUTCMonth(),
+          nowUTC.getUTCDate() + 1,
+          0,
+          0,
+          0
+        )
+      );
+    } else {
+      // Fin del mes actual en UTC (primer día del próximo mes)
+      endTime = new Date(
+        Date.UTC(nowUTC.getUTCFullYear(), nowUTC.getUTCMonth() + 1, 1, 0, 0, 0)
+      );
+    }
+
+    const diff = endTime.getTime() - nowUTC.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (period === "day") {
+      return `${hours}h ${minutes}m`;
+    } else {
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+      return `${days}d ${remainingHours}h`;
+    }
+  };
+
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
+
+  // Actualizar countdown
+  useEffect(() => {
+    if (currentView === "leaderboard" && leaderboardCategory !== "all-time") {
+      const updateCountdown = () => {
+        setTimeRemaining(getTimeRemaining(leaderboardCategory));
+      };
+
+      updateCountdown();
+      const interval = setInterval(
+        updateCountdown,
+        leaderboardCategory === "day" ? 60000 : 3600000
+      ); // Cada minuto para day, cada hora para month
+
+      return () => clearInterval(interval);
+    } else {
+      setTimeRemaining("");
+    }
+  }, [currentView, leaderboardCategory]);
+
+  // Cargar leaderboard cuando se abre la vista o cambia la categoría
   useEffect(() => {
     if (currentView === "leaderboard") {
-      loadLeaderboard();
+      loadLeaderboard(leaderboardCategory);
     }
-  }, [currentView]);
+  }, [currentView, leaderboardCategory]);
 
   // Function to request game start from lobby
   const handleStartGameFromLobby = () => {
@@ -1532,13 +1857,13 @@ function App() {
       >
         {currentView === "menu" && (
           <div className="main-menu">
-            {/* Sign Out button - top right */}
-            {user && (
+            {/* Language and Sign Out buttons - top right */}
+            <div className="menu-top-buttons">
               <button
-                onClick={signOut}
-                className="menu-signout-button"
-                aria-label="Sign out"
-                title="Sign Out"
+                onClick={() => setShowLanguageSelector(true)}
+                className="menu-language-button"
+                aria-label={t("menu.changeLanguage")}
+                title={t("menu.changeLanguage")}
               >
                 <svg
                   width="20"
@@ -1550,12 +1875,35 @@ function App() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                  <polyline points="16 17 21 12 16 7"></polyline>
-                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
                 </svg>
               </button>
-            )}
+              {user && (
+                <button
+                  onClick={signOut}
+                  className="menu-signout-button"
+                  aria-label={t("menu.signOut")}
+                  title={t("menu.signOut")}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  </svg>
+                </button>
+              )}
+            </div>
             {/* Left side: Title and Welcome */}
             <div className="main-menu-left">
               <div className="main-menu-left-top">
@@ -1576,28 +1924,28 @@ function App() {
                   />
                 </div>
                 {loading ? (
-                  <p className="welcome-text">Loading...</p>
+                  <p className="welcome-text">{t("menu.loading")}</p>
                 ) : (
                   <p className="welcome-text">
-                    {randomCurvePhrase || "Loading..."}
+                    {randomCurvePhrase || t("menu.loading")}
                   </p>
                 )}
               </div>
 
               {/* Bottom: Controls info */}
               <div className="controls-info">
-                <h3>CONTROLS</h3>
+                <h3>{t("menu.controls")}</h3>
                 {isMobile ? (
                   <>
-                    <p>Tap left side : Turn left</p>
-                    <p>Tap right side : Turn right</p>
-                    <p>Tap both sides : Activate boost (speed +50%)</p>
+                    <p>{t("menu.mobile.tapLeft")}</p>
+                    <p>{t("menu.mobile.tapRight")}</p>
+                    <p>{t("menu.mobile.tapBoth")}</p>
                   </>
                 ) : (
                   <>
-                    <p>A / ← : Turn left</p>
-                    <p>D / → : Turn right</p>
-                    <p>A + D : Activate boost (speed +50%)</p>
+                    <p>{t("menu.desktop.turnLeft")}</p>
+                    <p>{t("menu.desktop.turnRight")}</p>
+                    <p>{t("menu.desktop.activateBoost")}</p>
                   </>
                 )}
               </div>
@@ -1609,8 +1957,8 @@ function App() {
               <button
                 className="player-menu-button"
                 onClick={() => setShowPlayerSidebar(true)}
-                aria-label="Open player menu"
-                title="Player information"
+                aria-label={t("menu.openPlayerMenu")}
+                title={t("menu.playerMenu")}
               >
                 <div
                   className="player-menu-button-color"
@@ -1628,11 +1976,11 @@ function App() {
                   }}
                   title={
                     !user
-                      ? "Play as a guest (no account required)"
-                      : "Play online with your account"
+                      ? t("menu.playAsGuestTooltip")
+                      : t("menu.playOnlineTooltip")
                   }
                 >
-                  {!user ? "Play as guest" : "Play Online"}
+                  {!user ? t("menu.playAsGuest") : t("menu.playOnline")}
                 </button>
                 {/* Local Game deshabilitado temporalmente */}
                 {/* <button onClick={handleStartLocalGame} className="menu-option">
@@ -1645,7 +1993,7 @@ function App() {
                     textDecorationColor: preferredColor,
                   }}
                 >
-                  LeaderBoard
+                  {t("menu.leaderboard")}
                 </button>
                 {!user && (
                   <button
@@ -1655,7 +2003,7 @@ function App() {
                       textDecorationColor: preferredColor,
                     }}
                   >
-                    Sign In
+                    {t("menu.signIn")}
                   </button>
                 )}
               </div>
@@ -1664,9 +2012,9 @@ function App() {
                 <button
                   onClick={handleInstallClick}
                   className="install-button"
-                  title="Install application"
+                  title={t("menu.installTooltip")}
                 >
-                  Install
+                  {t("menu.install")}
                 </button>
               )}
             </div>
@@ -1678,54 +2026,132 @@ function App() {
             <button
               onClick={() => setCurrentView("menu")}
               className="leaderboard-close-button"
-              aria-label="Close leaderboard"
-              title="Close"
+              aria-label={t("leaderboard.closeTooltip")}
+              title={t("leaderboard.close")}
             >
               ✕
             </button>
             <div className="leaderboard-view-content">
-              {loadingLeaderboard ? (
-                <div className="leaderboard-loading">
-                  <p>Loading leaderboard...</p>
-                </div>
-              ) : leaderboardPlayers.length === 0 ? (
-                <div className="leaderboard-empty">
-                  <p>No players found</p>
-                </div>
-              ) : (
-                <div className="leaderboard-table">
-                  <div className="leaderboard-header">
-                    <div className="leaderboard-header-rank">Rank</div>
-                    <div className="leaderboard-header-name">Player</div>
-                    <div className="leaderboard-header-elo">ELO</div>
-                    <div className="leaderboard-header-wr">Win Rate</div>
+              <div className="leaderboard-layout">
+                {/* Columna izquierda: Selectores de tiempo */}
+                <div className="leaderboard-sidebar">
+                  <div className="leaderboard-tabs-vertical">
+                    <button
+                      className={`leaderboard-tab-vertical ${
+                        leaderboardCategory === "day" ? "active" : ""
+                      }`}
+                      onClick={() => setLeaderboardCategory("day")}
+                    >
+                      <span>{t("leaderboard.day")}</span>
+                      {leaderboardCategory === "day" && timeRemaining && (
+                        <span className="leaderboard-countdown-inline">
+                          {timeRemaining}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      className={`leaderboard-tab-vertical ${
+                        leaderboardCategory === "month" ? "active" : ""
+                      }`}
+                      onClick={() => setLeaderboardCategory("month")}
+                    >
+                      <span>{t("leaderboard.month")}</span>
+                      {leaderboardCategory === "month" && timeRemaining && (
+                        <span className="leaderboard-countdown-inline">
+                          {timeRemaining}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      className={`leaderboard-tab-vertical ${
+                        leaderboardCategory === "all-time" ? "active" : ""
+                      }`}
+                      onClick={() => setLeaderboardCategory("all-time")}
+                    >
+                      {t("leaderboard.allTime")}
+                    </button>
                   </div>
-                  <div className="leaderboard-body">
-                    {leaderboardPlayers.map((player, index) => {
-                      const isCurrentUser = user?.id === player.user_id;
-                      return (
-                        <div
-                          key={player.user_id}
-                          className={`leaderboard-row ${
-                            isCurrentUser ? "leaderboard-row-current" : ""
-                          }`}
-                        >
-                          <div className="leaderboard-rank">#{index + 1}</div>
-                          <div className="leaderboard-name">{player.name}</div>
-                          <div className="leaderboard-elo">
-                            {player.elo_rating.toLocaleString()}
-                          </div>
-                          <div className="leaderboard-wr">
-                            {player.total_games > 0
-                              ? `${(player.win_rate * 100).toFixed(1)}%`
-                              : "0%"}
-                          </div>
+                </div>
+
+                {/* Columna derecha: Tabla de clasificación */}
+                <div className="leaderboard-main">
+                  {loadingLeaderboard ? (
+                    <div className="leaderboard-loading">
+                      <p>{t("leaderboard.loading")}</p>
+                    </div>
+                  ) : leaderboardPlayers.length === 0 ? (
+                    <div className="leaderboard-empty">
+                      <p>{t("leaderboard.noPlayers")}</p>
+                    </div>
+                  ) : (
+                    <div className="leaderboard-table">
+                      <div className="leaderboard-header">
+                        <div className="leaderboard-header-rank">
+                          {t("leaderboard.rank")}
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="leaderboard-header-name">
+                          {t("leaderboard.player")}
+                        </div>
+                        <div className="leaderboard-header-elo">
+                          {leaderboardCategory === "all-time"
+                            ? t("leaderboard.elo")
+                            : t("leaderboard.eloChange")}
+                        </div>
+                        <div className="leaderboard-header-wr">
+                          {t("leaderboard.winRate")}
+                        </div>
+                      </div>
+                      <div className="leaderboard-body">
+                        {leaderboardPlayers.map((player, index) => {
+                          const isCurrentUser = user?.id === player.user_id;
+                          const displayValue =
+                            leaderboardCategory === "all-time"
+                              ? player.elo_rating.toLocaleString()
+                              : player.elo_change !== undefined
+                              ? `${
+                                  player.elo_change > 0 ? "+" : ""
+                                }${player.elo_change.toLocaleString()}`
+                              : "0";
+                          return (
+                            <div
+                              key={player.user_id}
+                              className={`leaderboard-row ${
+                                isCurrentUser ? "leaderboard-row-current" : ""
+                              }`}
+                            >
+                              <div className="leaderboard-rank">
+                                #{index + 1}
+                              </div>
+                              <div className="leaderboard-name">
+                                {player.name || t("defaults.unknownPlayer")}
+                              </div>
+                              <div
+                                className={`leaderboard-elo ${
+                                  leaderboardCategory !== "all-time" &&
+                                  player.elo_change !== undefined
+                                    ? player.elo_change > 0
+                                      ? "elo-positive"
+                                      : player.elo_change < 0
+                                      ? "elo-negative"
+                                      : ""
+                                    : ""
+                                }`}
+                              >
+                                {displayValue}
+                              </div>
+                              <div className="leaderboard-wr">
+                                {player.total_games > 0
+                                  ? `${(player.win_rate * 100).toFixed(1)}%`
+                                  : "0%"}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}
@@ -1735,10 +2161,14 @@ function App() {
             <div className="lobby-content">
               {/* Left column: Player list */}
               <div className="lobby-players">
-                <h2>Players ({lobbyPlayers.length})</h2>
+                <h2>
+                  {t("lobby.players")} ({lobbyPlayers.length})
+                </h2>
                 <div className="players-list">
                   {lobbyPlayers.length === 0 ? (
-                    <p className="waiting-text">Waiting for players...</p>
+                    <p className="waiting-text">
+                      {t("lobby.waitingForPlayers")}
+                    </p>
                   ) : (
                     lobbyPlayers.map((player) => (
                       <div key={player.id} className="player-item">
@@ -1770,7 +2200,7 @@ function App() {
                   }}
                   className="change-color-button"
                 >
-                  Change Color
+                  {t("lobby.changeColor")}
                 </button>
                 <button
                   onClick={handleStartGameFromLobby}
@@ -1781,8 +2211,8 @@ function App() {
                   }}
                 >
                   {lobbyPlayers.length < 2
-                    ? "Waiting for more players..."
-                    : "Start"}
+                    ? t("lobby.waitingForMorePlayers")
+                    : t("lobby.start")}
                 </button>
                 <button
                   onClick={() => {
@@ -1800,7 +2230,7 @@ function App() {
                   }}
                   className="back-button"
                 >
-                  Back to Menu
+                  {t("lobby.backToMenu")}
                 </button>
               </div>
             </div>
@@ -1876,7 +2306,7 @@ function App() {
                                 ? user.user_metadata?.full_name ||
                                   user.email?.split("@")[0] ||
                                   "Player"
-                                : "Guest Player")
+                                : t("defaults.guestPlayer"))
                           );
                           setIsEditingName(true);
                         }}
@@ -1917,7 +2347,7 @@ function App() {
                                     ? user.user_metadata?.full_name ||
                                       user.email?.split("@")[0] ||
                                       "Player"
-                                    : "Guest Player")
+                                    : t("defaults.guestPlayer"))
                               );
                               setIsEditingName(true);
                             }}
@@ -1952,18 +2382,28 @@ function App() {
         {currentView === "game" && (
           <div className="game-hud">
             {/* Panel izquierdo: Info del juego */}
-            <div className="hud-left-panel">
+            <div
+              className="hud-left-panel"
+              style={{
+                width: `${hudLeftPanelWidth}px`,
+              }}
+            >
               {roundInfo && roundInfo.currentRound && roundInfo.totalRounds && (
                 <div className="round-indicator">
-                  Ronda {roundInfo.currentRound}/{roundInfo.totalRounds}
+                  {t("gameHud.round")} {roundInfo.currentRound}/
+                  {roundInfo.totalRounds}
                 </div>
               )}
               {gameRef.current?.isUsingNetwork() && (
                 <div className="connection-status">
                   {gameRef.current?.getNetworkClient()?.getIsConnected() ? (
-                    <span style={{ color: "#4CAF50" }}>● Connected</span>
+                    <span style={{ color: "#4CAF50" }}>
+                      {t("gameHud.connected")}
+                    </span>
                   ) : (
-                    <span style={{ color: "#f44336" }}>● Disconnected</span>
+                    <span style={{ color: "#f44336" }}>
+                      {t("gameHud.disconnected")}
+                    </span>
                   )}
                 </div>
               )}
@@ -1979,9 +2419,16 @@ function App() {
             </div>
 
             {/* Panel derecho: Clasificación de jugadores */}
-            <div className="hud-right-panel">
+            <div
+              className="hud-right-panel"
+              style={{
+                width: `${hudRightPanelWidth}px`,
+              }}
+            >
               <div className="leaderboard">
-                <h3 className="leaderboard-title">Clasificación</h3>
+                <h3 className="leaderboard-title">
+                  {t("gameHud.classification")}
+                </h3>
                 <div className="leaderboard-list">
                   {leaderboardData.map((player, index) => (
                     <div
@@ -1992,12 +2439,13 @@ function App() {
                     >
                       <div className="leaderboard-rank">#{index + 1}</div>
                       <div
-                        className="leaderboard-color"
-                        style={{ backgroundColor: player.color }}
-                      />
-                      <div className="leaderboard-name">{player.name}</div>
+                        className="leaderboard-name"
+                        style={{ color: player.color }}
+                      >
+                        {player.name || t("defaults.unknownPlayer")}
+                      </div>
                       <div className="leaderboard-points">
-                        {player.points} pts
+                        {player.points} {t("gameHud.pts")}
                       </div>
                     </div>
                   ))}
@@ -2077,7 +2525,7 @@ function App() {
                                 ? user.user_metadata?.full_name ||
                                   user.email?.split("@")[0] ||
                                   "Player"
-                                : "Guest Player")
+                                : t("defaults.guestPlayer"))
                           );
                           setIsEditingName(true);
                         }}
@@ -2118,7 +2566,7 @@ function App() {
                                     ? user.user_metadata?.full_name ||
                                       user.email?.split("@")[0] ||
                                       "Player"
-                                    : "Guest Player")
+                                    : t("defaults.guestPlayer"))
                               );
                               setIsEditingName(true);
                             }}
@@ -2148,7 +2596,9 @@ function App() {
                 {/* ESTADÍSTICAS */}
                 {user && (
                   <div className="player-sidebar-section">
-                    <h3 className="player-sidebar-stats-title">Estadísticas</h3>
+                    <h3 className="player-sidebar-stats-title">
+                      {t("playerSidebar.stats")}
+                    </h3>
                     <div
                       className="player-sidebar-stats"
                       style={{
@@ -2176,7 +2626,7 @@ function App() {
                                 fontSize: "0.9rem",
                               }}
                             >
-                              Rating:
+                              {t("playerSidebar.rating")}:
                             </span>
                             <span
                               className="player-sidebar-stat-value"
@@ -2220,7 +2670,7 @@ function App() {
                                 fontSize: "0.9rem",
                               }}
                             >
-                              Peak Rating:
+                              {t("playerSidebar.peakRating")}:
                             </span>
                             <span
                               className="player-sidebar-stat-value"
@@ -2251,7 +2701,7 @@ function App() {
                                 fontSize: "0.9rem",
                               }}
                             >
-                              Partidas:
+                              {t("playerSidebar.games")}:
                             </span>
                             <span
                               className="player-sidebar-stat-value"
@@ -2282,7 +2732,7 @@ function App() {
                                 fontSize: "0.9rem",
                               }}
                             >
-                              Victorias:
+                              {t("playerSidebar.wins")}:
                             </span>
                             <span
                               className="player-sidebar-stat-value"
@@ -2327,7 +2777,7 @@ function App() {
                               fontSize: "0.9rem",
                             }}
                           >
-                            Cargando estadísticas...
+                            {t("playerSidebar.loadingStats")}
                           </span>
                         </div>
                       )}
@@ -2337,6 +2787,14 @@ function App() {
               </div>
             </div>
           </>
+        )}
+
+        {/* Language selector modal */}
+        {showLanguageSelector && (
+          <LanguageSelectorModal
+            isOpen={showLanguageSelector}
+            onClose={() => setShowLanguageSelector(false)}
+          />
         )}
 
         {/* Color picker modal - Available from menu and lobby */}
@@ -2383,6 +2841,8 @@ function App() {
             gameState={roundSummaryState}
             onNextRound={handleNextRound}
             countdown={roundSummaryState.countdown}
+            localPlayerId={localPlayerId}
+            preferredColor={preferredColor}
           />
         )}
 

@@ -1,0 +1,128 @@
+{
+  "gameOver": {
+    "title": "Gioco Terminato!",
+    "tie": "🤝 Pareggio",
+    "winnerLabel": "è il vincitore",
+    "totalPoints": "punti totali",
+    "allPlayersEliminated": "Tutti i giocatori sono stati eliminati",
+    "gameSummary": "Riepilogo del Gioco",
+    "rounds": "Round",
+    "roundsPlural": "round",
+    "duration": "Durata",
+    "players": "Giocatori",
+    "finalPoints": "Punti Finali",
+    "points": "punti",
+    "elo": "ELO",
+    "backToMenu": "Torna al Menu",
+    "nextMatch": "Prossima Partita"
+  },
+  "roundSummary": {
+    "roundFinished": "Round {round} Terminato",
+    "roundSummary": "Riepilogo del Round",
+    "round": "Round",
+    "roundPoints": "Punti di questo Round",
+    "pts": "pts",
+    "total": "Totale",
+    "nextRound": "Prossimo Round",
+    "nextRoundCountdown": "Prossimo Round ({countdown})",
+    "starting": "Avvio..."
+  },
+  "colorPicker": {
+    "title": "Seleziona Colore",
+    "colorInUse": "Colore in uso",
+    "cancel": "Annulla",
+    "confirm": "Conferma"
+  },
+  "menu": {
+    "loading": "Caricamento...",
+    "controls": "CONTROLLI",
+    "mobile": {
+      "tapLeft": "Tocca lato sinistro : Gira a sinistra",
+      "tapRight": "Tocca lato destro : Gira a destra",
+      "tapBoth": "Tocca entrambi i lati : Attiva boost (velocità +50%)"
+    },
+    "desktop": {
+      "turnLeft": "A / ← : Gira a sinistra",
+      "turnRight": "D / → : Gira a destra",
+      "activateBoost": "A + D : Attiva boost (velocità +50%)"
+    },
+    "playAsGuest": "Gioca come ospite",
+    "playOnline": "Gioca Online",
+    "playAsGuestTooltip": "Gioca come ospite (nessun account richiesto)",
+    "playOnlineTooltip": "Gioca online con il tuo account",
+    "leaderboard": "Classifica",
+    "signIn": "Accedi",
+    "signOut": "Esci",
+    "install": "Installa",
+    "installTooltip": "Installa applicazione",
+    "playerMenu": "Informazioni giocatore",
+    "openPlayerMenu": "Apri menu giocatore",
+    "changeLanguage": "Cambia lingua",
+    "language": "Lingua"
+  },
+  "lobby": {
+    "players": "Giocatori",
+    "waitingForPlayers": "In attesa di giocatori...",
+    "changeColor": "Cambia Colore",
+    "start": "Inizia",
+    "waitingForMorePlayers": "In attesa di altri giocatori...",
+    "backToMenu": "Torna al Menu"
+  },
+  "leaderboard": {
+    "loading": "Caricamento classifica...",
+    "noPlayers": "Nessun giocatore trovato",
+    "rank": "Posizione",
+    "player": "Giocatore",
+    "elo": "ELO",
+    "winRate": "Percentuale Vittorie",
+    "close": "Chiudi",
+    "closeTooltip": "Chiudi classifica",
+    "allTime": "Storico",
+    "month": "Mese",
+    "day": "Giorno",
+    "eloChange": "Variazione ELO"
+  },
+  "gameHud": {
+    "round": "Round",
+    "connected": "● Connesso",
+    "disconnected": "● Disconnesso",
+    "classification": "Classifica",
+    "pts": "pts"
+  },
+  "playerSidebar": {
+    "changeColorTooltip": "Clicca per cambiare il colore",
+    "playingAsGuest": "Giocando come ospite",
+    "editNameTooltip": "Clicca per modificare",
+    "cannotEditDuringGame": "Non puoi cambiare il tuo nome durante una partita attiva",
+    "stats": "Statistiche",
+    "rating": "Valutazione",
+    "peakRating": "Valutazione Massima",
+    "games": "Partite",
+    "wins": "Vittorie",
+    "loadingStats": "Caricamento statistiche..."
+  },
+  "errors": {
+    "nameEmpty": "Il nome non può essere vuoto",
+    "nameTooLong": "Il nome non può superare i 50 caratteri",
+    "cannotChangeNameDuringGame": "Non puoi cambiare il tuo nome durante una partita attiva",
+    "errorSavingName": "Errore nel salvare il nome: {error}",
+    "connectionError": "Errore di connessione: {error}",
+    "serverConnectionFailed": "❌ Impossibile connettersi al server su {url}",
+    "serverNotRunning": "Il server non è in esecuzione",
+    "connectionTimeout": "⏱️ Timeout di connessione al server. Il server potrebbe essere sovraccarico o non disponibile.",
+    "corsError": "🚫 Errore CORS. Verifica la configurazione del server.",
+    "reconnectionFailed": "Impossibile connettersi al server dopo {attempts} tentativi. Assicurati che il server sia in esecuzione.",
+    "reconnecting": "🔄 Riconnessione... ({attempt}/{maxAttempts})"
+  },
+  "defaults": {
+    "player": "Giocatore",
+    "guestPlayer": "Giocatore Ospite",
+    "unknownPlayer": "Giocatore Sconosciuto"
+  },
+  "languageSelector": {
+    "title": "Seleziona Lingua",
+    "selectLanguage": "Seleziona una lingua",
+    "close": "Chiudi"
+  }
+}
+

@@ -1,0 +1,128 @@
+{
+  "gameOver": {
+    "title": "Partie Terminée !",
+    "tie": "🤝 Égalité",
+    "winnerLabel": "est le gagnant",
+    "totalPoints": "points au total",
+    "allPlayersEliminated": "Tous les joueurs ont été éliminés",
+    "gameSummary": "Résumé de la Partie",
+    "rounds": "Manches",
+    "roundsPlural": "manches",
+    "duration": "Durée",
+    "players": "Joueurs",
+    "finalPoints": "Points Finaux",
+    "points": "points",
+    "elo": "ELO",
+    "backToMenu": "Retour au Menu",
+    "nextMatch": "Partie Suivante"
+  },
+  "roundSummary": {
+    "roundFinished": "Manche {round} Terminée",
+    "roundSummary": "Résumé de la Manche",
+    "round": "Manche",
+    "roundPoints": "Points de cette Manche",
+    "pts": "pts",
+    "total": "Total",
+    "nextRound": "Manche Suivante",
+    "nextRoundCountdown": "Manche Suivante ({countdown})",
+    "starting": "Démarrage..."
+  },
+  "colorPicker": {
+    "title": "Sélectionner une Couleur",
+    "colorInUse": "Couleur utilisée",
+    "cancel": "Annuler",
+    "confirm": "Confirmer"
+  },
+  "menu": {
+    "loading": "Chargement...",
+    "controls": "CONTRÔLES",
+    "mobile": {
+      "tapLeft": "Appuyer côté gauche : Tourner à gauche",
+      "tapRight": "Appuyer côté droit : Tourner à droite",
+      "tapBoth": "Appuyer les deux côtés : Activer le boost (vitesse +50%)"
+    },
+    "desktop": {
+      "turnLeft": "A / ← : Tourner à gauche",
+      "turnRight": "D / → : Tourner à droite",
+      "activateBoost": "A + D : Activer le boost (vitesse +50%)"
+    },
+    "playAsGuest": "Jouer en invité",
+    "playOnline": "Jouer en Ligne",
+    "playAsGuestTooltip": "Jouer en invité (aucun compte requis)",
+    "playOnlineTooltip": "Jouer en ligne avec votre compte",
+    "leaderboard": "Classement",
+    "signIn": "Se Connecter",
+    "signOut": "Se Déconnecter",
+    "install": "Installer",
+    "installTooltip": "Installer l'application",
+    "playerMenu": "Informations du joueur",
+    "openPlayerMenu": "Ouvrir le menu du joueur",
+    "changeLanguage": "Changer de langue",
+    "language": "Langue"
+  },
+  "lobby": {
+    "players": "Joueurs",
+    "waitingForPlayers": "En attente de joueurs...",
+    "changeColor": "Changer de Couleur",
+    "start": "Démarrer",
+    "waitingForMorePlayers": "En attente de plus de joueurs...",
+    "backToMenu": "Retour au Menu"
+  },
+  "leaderboard": {
+    "loading": "Chargement du classement...",
+    "noPlayers": "Aucun joueur trouvé",
+    "rank": "Rang",
+    "player": "Joueur",
+    "elo": "ELO",
+    "winRate": "Taux de Victoire",
+    "close": "Fermer",
+    "closeTooltip": "Fermer le classement",
+    "allTime": "Historique",
+    "month": "Mois",
+    "day": "Jour",
+    "eloChange": "Changement ELO"
+  },
+  "gameHud": {
+    "round": "Manche",
+    "connected": "● Connecté",
+    "disconnected": "● Déconnecté",
+    "classification": "Classement",
+    "pts": "pts"
+  },
+  "playerSidebar": {
+    "changeColorTooltip": "Cliquer pour changer la couleur",
+    "playingAsGuest": "Jouer en invité",
+    "editNameTooltip": "Cliquer pour modifier",
+    "cannotEditDuringGame": "Vous ne pouvez pas changer votre nom pendant une partie active",
+    "stats": "Statistiques",
+    "rating": "Classement",
+    "peakRating": "Classement Maximum",
+    "games": "Parties",
+    "wins": "Victoires",
+    "loadingStats": "Chargement des statistiques..."
+  },
+  "errors": {
+    "nameEmpty": "Le nom ne peut pas être vide",
+    "nameTooLong": "Le nom ne peut pas dépasser 50 caractères",
+    "cannotChangeNameDuringGame": "Vous ne pouvez pas changer votre nom pendant une partie active",
+    "errorSavingName": "Erreur lors de l'enregistrement du nom : {error}",
+    "connectionError": "Erreur de connexion : {error}",
+    "serverConnectionFailed": "❌ Impossible de se connecter au serveur à {url}",
+    "serverNotRunning": "Le serveur n'est pas en cours d'exécution",
+    "connectionTimeout": "⏱️ Délai d'attente de connexion au serveur dépassé. Le serveur peut être surchargé ou indisponible.",
+    "corsError": "🚫 Erreur CORS. Vérifiez la configuration du serveur.",
+    "reconnectionFailed": "Impossible de se connecter au serveur après {attempts} tentatives. Assurez-vous que le serveur est en cours d'exécution.",
+    "reconnecting": "🔄 Reconnexion... ({attempt}/{maxAttempts})"
+  },
+  "defaults": {
+    "player": "Joueur",
+    "guestPlayer": "Joueur Invité",
+    "unknownPlayer": "Joueur Inconnu"
+  },
+  "languageSelector": {
+    "title": "Sélectionner une Langue",
+    "selectLanguage": "Sélectionnez une langue",
+    "close": "Fermer"
+  }
+}
+
