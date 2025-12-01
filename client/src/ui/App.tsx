@@ -36,10 +36,21 @@ function BoostBar({
   );
 }
 
+// Helper function to convert hex to rgba
+function hexToRgba(hex: string, alpha: number = 1): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 // Game over modal component
 function GameOverModal({
   gameState,
   onBackToMenu,
+  onNextMatch,
+  localPlayerId,
+  preferredColor,
 }: {
   gameState: {
     players: Array<{ id: string; name: string; color: string; alive: boolean }>;
@@ -52,8 +63,13 @@ function GameOverModal({
       round: number;
       deathOrder: Array<{ playerId: string; points: number }>;
     }>;
+    playerRatingChanges?: Record<string, number>; // playerId -> rating_change
+    playerEloRatings?: Record<string, number>; // playerId -> elo_rating (ELO actual antes del cambio)
   } | null;
   onBackToMenu: () => void;
+  onNextMatch: () => void;
+  localPlayerId?: string | null;
+  preferredColor?: string;
 }) {
   if (!gameState) return null;
 
@@ -62,20 +78,27 @@ function GameOverModal({
     : null;
   const gameDuration = Math.floor(gameState.tick / 60); // Aproximadamente segundos (60 ticks por segundo)
 
+  // Obtener el color del jugador local
+  const localPlayer = localPlayerId
+    ? gameState.players.find((p) => p.id === localPlayerId)
+    : null;
+  const localPlayerColor = localPlayer?.color || preferredColor || "#4caf50";
+
   // Ordenar jugadores por puntos (mayor a menor)
   const playersWithPoints = gameState.players
     .map((player) => ({
       ...player,
       points: gameState.playerPoints?.[player.id] || 0,
+      ratingChange: gameState.playerRatingChanges?.[player.id],
+      eloRating: gameState.playerEloRatings?.[player.id], // ELO actual antes del cambio
+      isLocalPlayer: player.id === localPlayerId,
     }))
     .sort((a, b) => b.points - a.points);
 
   return (
     <div className="game-over-modal-overlay">
       <div className="game-over-modal">
-        <h1 className="game-over-title">
-          {winner ? "🏆 Game Over!" : "🤝 Tie"}
-        </h1>
+        <h1 className="game-over-title">{winner ? "Game Over!" : "🤝 Tie"}</h1>
 
         <div className="game-over-content">
           {/* Left column: Game information */}
@@ -139,10 +162,35 @@ function GameOverModal({
                         style={{ backgroundColor: player.color }}
                       />
                       <span className="player-name-summary">{player.name}</span>
-                      <span className="player-points">{player.points} pts</span>
-                      {isWinner && (
-                        <span className="player-status winner-status">🏆</span>
+                      {player.eloRating !== undefined && (
+                        <span
+                          className="player-elo-rating"
+                          style={
+                            player.isLocalPlayer
+                              ? { color: localPlayerColor }
+                              : undefined
+                          }
+                        >
+                          {Math.round(player.eloRating)} ELO
+                        </span>
                       )}
+                      {player.ratingChange !== undefined && (
+                        <span
+                          className={`player-rating-change ${
+                            player.ratingChange > 0
+                              ? "rating-change-positive"
+                              : player.ratingChange < 0
+                              ? "rating-change-negative"
+                              : ""
+                          }`}
+                        >
+                          {player.ratingChange > 0 ? "+" : ""}
+                          {player.ratingChange}
+                        </span>
+                      )}
+                      <span className="player-points">
+                        {player.points} points
+                      </span>
                     </div>
                   );
                 })}
@@ -151,9 +199,25 @@ function GameOverModal({
           </div>
         </div>
 
-        <button onClick={onBackToMenu} className="back-to-menu-button">
-          Back to Menu
-        </button>
+        <div className="game-over-actions">
+          <button onClick={onBackToMenu} className="back-to-menu-button">
+            Back to Menu
+          </button>
+          <button
+            onClick={onNextMatch}
+            className="next-match-button"
+            style={{
+              backgroundColor: localPlayerColor,
+              borderColor: localPlayerColor,
+              boxShadow: `0 0 15px ${hexToRgba(
+                localPlayerColor,
+                0.3
+              )}, 0 0 25px ${hexToRgba(localPlayerColor, 0.2)}`,
+            }}
+          >
+            Next Match
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -365,12 +429,13 @@ function ColorPickerModal({
 
 // Frases aleatorias sobre curves (cargadas desde JSON)
 const curvePhrases = curvePhrasesData.curve_phrases;
+const guestCurvePhrases = curvePhrasesData.guest_curve_phrases;
 
 function App() {
   const { user, loading, signInWithGoogle, signOut } = useAuth();
-  const [currentView, setCurrentView] = useState<"menu" | "game" | "lobby">(
-    "menu"
-  );
+  const [currentView, setCurrentView] = useState<
+    "menu" | "game" | "lobby" | "leaderboard"
+  >("menu");
   const [boostState, setBoostState] = useState<{
     active: boolean;
     charge: number;
@@ -390,7 +455,7 @@ function App() {
     }>
   >([]);
   const [lobbyPlayers, setLobbyPlayers] = useState<
-    Array<{ id: string; name: string; color: string }>
+    Array<{ id: string; name: string; color: string; elo_rating?: number }>
   >([]);
   const [gameOverState, setGameOverState] = useState<{
     players: Array<{ id: string; name: string; color: string; alive: boolean }>;
@@ -403,6 +468,8 @@ function App() {
       round: number;
       deathOrder: Array<{ playerId: string; points: number }>;
     }>;
+    playerRatingChanges?: Record<string, number>; // playerId -> rating_change
+    playerEloRatings?: Record<string, number>; // playerId -> elo_rating (ELO actual antes del cambio)
   } | null>(null);
   const [roundSummaryState, setRoundSummaryState] = useState<{
     players: Array<{ id: string; name: string; color: string; alive: boolean }>;
@@ -436,23 +503,46 @@ function App() {
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [nameEditValue, setNameEditValue] = useState<string>("");
   const [randomCurvePhrase, setRandomCurvePhrase] = useState<string>("");
+  const [playerStats, setPlayerStats] = useState<{
+    elo_rating: number;
+    peak_rating: number;
+    rating_change: number;
+    total_games: number;
+    total_wins: number;
+  } | null>(null);
+  const [leaderboardPlayers, setLeaderboardPlayers] = useState<
+    Array<{
+      user_id: string;
+      name: string | null;
+      elo_rating: number;
+      total_games: number;
+      total_wins: number;
+      win_rate: number;
+    }>
+  >([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState<boolean>(false);
   const gameRef = useRef<Game | null>(null);
 
   // Seleccionar una frase aleatoria al cargar y reemplazar {player} con el nombre del jugador
   useEffect(() => {
-    const randomIndex = Math.floor(Math.random() * curvePhrases.length);
-    const selectedPhrase = curvePhrases[randomIndex];
+    // Usar frases de Guest si el usuario no está logueado
+    const phrasesToUse = user ? curvePhrases : guestCurvePhrases;
+    const randomIndex = Math.floor(Math.random() * phrasesToUse.length);
+    const selectedPhrase = phrasesToUse[randomIndex];
 
-    // Obtener el nombre del jugador para reemplazar {player}
-    const playerName =
-      playerDisplayName ||
-      (user
-        ? user.user_metadata?.full_name || user.email?.split("@")[0] || "Player"
-        : "Guest Player");
-
-    // Reemplazar {player} con el nombre del jugador
-    const phraseWithPlayer = selectedPhrase.replace(/{player}/g, playerName);
-    setRandomCurvePhrase(phraseWithPlayer);
+    // Si el usuario está logueado, reemplazar {player} con el nombre del jugador
+    if (user) {
+      const playerName =
+        playerDisplayName ||
+        user.user_metadata?.full_name ||
+        user.email?.split("@")[0] ||
+        "Player";
+      const phraseWithPlayer = selectedPhrase.replace(/{player}/g, playerName);
+      setRandomCurvePhrase(phraseWithPlayer);
+    } else {
+      // Para guests, usar la frase directamente sin reemplazos
+      setRandomCurvePhrase(selectedPhrase);
+    }
   }, [playerDisplayName, user]);
 
   // Cerrar menú lateral con la tecla Escape
@@ -480,6 +570,86 @@ function App() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Cargar estadísticas del jugador desde BD
+  useEffect(() => {
+    const loadPlayerStats = async () => {
+      if (user?.id) {
+        try {
+          const { data, error } = await supabase
+            .from("player_stats")
+            .select(
+              "elo_rating, peak_rating, rating_change, total_games, total_wins"
+            )
+            .eq("user_id", user.id)
+            .single();
+
+          if (error) {
+            if (error.code === "PGRST116") {
+              // Jugador nuevo sin estadísticas - usar valores por defecto
+              setPlayerStats({
+                elo_rating: 1000,
+                peak_rating: 1000,
+                rating_change: 0,
+                total_games: 0,
+                total_wins: 0,
+              });
+            } else {
+              console.error("Error loading player stats:", error);
+              setPlayerStats({
+                elo_rating: 1000,
+                peak_rating: 1000,
+                rating_change: 0,
+                total_games: 0,
+                total_wins: 0,
+              });
+            }
+          } else if (data) {
+            setPlayerStats({
+              elo_rating: data.elo_rating ?? 1000,
+              peak_rating: data.peak_rating ?? 1000,
+              rating_change: data.rating_change ?? 0,
+              total_games: data.total_games ?? 0,
+              total_wins: data.total_wins ?? 0,
+            });
+          } else {
+            setPlayerStats({
+              elo_rating: 1000,
+              peak_rating: 1000,
+              rating_change: 0,
+              total_games: 0,
+              total_wins: 0,
+            });
+          }
+        } catch (err) {
+          console.error("Error loading player stats:", err);
+          setPlayerStats({
+            elo_rating: 1000,
+            peak_rating: 1000,
+            rating_change: 0,
+            total_games: 0,
+            total_wins: 0,
+          });
+        }
+      } else {
+        setPlayerStats(null);
+      }
+    };
+
+    // Cargar inmediatamente si el sidebar está abierto
+    if (showPlayerSidebar && user?.id) {
+      loadPlayerStats();
+    } else if (user?.id) {
+      // También cargar cuando hay usuario, aunque el sidebar no esté abierto
+      loadPlayerStats();
+    }
+
+    // Recargar estadísticas cada 5 segundos cuando el sidebar está abierto
+    if (showPlayerSidebar && user?.id) {
+      const interval = setInterval(loadPlayerStats, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user, showPlayerSidebar]);
 
   // Cargar nombre del jugador desde BD al iniciar sesión
   useEffect(() => {
@@ -613,16 +783,11 @@ function App() {
 
         setPlayerDisplayName(trimmedName);
         setIsEditingName(false);
-        console.log("✅ Nombre actualizado en BD:", trimmedName);
       } else {
         // Usuario guest - guardar en localStorage
         localStorage.setItem("guestPlayerName", trimmedName);
         setPlayerDisplayName(trimmedName);
         setIsEditingName(false);
-        console.log(
-          "✅ Nombre de guest guardado en localStorage:",
-          trimmedName
-        );
       }
     } catch (error: any) {
       console.error("Error saving display name:", error);
@@ -751,6 +916,218 @@ function App() {
             roundResults: gameState.roundResults,
           });
 
+          // Cargar cambios de ELO de los jugadores
+          const loadRatingChanges = async () => {
+            try {
+              // Esperar un momento para que se guarden los datos en la BD y se ejecute el trigger
+              // El trigger se ejecuta inmediatamente después de insertar en game_participants,
+              // pero puede haber un pequeño delay en la replicación de Supabase
+              await new Promise((resolve) => setTimeout(resolve, 500));
+
+              // Obtener el game_id más reciente del usuario actual que haya terminado recientemente
+              // (en los últimos 30 segundos para asegurar que es la partida que acaba de terminar)
+              if (user?.id) {
+                const thirtySecondsAgo = new Date(
+                  Date.now() - 30000
+                ).toISOString();
+
+                const { data: recentGame } = await supabase
+                  .from("game_participants")
+                  .select("game_id")
+                  .eq("user_id", user.id)
+                  .gte("created_at", thirtySecondsAgo) // Solo partidas de los últimos 30 segundos
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle(); // Usar maybeSingle() en lugar de single() para evitar error si no hay resultados
+
+                console.log("[ELO] Recent game (last 30s):", recentGame);
+
+                // Si no hay partida reciente, intentar con la más reciente sin filtro de tiempo
+                let gameIdToUse = recentGame?.game_id;
+                if (!gameIdToUse) {
+                  const { data: anyRecentGame } = await supabase
+                    .from("game_participants")
+                    .select("game_id")
+                    .eq("user_id", user.id)
+                    .order("created_at", { ascending: false })
+                    .limit(1)
+                    .maybeSingle(); // Usar maybeSingle() en lugar de single() para evitar error si no hay resultados
+
+                  gameIdToUse = anyRecentGame?.game_id;
+                  console.log(
+                    "[ELO] Fallback to any recent game:",
+                    anyRecentGame
+                  );
+                }
+
+                if (recentGame?.game_id) {
+                  // Verificar que los participantes existan
+                  const { data: participantsData, error: participantsError } =
+                    await supabase
+                      .from("game_participants")
+                      .select("user_id")
+                      .eq("game_id", gameIdToUse);
+
+                  console.log(
+                    "[ELO] Participants data:",
+                    participantsData,
+                    "Error:",
+                    participantsError
+                  );
+
+                  // Obtener todos los cambios de ELO de esta partida (con reintentos)
+                  let ratingChanges: any[] = [];
+                  let attempts = 0;
+                  const maxAttempts = 5;
+
+                  while (ratingChanges.length === 0 && attempts < maxAttempts) {
+                    const { data, error: ratingError } = await supabase
+                      .from("rating_history")
+                      .select("user_id, rating_change")
+                      .eq("game_id", gameIdToUse);
+
+                    ratingChanges = data || [];
+                    console.log(
+                      `[ELO] Attempt ${attempts + 1}: Rating changes:`,
+                      ratingChanges,
+                      "Error:",
+                      ratingError
+                    );
+
+                    if (
+                      ratingChanges.length === 0 &&
+                      attempts < maxAttempts - 1
+                    ) {
+                      // Esperar un poco antes de reintentar (reducido para respuesta más rápida)
+                      await new Promise((resolve) => setTimeout(resolve, 300));
+                    }
+                    attempts++;
+                  }
+
+                  // Obtener nombres de usuarios
+                  const userIds = participantsData?.map((p) => p.user_id) || [];
+                  const { data: usersData } = await supabase
+                    .from("users")
+                    .select("id, name")
+                    .in("id", userIds);
+
+                  const participants =
+                    participantsData?.map((p) => ({
+                      user_id: p.user_id,
+                      users: usersData?.find((u) => u.id === p.user_id),
+                    })) || [];
+
+                  console.log("[ELO] Participants with names:", participants);
+
+                  if (
+                    ratingChanges &&
+                    ratingChanges.length > 0 &&
+                    participants
+                  ) {
+                    // Crear mapa de user_id -> rating_change
+                    const ratingChangeMap: Record<string, number> = {};
+                    ratingChanges.forEach((rc) => {
+                      ratingChangeMap[rc.user_id] = rc.rating_change;
+                    });
+
+                    // Crear mapa de nombre -> user_id desde participantes
+                    const nameToUserIdMap: Record<string, string> = {};
+                    participants.forEach((p: any) => {
+                      const userName = p.users?.name;
+                      if (userName && p.user_id) {
+                        nameToUserIdMap[userName] = p.user_id;
+                      }
+                    });
+
+                    console.log("[ELO] Name to user_id map:", nameToUserIdMap);
+                    console.log("[ELO] Rating change map:", ratingChangeMap);
+
+                    // Mapear player.id a rating_change usando el nombre
+                    const playerRatingChanges: Record<string, number> = {};
+                    players.forEach((player) => {
+                      const userId = nameToUserIdMap[player.name];
+                      if (userId && ratingChangeMap[userId] !== undefined) {
+                        playerRatingChanges[player.id] =
+                          ratingChangeMap[userId];
+                        console.log(
+                          `[ELO] Mapped ${player.name} (${player.id}) -> ${ratingChangeMap[userId]}`
+                        );
+                      }
+                    });
+
+                    // Cargar ELOs actuales de los jugadores (antes del cambio)
+                    const playerEloRatings: Record<string, number> = {};
+                    const userIdsForElo = Object.values(nameToUserIdMap);
+                    if (userIdsForElo.length > 0) {
+                      const { data: eloData } = await supabase
+                        .from("player_stats")
+                        .select("user_id, elo_rating")
+                        .in("user_id", userIdsForElo);
+
+                      if (eloData) {
+                        // Crear mapa de user_id -> elo_rating
+                        const eloMap: Record<string, number> = {};
+                        eloData.forEach((stat) => {
+                          // El ELO actual es el ELO después del cambio menos el cambio
+                          const userId = stat.user_id;
+                          const ratingChange = ratingChangeMap[userId] || 0;
+                          const currentElo =
+                            (stat.elo_rating || 1000) - ratingChange;
+                          eloMap[userId] = currentElo;
+                        });
+
+                        // Mapear player.id a elo_rating usando el nombre
+                        players.forEach((player) => {
+                          const userId = nameToUserIdMap[player.name];
+                          if (userId && eloMap[userId] !== undefined) {
+                            playerEloRatings[player.id] = eloMap[userId];
+                            console.log(
+                              `[ELO] Mapped ${player.name} (${player.id}) -> ELO ${eloMap[userId]}`
+                            );
+                          }
+                        });
+                      }
+                    }
+
+                    console.log(
+                      "[ELO] Final player rating changes:",
+                      playerRatingChanges
+                    );
+                    console.log(
+                      "[ELO] Final player ELO ratings:",
+                      playerEloRatings
+                    );
+
+                    setGameOverState((prev) => {
+                      if (!prev) return prev;
+                      return {
+                        ...prev,
+                        playerRatingChanges,
+                        playerEloRatings,
+                      };
+                    });
+                  } else {
+                    console.warn(
+                      "[ELO] No rating changes found after",
+                      maxAttempts,
+                      "attempts. Participants:",
+                      participantsData?.length
+                    );
+                  }
+                } else {
+                  console.log("[ELO] No recent game found");
+                }
+              } else {
+                console.log("[ELO] No user ID");
+              }
+            } catch (error) {
+              console.error("[ELO] Error loading rating changes:", error);
+            }
+          };
+
+          // Cargar cambios de ELO en segundo plano
+          loadRatingChanges();
+
           // IMPORTANTE: Desactivar input cuando se muestra el modal
           const inputManager = gameRef.current.getInputManager();
           inputManager.setGameActive(false);
@@ -785,9 +1162,6 @@ function App() {
 
         // Si el juego vuelve a 'playing', cerrar el modal
         if (gameState.gameStatus === "playing") {
-          console.log(
-            `🔄 [Cliente] Estado cambió a 'playing', cerrando modal de resumen de ronda`
-          );
           setRoundSummaryState(null);
 
           // Reactivar input cuando se cierra el modal
@@ -806,9 +1180,6 @@ function App() {
       // Verificar que el estado sea 'round-ended' antes de enviar
       const gameState = gameRef.current.getGameState();
       if (gameState.gameStatus !== "round-ended") {
-        console.log(
-          `⚠️  No se puede solicitar siguiente ronda: estado actual es ${gameState.gameStatus}`
-        );
         return;
       }
 
@@ -817,9 +1188,6 @@ function App() {
         gameState.nextRoundCountdown !== undefined &&
         gameState.nextRoundCountdown > 0
       ) {
-        console.log(
-          `⚠️  Ya hay una cuenta atrás en curso: ${gameState.nextRoundCountdown}`
-        );
         return;
       }
 
@@ -914,11 +1282,8 @@ function App() {
     });
 
     networkClient.onConnect(() => {
-      console.log("[App] ✅ Conectado al servidor, uniéndose al lobby...");
-
       // Enviar user_id si el usuario está autenticado
       if (user?.id) {
-        console.log("[App] 🔐 Enviando autenticación de usuario:", user.id);
         networkClient.sendAuthUser(user.id);
       }
 
@@ -936,17 +1301,9 @@ function App() {
           // Obtener color preferido desde localStorage
           const savedPreferredColor =
             localStorage.getItem("preferredColor") || preferredColor;
-          console.log(
-            "[App] 👤 Uniéndose al lobby como:",
-            playerName,
-            "con color preferido:",
-            savedPreferredColor
-          );
           gameRef.current.joinLobby(playerName, savedPreferredColor);
         } else {
-          console.error(
-            "[App] ❌ gameRef.current es null, no se puede unir al lobby"
-          );
+          console.error("gameRef.current es null, no se puede unir al lobby");
         }
       }, 100);
     });
@@ -958,20 +1315,86 @@ function App() {
     networkClient.connect();
   };
 
-  // Function to start local game
-  const handleStartLocalGame = () => {
-    if (gameRef.current) {
-      // Si ya existe, destruirlo y crear uno nuevo
-      if (gameRef.current.isUsingNetwork()) {
-        gameRef.current.destroy();
-        gameRef.current = new Game("gameCanvas", false);
+  // Function to start local game (deshabilitada temporalmente)
+  // const handleStartLocalGame = () => {
+  //   if (gameRef.current) {
+  //     // Si ya existe, destruirlo y crear uno nuevo
+  //     if (gameRef.current.isUsingNetwork()) {
+  //       gameRef.current.destroy();
+  //       gameRef.current = new Game("gameCanvas", false);
+  //     }
+
+  //     gameRef.current.init(4); // 4 jugadores
+  //     gameRef.current.start();
+  //     setCurrentView("game");
+  //   }
+  // };
+
+  // Function to load leaderboard
+  const loadLeaderboard = async () => {
+    setLoadingLeaderboard(true);
+    try {
+      // Obtener estadísticas ordenadas por ELO
+      const { data: stats, error: statsError } = await supabase
+        .from("player_stats")
+        .select("user_id, elo_rating, total_games, total_wins")
+        .order("elo_rating", { ascending: false })
+        .limit(100); // Top 100 jugadores
+
+      if (statsError) {
+        console.error("Error fetching leaderboard:", statsError);
+        setLeaderboardPlayers([]);
+        return;
       }
 
-      gameRef.current.init(4); // 4 jugadores
-      gameRef.current.start();
-      setCurrentView("game");
+      if (!stats || stats.length === 0) {
+        setLeaderboardPlayers([]);
+        return;
+      }
+
+      // Obtener información de usuarios
+      const userIds = stats.map((s) => s.user_id);
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select("id, name")
+        .in("id", userIds);
+
+      if (usersError) {
+        console.error("Error fetching users:", usersError);
+        setLeaderboardPlayers([]);
+        return;
+      }
+
+      // Combinar datos
+      const userMap = new Map(users?.map((u) => [u.id, u]) || []);
+      const leaderboard = stats.map((stat) => {
+        const user = userMap.get(stat.user_id);
+        return {
+          user_id: stat.user_id,
+          name: user?.name || "Unknown Player",
+          elo_rating: stat.elo_rating || 1000,
+          total_games: stat.total_games || 0,
+          total_wins: stat.total_wins || 0,
+          win_rate:
+            stat.total_games > 0 ? stat.total_wins / stat.total_games : 0,
+        };
+      });
+
+      setLeaderboardPlayers(leaderboard);
+    } catch (err) {
+      console.error("Error loading leaderboard:", err);
+      setLeaderboardPlayers([]);
+    } finally {
+      setLoadingLeaderboard(false);
     }
   };
+
+  // Cargar leaderboard cuando se abre la vista
+  useEffect(() => {
+    if (currentView === "leaderboard") {
+      loadLeaderboard();
+    }
+  }, [currentView]);
 
   // Function to request game start from lobby
   const handleStartGameFromLobby = () => {
@@ -1000,6 +1423,28 @@ function App() {
     // Limpiar estado de toques
     setTouchLeft(false);
     setTouchRight(false);
+  };
+
+  // Function to go to next match (matchmaking) from game over modal
+  const handleNextMatchFromGameOver = () => {
+    if (gameRef.current) {
+      gameRef.current.stop();
+      if (gameRef.current.isUsingNetwork()) {
+        const networkClient = gameRef.current.getNetworkClient();
+        if (networkClient) {
+          networkClient.disconnect();
+        }
+        gameRef.current.destroy();
+      }
+    }
+    setGameOverState(null);
+    setLobbyPlayers([]);
+    setLocalPlayerId(null);
+    // Limpiar estado de toques
+    setTouchLeft(false);
+    setTouchRight(false);
+    // Llamar a handleConnectToServer para ir directamente al matchmaking
+    handleConnectToServer();
   };
 
   // Obtener el color del jugador local para el feedback visual
@@ -1087,6 +1532,30 @@ function App() {
       >
         {currentView === "menu" && (
           <div className="main-menu">
+            {/* Sign Out button - top right */}
+            {user && (
+              <button
+                onClick={signOut}
+                className="menu-signout-button"
+                aria-label="Sign out"
+                title="Sign Out"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+              </button>
+            )}
             {/* Left side: Title and Welcome */}
             <div className="main-menu-left">
               <div className="main-menu-left-top">
@@ -1154,6 +1623,9 @@ function App() {
                 <button
                   onClick={handleConnectToServer}
                   className="menu-option"
+                  style={{
+                    textDecorationColor: preferredColor,
+                  }}
                   title={
                     !user
                       ? "Play as a guest (no account required)"
@@ -1162,21 +1634,30 @@ function App() {
                 >
                   {!user ? "Play as guest" : "Play Online"}
                 </button>
-                <button onClick={handleStartLocalGame} className="menu-option">
+                {/* Local Game deshabilitado temporalmente */}
+                {/* <button onClick={handleStartLocalGame} className="menu-option">
                   Local Game
-                </button>
+                </button> */}
                 <button
-                  onClick={() => {
-                    if (user) {
-                      signOut();
-                    } else {
-                      signInWithGoogle();
-                    }
-                  }}
+                  onClick={() => setCurrentView("leaderboard")}
                   className="menu-option"
+                  style={{
+                    textDecorationColor: preferredColor,
+                  }}
                 >
-                  {user ? "Sign Out" : "Sign In"}
+                  LeaderBoard
                 </button>
+                {!user && (
+                  <button
+                    onClick={signInWithGoogle}
+                    className="menu-option"
+                    style={{
+                      textDecorationColor: preferredColor,
+                    }}
+                  >
+                    Sign In
+                  </button>
+                )}
               </div>
 
               {showInstallButton && (
@@ -1187,6 +1668,63 @@ function App() {
                 >
                   Install
                 </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {currentView === "leaderboard" && (
+          <div className="leaderboard-view">
+            <button
+              onClick={() => setCurrentView("menu")}
+              className="leaderboard-close-button"
+              aria-label="Close leaderboard"
+              title="Close"
+            >
+              ✕
+            </button>
+            <div className="leaderboard-view-content">
+              {loadingLeaderboard ? (
+                <div className="leaderboard-loading">
+                  <p>Loading leaderboard...</p>
+                </div>
+              ) : leaderboardPlayers.length === 0 ? (
+                <div className="leaderboard-empty">
+                  <p>No players found</p>
+                </div>
+              ) : (
+                <div className="leaderboard-table">
+                  <div className="leaderboard-header">
+                    <div className="leaderboard-header-rank">Rank</div>
+                    <div className="leaderboard-header-name">Player</div>
+                    <div className="leaderboard-header-elo">ELO</div>
+                    <div className="leaderboard-header-wr">Win Rate</div>
+                  </div>
+                  <div className="leaderboard-body">
+                    {leaderboardPlayers.map((player, index) => {
+                      const isCurrentUser = user?.id === player.user_id;
+                      return (
+                        <div
+                          key={player.user_id}
+                          className={`leaderboard-row ${
+                            isCurrentUser ? "leaderboard-row-current" : ""
+                          }`}
+                        >
+                          <div className="leaderboard-rank">#{index + 1}</div>
+                          <div className="leaderboard-name">{player.name}</div>
+                          <div className="leaderboard-elo">
+                            {player.elo_rating.toLocaleString()}
+                          </div>
+                          <div className="leaderboard-wr">
+                            {player.total_games > 0
+                              ? `${(player.win_rate * 100).toFixed(1)}%`
+                              : "0%"}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -1209,6 +1747,11 @@ function App() {
                           style={{ backgroundColor: player.color }}
                         />
                         <span className="player-name">{player.name}</span>
+                        {player.elo_rating !== undefined && (
+                          <span className="player-elo">
+                            {player.elo_rating.toLocaleString()}
+                          </span>
+                        )}
                       </div>
                     ))
                   )}
@@ -1216,7 +1759,6 @@ function App() {
               </div>
               {/* Right column: Actions */}
               <div className="lobby-actions">
-                <h1>Lobby</h1>
                 <button
                   onClick={() => {
                     const currentPlayer = lobbyPlayers.find(
@@ -1273,22 +1815,14 @@ function App() {
               onClick={() => setShowPlayerSidebar(false)}
             />
             <div className="player-sidebar">
-              <div className="player-sidebar-header">
-                <h2 className="player-sidebar-title">Player Info</h2>
-                <button
-                  className="player-sidebar-close"
-                  onClick={() => setShowPlayerSidebar(false)}
-                  aria-label="Close menu"
-                >
-                  ✕
-                </button>
-              </div>
               <div className="player-sidebar-content">
                 <div className="player-sidebar-section">
                   <div className="player-sidebar-avatar">
                     <div
                       className="player-sidebar-avatar-color"
                       style={{ backgroundColor: preferredColor }}
+                      onClick={() => setShowColorPicker(true)}
+                      title="Click to change color"
                     />
                   </div>
                   <div className="player-sidebar-info">
@@ -1332,12 +1866,10 @@ function App() {
                       <div
                         className="player-sidebar-name"
                         onClick={(e) => {
-                          e.stopPropagation(); // Prevenir que el click se propague
-                          // Solo permitir editar si no estamos en una partida activa
+                          e.stopPropagation();
                           if (currentView === "game" && !gameOverState) {
-                            return; // No hacer nada si estamos en partida activa
+                            return;
                           }
-                          console.log("Click en nombre, activando edición");
                           setNameEditValue(
                             playerDisplayName ||
                               (user
@@ -1379,7 +1911,6 @@ function App() {
                               if (currentView === "game" && !gameOverState) {
                                 return;
                               }
-                              console.log("Click en icono, activando edición");
                               setNameEditValue(
                                 playerDisplayName ||
                                   (user
@@ -1411,17 +1942,6 @@ function App() {
                     <div className="player-sidebar-email">
                       {user?.email || "Playing as guest"}
                     </div>
-                  </div>
-                </div>
-                <div className="player-sidebar-section">
-                  <div className="player-sidebar-color-display">
-                    <div
-                      className="player-sidebar-color-preview"
-                      style={{ backgroundColor: preferredColor }}
-                    />
-                    <span className="player-sidebar-color-value">
-                      {preferredColor.toUpperCase()}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -1495,22 +2015,14 @@ function App() {
               onClick={() => setShowPlayerSidebar(false)}
             />
             <div className="player-sidebar">
-              <div className="player-sidebar-header">
-                <h2 className="player-sidebar-title">Player Info</h2>
-                <button
-                  className="player-sidebar-close"
-                  onClick={() => setShowPlayerSidebar(false)}
-                  aria-label="Close menu"
-                >
-                  ✕
-                </button>
-              </div>
               <div className="player-sidebar-content">
                 <div className="player-sidebar-section">
                   <div className="player-sidebar-avatar">
                     <div
                       className="player-sidebar-avatar-color"
                       style={{ backgroundColor: preferredColor }}
+                      onClick={() => setShowColorPicker(true)}
+                      title="Click to change color"
                     />
                   </div>
                   <div className="player-sidebar-info">
@@ -1559,7 +2071,6 @@ function App() {
                           if (currentView === "game" && !gameOverState) {
                             return; // No hacer nada si estamos en partida activa
                           }
-                          console.log("Click en nombre, activando edición");
                           setNameEditValue(
                             playerDisplayName ||
                               (user
@@ -1601,7 +2112,6 @@ function App() {
                               if (currentView === "game" && !gameOverState) {
                                 return;
                               }
-                              console.log("Click en icono, activando edición");
                               setNameEditValue(
                                 playerDisplayName ||
                                   (user
@@ -1635,21 +2145,195 @@ function App() {
                     </div>
                   </div>
                 </div>
-                <div className="player-sidebar-section">
-                  <div
-                    className="player-sidebar-color-display player-sidebar-color-clickable"
-                    onClick={() => setShowColorPicker(true)}
-                    title="Click to change color"
-                  >
+                {/* ESTADÍSTICAS */}
+                {user && (
+                  <div className="player-sidebar-section">
+                    <h3 className="player-sidebar-stats-title">Estadísticas</h3>
                     <div
-                      className="player-sidebar-color-preview"
-                      style={{ backgroundColor: preferredColor }}
-                    />
-                    <span className="player-sidebar-color-value">
-                      {preferredColor.toUpperCase()}
-                    </span>
+                      className="player-sidebar-stats"
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "10px",
+                      }}
+                    >
+                      {playerStats ? (
+                        <>
+                          <div
+                            className="player-sidebar-stat-item"
+                            style={{
+                              display: "flex",
+                              padding: "10px 12px",
+                              backgroundColor: "rgba(255, 255, 255, 0.05)",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              borderRadius: "6px",
+                            }}
+                          >
+                            <span
+                              className="player-sidebar-stat-label"
+                              style={{
+                                color: "rgba(255, 255, 255, 0.7)",
+                                fontSize: "0.9rem",
+                              }}
+                            >
+                              Rating:
+                            </span>
+                            <span
+                              className="player-sidebar-stat-value"
+                              style={{
+                                color: "#ffffff",
+                                fontSize: "1rem",
+                                fontWeight: "600",
+                                marginLeft: "auto",
+                              }}
+                            >
+                              {playerStats.elo_rating.toLocaleString()}
+                            </span>
+                            {playerStats.rating_change !== 0 && (
+                              <span
+                                className={`player-sidebar-rating-change ${
+                                  playerStats.rating_change > 0
+                                    ? "rating-positive"
+                                    : "rating-negative"
+                                }`}
+                                style={{ marginLeft: "8px" }}
+                              >
+                                {playerStats.rating_change > 0 ? "+" : ""}
+                                {playerStats.rating_change}
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            className="player-sidebar-stat-item"
+                            style={{
+                              display: "flex",
+                              padding: "10px 12px",
+                              backgroundColor: "rgba(255, 255, 255, 0.05)",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              borderRadius: "6px",
+                            }}
+                          >
+                            <span
+                              className="player-sidebar-stat-label"
+                              style={{
+                                color: "rgba(255, 255, 255, 0.7)",
+                                fontSize: "0.9rem",
+                              }}
+                            >
+                              Peak Rating:
+                            </span>
+                            <span
+                              className="player-sidebar-stat-value"
+                              style={{
+                                color: "#ffffff",
+                                fontSize: "1rem",
+                                fontWeight: "600",
+                                marginLeft: "auto",
+                              }}
+                            >
+                              {playerStats.peak_rating.toLocaleString()}
+                            </span>
+                          </div>
+                          <div
+                            className="player-sidebar-stat-item"
+                            style={{
+                              display: "flex",
+                              padding: "10px 12px",
+                              backgroundColor: "rgba(255, 255, 255, 0.05)",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              borderRadius: "6px",
+                            }}
+                          >
+                            <span
+                              className="player-sidebar-stat-label"
+                              style={{
+                                color: "rgba(255, 255, 255, 0.7)",
+                                fontSize: "0.9rem",
+                              }}
+                            >
+                              Partidas:
+                            </span>
+                            <span
+                              className="player-sidebar-stat-value"
+                              style={{
+                                color: "#ffffff",
+                                fontSize: "1rem",
+                                fontWeight: "600",
+                                marginLeft: "auto",
+                              }}
+                            >
+                              {playerStats.total_games}
+                            </span>
+                          </div>
+                          <div
+                            className="player-sidebar-stat-item"
+                            style={{
+                              display: "flex",
+                              padding: "10px 12px",
+                              backgroundColor: "rgba(255, 255, 255, 0.05)",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              borderRadius: "6px",
+                            }}
+                          >
+                            <span
+                              className="player-sidebar-stat-label"
+                              style={{
+                                color: "rgba(255, 255, 255, 0.7)",
+                                fontSize: "0.9rem",
+                              }}
+                            >
+                              Victorias:
+                            </span>
+                            <span
+                              className="player-sidebar-stat-value"
+                              style={{
+                                color: "#ffffff",
+                                fontSize: "1rem",
+                                fontWeight: "600",
+                                marginLeft: "auto",
+                              }}
+                            >
+                              {playerStats.total_wins}
+                            </span>
+                            {playerStats.total_games > 0 && (
+                              <span
+                                className="player-sidebar-stat-secondary"
+                                style={{
+                                  marginLeft: "6px",
+                                  color: "rgba(255, 255, 255, 0.5)",
+                                  fontSize: "0.85rem",
+                                }}
+                              >
+                                (
+                                {(
+                                  (playerStats.total_wins /
+                                    playerStats.total_games) *
+                                  100
+                                ).toFixed(1)}
+                                %)
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div
+                          className="player-sidebar-stat-item"
+                          style={{ display: "flex", padding: "10px 12px" }}
+                        >
+                          <span
+                            className="player-sidebar-stat-label"
+                            style={{
+                              color: "rgba(255, 255, 255, 0.7)",
+                              fontSize: "0.9rem",
+                            }}
+                          >
+                            Cargando estadísticas...
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </>
@@ -1707,6 +2391,9 @@ function App() {
           <GameOverModal
             gameState={gameOverState}
             onBackToMenu={handleBackToMenuFromGameOver}
+            onNextMatch={handleNextMatchFromGameOver}
+            localPlayerId={localPlayerId}
+            preferredColor={preferredColor}
           />
         )}
       </div>

@@ -60,6 +60,7 @@ export interface Database {
           ended_at: string | null;
           status: string;
           winner_id: string | null;
+          total_players: number | null;
           created_at: string;
         };
         Insert: {
@@ -68,6 +69,7 @@ export interface Database {
           ended_at?: string | null;
           status?: string;
           winner_id?: string | null;
+          total_players?: number | null;
           created_at?: string;
         };
         Update: {
@@ -76,6 +78,7 @@ export interface Database {
           ended_at?: string | null;
           status?: string;
           winner_id?: string | null;
+          total_players?: number | null;
           created_at?: string;
         };
       };
@@ -115,6 +118,9 @@ export interface Database {
           total_wins: number;
           total_score: number;
           best_score: number;
+          elo_rating: number;
+          peak_rating: number;
+          rating_change: number;
           updated_at: string;
         };
         Insert: {
@@ -123,6 +129,9 @@ export interface Database {
           total_wins?: number;
           total_score?: number;
           best_score?: number;
+          elo_rating?: number;
+          peak_rating?: number;
+          rating_change?: number;
           updated_at?: string;
         };
         Update: {
@@ -131,7 +140,36 @@ export interface Database {
           total_wins?: number;
           total_score?: number;
           best_score?: number;
+          elo_rating?: number;
+          peak_rating?: number;
+          rating_change?: number;
           updated_at?: string;
+        };
+      };
+      rating_history: {
+        Row: {
+          id: string;
+          user_id: string;
+          rating: number;
+          rating_change: number;
+          game_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          rating: number;
+          rating_change: number;
+          game_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          rating?: number;
+          rating_change?: number;
+          game_id?: string | null;
+          created_at?: string;
         };
       };
     };

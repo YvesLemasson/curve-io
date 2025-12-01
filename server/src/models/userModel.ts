@@ -15,6 +15,8 @@ export interface LeaderboardEntry {
   total_score: number;
   best_score: number;
   win_rate: number; // Calculado: total_wins / total_games
+  elo_rating: number;
+  peak_rating: number;
 }
 
 export class UserModel {
@@ -132,7 +134,7 @@ export class UserModel {
    */
   static async getLeaderboard(
     limit: number = 10,
-    sortBy: 'best_score' | 'total_wins' | 'total_score' = 'best_score'
+    sortBy: 'best_score' | 'total_wins' | 'total_score' | 'elo_rating' = 'elo_rating'
   ): Promise<LeaderboardEntry[]> {
     // Obtener estadísticas ordenadas
     const { data: stats, error: statsError } = await supabase
@@ -175,6 +177,8 @@ export class UserModel {
         total_score: stat.total_score,
         best_score: stat.best_score,
         win_rate: stat.total_games > 0 ? stat.total_wins / stat.total_games : 0,
+        elo_rating: stat.elo_rating || 1000,
+        peak_rating: stat.peak_rating || 1000,
       };
     });
 

@@ -19,7 +19,7 @@ export class GameServer {
   private lastBoostRequested: Map<string, boolean> = new Map(); // playerId -> último estado de boost solicitado
   
   // Sistema de rondas
-  private readonly TOTAL_ROUNDS: number = 5;
+  private readonly TOTAL_ROUNDS: number = 2; // Temporalmente reducido a 2 rondas
   private currentRound: number = 1;
   private playerPoints: Map<string, number> = new Map(); // playerId -> total points
   private roundResults: Array<{ round: number; deathOrder: Array<{ playerId: string; points: number }> }> = [];

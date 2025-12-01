@@ -12,7 +12,7 @@ body {
   overflow: hidden;
   background: #000000;
   color: #ffffff;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .app {
@@ -53,7 +53,7 @@ body {
   min-width: 200px;
   text-align: center;
   font-weight: 600;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.4),
     0 0 25px rgba(255, 255, 255, 0.2), 0 0 35px rgba(255, 255, 255, 0.1);
   animation: installGlow 2s ease-in-out infinite;
@@ -146,7 +146,7 @@ body {
   color: #ffffff;
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
   font-weight: 800;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   text-align: center;
   line-height: 1.1;
 }
@@ -156,7 +156,7 @@ body {
   margin: 0;
   color: #ffffff;
   text-align: center;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-style: italic;
   line-height: 1.4;
   padding: 0 10px;
@@ -176,7 +176,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   z-index: 50;
   min-height: 44px;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
@@ -225,7 +225,7 @@ body {
   left: 0;
   width: 300px;
   max-width: 85vw;
-  height: 100%;
+  height: 100vh;
   background: #212121;
   border-right: 2px solid rgba(255, 255, 255, 0.2);
   z-index: 999;
@@ -233,8 +233,7 @@ body {
   flex-direction: column;
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
   animation: slideInLeft 0.3s ease-out;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
 }
 
 @keyframes slideInLeft {
@@ -252,13 +251,14 @@ body {
   justify-content: space-between;
   padding: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .player-sidebar-title {
   font-size: 1.5rem;
   color: #ffffff;
   margin: 0;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -290,21 +290,35 @@ body {
 .player-sidebar-content {
   flex: 1;
   padding: 20px;
+  padding-top: 20px;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 
 .player-sidebar-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Primera sección (avatar + info) en row */
+.player-sidebar-section:first-of-type {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
 }
 
 .player-sidebar-avatar {
   display: flex;
   justify-content: center;
-  margin-bottom: 8px;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .player-sidebar-avatar-color {
@@ -313,10 +327,25 @@ body {
   border-radius: 50%;
   border: 3px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.player-sidebar-avatar-color:hover {
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+}
+
+.player-sidebar-avatar-color:active {
+  transform: scale(0.95);
 }
 
 .player-sidebar-info {
-  text-align: center;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
 }
 
 .player-sidebar-name {
@@ -324,7 +353,7 @@ body {
   color: #ffffff;
   font-weight: 600;
   margin-bottom: 6px;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   word-break: break-word;
   position: relative;
   display: flex;
@@ -387,7 +416,7 @@ body {
   color: #ffffff;
   font-size: 1.3rem;
   font-weight: 600;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   width: 100%;
   outline: none;
   transition: all 0.3s;
@@ -416,7 +445,7 @@ body {
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .player-sidebar-name-save:hover {
@@ -430,9 +459,9 @@ body {
 }
 
 .player-sidebar-email {
-  font-size: 0.95rem;
+  font-size: 0.65rem;
   color: rgba(255, 255, 255, 0.7);
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   word-break: break-word;
 }
 
@@ -440,45 +469,98 @@ body {
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.8);
   margin-bottom: 8px;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 500;
 }
 
-.player-sidebar-color-display {
+/* Player Sidebar Stats */
+.player-sidebar-stats-title {
+  font-size: 1.1rem;
+  color: #ffffff;
+  margin: 0 0 12px 0;
+  font-family: "Roboto", "Arial", sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.player-sidebar-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.player-sidebar-stat-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s;
+  border-radius: 6px;
+  transition: all 0.2s;
 }
 
-.player-sidebar-color-clickable {
-  cursor: pointer;
+.player-sidebar-stat-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.player-sidebar-color-clickable:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateX(4px);
+.player-sidebar-stat-label {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: "Roboto", "Arial", sans-serif;
+  font-weight: 500;
 }
 
-.player-sidebar-color-preview {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-  flex-shrink: 0;
-}
-
-.player-sidebar-color-value {
+.player-sidebar-stat-value {
   font-size: 1rem;
   color: #ffffff;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
-  font-weight: 500;
+  font-family: "Roboto", "Arial", sans-serif;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.player-sidebar-stat-secondary {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: "Roboto", "Arial", sans-serif;
+  margin-left: 6px;
+}
+
+.player-sidebar-rating-change {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: "Roboto", "Arial", sans-serif;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  animation: ratingChangePulse 0.5s ease-out;
+}
+
+.player-sidebar-rating-change.rating-positive {
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.2);
+}
+
+.player-sidebar-rating-change.rating-negative {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.2);
+}
+
+@keyframes ratingChangePulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* Responsive adjustments for player sidebar */
@@ -504,22 +586,20 @@ body {
     max-width: 90vw;
   }
 
-  .player-sidebar-header {
-    padding: 16px;
-  }
-
-  .player-sidebar-title {
-    font-size: 1.3rem;
-  }
-
   .player-sidebar-content {
     padding: 16px;
-    gap: 20px;
+    padding-top: 16px;
+    gap: 16px;
+  }
+
+  .player-sidebar-section:first-of-type {
+    gap: 12px;
   }
 
   .player-sidebar-avatar-color {
     width: 60px;
     height: 60px;
+    cursor: pointer;
   }
 
   .player-sidebar-name {
@@ -527,7 +607,62 @@ body {
   }
 
   .player-sidebar-email {
+    font-size: 0.6rem;
+  }
+}
+
+/* Mobile landscape optimizations */
+@media screen and (max-width: 768px) and (orientation: landscape) {
+  .player-sidebar {
+    width: 260px;
+    max-width: 85vw;
+  }
+
+  .player-sidebar-content {
+    padding: 12px;
+    padding-top: 12px;
+    gap: 12px;
+  }
+
+  .player-sidebar-section:first-of-type {
+    gap: 12px;
+  }
+
+  .player-sidebar-avatar-color {
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+  }
+
+  .player-sidebar-name {
+    font-size: 1rem;
+    padding: 6px 10px;
+    min-height: 40px;
+  }
+
+  .player-sidebar-email {
+    font-size: 0.55rem;
+  }
+
+  .player-sidebar-section {
+    gap: 8px;
+  }
+
+  .player-sidebar-stats-title {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+  }
+
+  .player-sidebar-stat-item {
+    padding: 8px 10px;
+  }
+
+  .player-sidebar-stat-label {
     font-size: 0.85rem;
+  }
+
+  .player-sidebar-stat-value {
+    font-size: 0.9rem;
   }
 }
 
@@ -563,7 +698,7 @@ body {
   transition: all 0.3s;
   min-height: 44px;
   text-align: center;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 400;
 }
 
@@ -591,7 +726,7 @@ body {
   font-size: 1rem;
   color: #ffffff;
   font-style: italic;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   line-height: 1.4;
 }
 
@@ -610,14 +745,14 @@ body {
   color: #ffffff;
   font-size: 0.75rem;
   font-weight: 600;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .controls-info p {
   margin: 3px 0;
   font-size: 0.7rem;
   color: #ffffff;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 /* ============================================
@@ -642,7 +777,7 @@ body {
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
   text-align: center;
   width: 100%;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 700;
 }
 
@@ -652,20 +787,26 @@ body {
   gap: 15px;
   width: 100%;
   max-width: 1200px;
+  height: 100%;
+  align-items: stretch;
 }
 
 .lobby-players {
   background: #212121;
   border-radius: 12px;
-  padding: 20px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 .lobby-players h2 {
-  font-size: 1.2rem;
-  margin-bottom: 15px;
+  font-size: 1rem;
+  margin-bottom: 8px;
   color: #ffffff;
   text-align: center;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -673,7 +814,10 @@ body {
   min-height: 100px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .waiting-text {
@@ -681,16 +825,16 @@ body {
   color: #ffffff;
   font-size: 1.1rem;
   padding: 20px 0;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .player-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  padding: 6px 8px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   transition: all 0.3s;
 }
@@ -701,22 +845,33 @@ body {
 }
 
 .player-color-indicator {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
   flex-shrink: 0;
 }
 
 .player-name {
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   color: #ffffff;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
+  flex: 1;
+  min-width: 0;
+}
+
+.player-elo {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  font-family: "Roboto", "Arial", sans-serif;
+  margin-left: auto;
+  padding-left: 8px;
 }
 
 .lobby-actions {
@@ -739,7 +894,7 @@ body {
   transition: all 0.3s;
   text-align: center;
   font-weight: 600;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   min-height: 44px;
   color: #ffffff;
@@ -796,7 +951,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 600;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
     0 0 25px rgba(255, 255, 255, 0.15);
@@ -865,7 +1020,7 @@ body {
   font-size: 1rem;
   font-weight: 600;
   white-space: nowrap;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
@@ -909,7 +1064,7 @@ body {
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .leaderboard-list {
@@ -947,7 +1102,7 @@ body {
   color: #ffffff;
   min-width: 20px;
   text-align: center;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .leaderboard-color {
@@ -966,7 +1121,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .leaderboard-points {
@@ -974,7 +1129,7 @@ body {
   color: #ffffff;
   font-weight: 600;
   white-space: nowrap;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .boost-bar {
@@ -1129,7 +1284,7 @@ body {
   text-align: center;
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
   line-height: 1.2;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 700;
 }
 
@@ -1154,7 +1309,7 @@ body {
   font-size: 0.85rem;
   color: #ffffff;
   margin: 0;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .winner-points {
@@ -1162,7 +1317,7 @@ body {
   color: #ffffff;
   margin-top: 4px;
   font-weight: 600;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .tie-section {
@@ -1179,7 +1334,7 @@ body {
   color: #ffffff;
   margin: 0;
   line-height: 1.2;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .game-summary {
@@ -1191,7 +1346,7 @@ body {
   color: #ffffff;
   margin-bottom: 8px;
   text-align: center;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -1217,14 +1372,14 @@ body {
 .stat-label {
   font-size: 0.75rem;
   color: #ffffff;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .stat-value {
   font-size: 0.9rem;
   font-weight: 600;
   color: #ffffff;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .players-summary {
@@ -1236,7 +1391,7 @@ body {
   color: #ffffff;
   margin-bottom: 8px;
   text-align: center;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -1279,7 +1434,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .player-points {
@@ -1289,7 +1444,35 @@ body {
   margin-left: auto;
   margin-right: 6px;
   white-space: nowrap;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
+}
+
+.player-elo-rating {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  margin-right: 6px;
+  white-space: nowrap;
+  font-family: "Roboto", "Arial", sans-serif;
+}
+
+.player-rating-change {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+  font-family: "Roboto", "Arial", sans-serif;
+}
+
+.player-rating-change.rating-change-positive {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.15);
+}
+
+.player-rating-change.rating-change-negative {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.15);
 }
 
 .player-total-points {
@@ -1298,7 +1481,7 @@ body {
   font-weight: 400;
   margin-right: 6px;
   white-space: nowrap;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
 }
 
 .player-status {
@@ -1322,8 +1505,16 @@ body {
   border: 1px solid rgba(255, 0, 0, 0.3);
 }
 
-.back-to-menu-button {
+.game-over-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  flex-shrink: 0;
   width: 100%;
+}
+
+.back-to-menu-button {
+  flex: 1;
   padding: 10px 20px;
   font-size: 1rem;
   background: #000000;
@@ -1333,12 +1524,45 @@ body {
   cursor: pointer;
   transition: all 0.3s;
   font-weight: 600;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
     0 0 25px rgba(255, 255, 255, 0.15);
-  margin-top: 8px;
-  flex-shrink: 0;
   min-height: 44px;
+}
+
+.next-match-button {
+  flex: 1;
+  padding: 10px 20px;
+  font-size: 1rem;
+  background: #4caf50;
+  color: #ffffff;
+  border: 2px solid #4caf50;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 600;
+  font-family: "Roboto", "Arial", sans-serif;
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.4), 0 0 25px rgba(76, 175, 80, 0.2);
+  min-height: 44px;
+}
+
+.next-match-button:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+}
+
+.next-match-button:active:not(:disabled) {
+  transform: translateY(0);
+  opacity: 0.8;
+}
+
+.next-match-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #212121;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
 }
 
 .back-to-menu-button:hover:not(:disabled) {
@@ -1397,7 +1621,7 @@ body {
   color: #ffffff;
   text-align: center;
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -1480,7 +1704,7 @@ body {
   border: 2px solid #ffffff;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
     0 0 25px rgba(255, 255, 255, 0.15);
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -1496,7 +1720,7 @@ body {
   border: 2px solid #ffffff;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
     0 0 25px rgba(255, 255, 255, 0.15);
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -1520,7 +1744,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Inter", "Roboto", "Arial", sans-serif;
+  font-family: "Roboto", "Arial", sans-serif;
   font-weight: 600;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
     0 0 25px rgba(255, 255, 255, 0.15);
@@ -1625,31 +1849,31 @@ body {
   }
 
   .lobby-players {
-    padding: 20px;
+    padding: 12px;
   }
 
   .lobby-players h2 {
-    font-size: 1.2rem;
-    margin-bottom: 15px;
+    font-size: 0.95rem;
+    margin-bottom: 8px;
   }
 
   .players-list {
     min-height: 100px;
-    gap: 8px;
+    gap: 4px;
   }
 
   .player-item {
-    padding: 10px;
-    gap: 10px;
+    padding: 6px 8px;
+    gap: 8px;
   }
 
   .player-color-indicator {
-    width: 16px;
-    height: 16px;
+    width: 12px;
+    height: 12px;
   }
 
   .player-name {
-    font-size: 1rem;
+    font-size: 0.85rem;
   }
 
   .back-button {
@@ -1839,7 +2063,16 @@ body {
     padding: 3px 8px;
   }
 
+  .game-over-actions {
+    gap: 8px;
+  }
+
   .back-to-menu-button {
+    padding: 10px 20px;
+    font-size: 1rem;
+  }
+
+  .next-match-button {
     padding: 10px 20px;
     font-size: 1rem;
   }
@@ -1952,17 +2185,17 @@ body {
   }
 
   .lobby-players {
-    padding: 30px;
+    padding: 20px;
   }
 
   .lobby-players h2 {
-    font-size: 1.5rem;
-    margin-bottom: 20px;
+    font-size: 1.2rem;
+    margin-bottom: 12px;
   }
 
   .players-list {
     min-height: 200px;
-    gap: 10px;
+    gap: 6px;
   }
 
   .waiting-text {
@@ -1971,8 +2204,8 @@ body {
   }
 
   .player-item {
-    padding: 15px;
-    gap: 15px;
+    padding: 8px 10px;
+    gap: 10px;
   }
 
   .player-item:hover {
@@ -1982,12 +2215,12 @@ body {
   }
 
   .player-color-indicator {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
   }
 
   .player-name {
-    font-size: 1.2rem;
+    font-size: 1rem;
   }
 
   .lobby-actions {
@@ -2252,6 +2485,10 @@ body {
     padding: 5px 12px;
   }
 
+  .game-over-actions {
+    gap: 15px;
+  }
+
   .back-to-menu-button {
     padding: 15px 40px;
     font-size: 1.3rem;
@@ -2261,6 +2498,17 @@ body {
     background: #45a049;
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+  }
+
+  .next-match-button {
+    padding: 15px 40px;
+    font-size: 1.3rem;
+  }
+
+  .next-match-button:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px currentColor;
   }
 
   .color-picker-modal {
@@ -2441,6 +2689,302 @@ body {
   }
 }
 
+/* ============================================
+   LEADERBOARD VIEW - Mobile Landscape First
+   ============================================ */
+.leaderboard-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  background: #000000;
+  padding: 30px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+
+.leaderboard-close-button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  background: #212121;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: "Roboto", "Arial", sans-serif;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-close-button:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.leaderboard-close-button:active {
+  transform: scale(0.95);
+}
+
+/* Menu Sign Out Button */
+.menu-signout-button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  background: #212121;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: "Roboto", "Arial", sans-serif;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+.menu-signout-button:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.menu-signout-button:active {
+  transform: scale(0.95);
+}
+
+.leaderboard-view-content {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.leaderboard-loading,
+.leaderboard-empty {
+  text-align: center;
+  color: #ffffff;
+  font-size: 1.1rem;
+  padding: 40px 0;
+  font-family: "Roboto", "Arial", sans-serif;
+}
+
+.leaderboard-table {
+  background: #212121;
+  border-radius: 12px;
+  padding: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.leaderboard-header {
+  display: grid;
+  grid-template-columns: 60px 1fr 120px 120px;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 8px;
+}
+
+.leaderboard-header-rank,
+.leaderboard-header-name,
+.leaderboard-header-elo,
+.leaderboard-header-wr {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-align: center;
+  font-family: "Roboto", "Arial", sans-serif;
+}
+
+.leaderboard-header-name {
+  text-align: left;
+}
+
+.leaderboard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 120px 120px;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s;
+  align-items: center;
+}
+
+.leaderboard-row:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.leaderboard-row-current {
+  background: rgba(255, 215, 0, 0.1);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+}
+
+.leaderboard-rank,
+.leaderboard-name,
+.leaderboard-elo,
+.leaderboard-wr {
+  font-size: 0.9rem;
+  color: #ffffff;
+  font-family: "Roboto", "Arial", sans-serif;
+  text-align: center;
+}
+
+.leaderboard-name {
+  text-align: left;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-elo {
+  font-weight: 600;
+  color: #ffd700;
+}
+
+.leaderboard-rank {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.leaderboard-wr {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Responsive adjustments for leaderboard */
+@media screen and (max-width: 768px) {
+  .leaderboard-view {
+    padding: 15px;
+  }
+
+  .leaderboard-close-button {
+    top: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    font-size: 1.3rem;
+  }
+
+  .menu-signout-button {
+    top: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    font-size: 1.3rem;
+  }
+
+  .leaderboard-header {
+    grid-template-columns: 50px 1fr 100px 100px;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .leaderboard-header-rank,
+  .leaderboard-header-name,
+  .leaderboard-header-elo,
+  .leaderboard-header-wr {
+    font-size: 0.8rem;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 50px 1fr 100px 100px;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .leaderboard-rank,
+  .leaderboard-name,
+  .leaderboard-elo,
+  .leaderboard-wr {
+    font-size: 0.8rem;
+  }
+}
+
+/* Desktop adjustments */
+@media screen and (min-width: 927px) and (min-height: 501px) {
+  .leaderboard-view {
+    padding: 40px;
+    justify-content: center;
+  }
+
+  .leaderboard-close-button {
+    top: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    font-size: 1.8rem;
+  }
+
+  .menu-signout-button {
+    top: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    font-size: 1.8rem;
+  }
+
+  .leaderboard-table {
+    padding: 20px;
+  }
+
+  .leaderboard-header {
+    grid-template-columns: 80px 1fr 150px 150px;
+    gap: 15px;
+    padding: 15px;
+  }
+
+  .leaderboard-header-rank,
+  .leaderboard-header-name,
+  .leaderboard-header-elo,
+  .leaderboard-header-wr {
+    font-size: 1rem;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 80px 1fr 150px 150px;
+    gap: 15px;
+    padding: 15px;
+  }
+
+  .leaderboard-rank,
+  .leaderboard-name,
+  .leaderboard-elo,
+  .leaderboard-wr {
+    font-size: 1rem;
+  }
+
+  .leaderboard-row:hover {
+    transform: translateX(5px);
+  }
+}
+
 /* Desactivar hover effects en dispositivos táctiles */
 @media (hover: none) and (pointer: coarse) {
   .start-button:hover,
@@ -2451,7 +2995,8 @@ body {
   .change-color-button:hover,
   .color-picker-cancel:hover,
   .color-picker-confirm:hover,
-  .menu-option:hover {
+  .menu-option:hover,
+  .leaderboard-row:hover {
     transform: none;
   }
 }

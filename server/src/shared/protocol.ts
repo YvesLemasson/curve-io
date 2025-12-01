@@ -85,6 +85,7 @@ export interface LobbyPlayersMessage {
     id: string;
     name: string;
     color: string;
+    elo_rating?: number;
   }>;
 }
 

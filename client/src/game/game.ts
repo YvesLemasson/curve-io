@@ -165,7 +165,7 @@ export class Game {
       gameStatus: "playing",
       tick: 0,
       currentRound: 1,
-      totalRounds: 5,
+      totalRounds: 2, // Temporalmente reducido a 2 rondas
       playerPoints: {},
       roundResults: [],
     };
