@@ -31,3 +31,5 @@ Este script mejora el cálculo de ELO cuando hay jugadores guest (no autenticado
 - Los jugadores guest siguen sin guardarse en `game_participants`, pero ahora se consideran en el cálculo de ELO
 
 
+
+

@@ -91,10 +91,12 @@ export class PremiumModel {
   ): Promise<UserInventoryItem[]> {
     let query = supabase
       .from("user_inventory")
-      .select(`
+      .select(
+        `
         *,
         item:premium_items(*)
-      `)
+      `
+      )
       .eq("user_id", userId);
 
     if (type) {
@@ -120,10 +122,7 @@ export class PremiumModel {
   /**
    * Verifica si un usuario tiene un item específico
    */
-  static async userHasItem(
-    userId: string,
-    itemId: string
-  ): Promise<boolean> {
+  static async userHasItem(userId: string, itemId: string): Promise<boolean> {
     const { data, error } = await supabase
       .from("user_inventory")
       .select("item_id")
@@ -149,13 +148,11 @@ export class PremiumModel {
     userId: string,
     itemId: string
   ): Promise<void> {
-    const { error } = await supabase
-      .from("user_inventory")
-      .insert({
-        user_id: userId,
-        item_id: itemId,
-        is_equipped: false,
-      });
+    const { error } = await supabase.from("user_inventory").insert({
+      user_id: userId,
+      item_id: itemId,
+      is_equipped: false,
+    });
 
     if (error) {
       // Si el item ya existe, no hacer nada (idempotente)
@@ -241,6 +238,69 @@ export class PremiumModel {
 
     return [...freeColors, ...premiumColors];
   }
+
+  /**
+   * Obtiene el trail equipado de un usuario
+   */
+  static async getEquippedTrail(userId: string): Promise<PremiumItem | null> {
+    const { data, error } = await supabase
+      .from("user_inventory")
+      .select(
+        `
+        *,
+        item:premium_items(*)
+      `
+      )
+      .eq("user_id", userId)
+      .eq("is_equipped", true)
+      .eq("item.type", "trail")
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No se encontró ningún item equipado
+        return null;
+      }
+      console.error("Error fetching equipped trail:", error);
+      return null;
+    }
+
+    return (data?.item as PremiumItem) || null;
+  }
+
+  /**
+   * Equipa un trail para un usuario (desequipa el anterior si existe)
+   */
+  static async equipTrail(userId: string, itemId: string): Promise<void> {
+    // Verificar que el usuario posee el item
+    const hasItem = await this.userHasItem(userId, itemId);
+    if (!hasItem) {
+      throw new Error("User does not own this trail");
+    }
+
+    // Verificar que es un trail
+    const item = await this.getPremiumItemById(itemId);
+    if (!item || item.type !== "trail") {
+      throw new Error("Item is not a trail");
+    }
+
+    // Desequipar todos los trails del usuario
+    await supabase
+      .from("user_inventory")
+      .update({ is_equipped: false })
+      .eq("user_id", userId)
+      .eq("item.type", "trail");
+
+    // Equipar el nuevo trail
+    const { error } = await supabase
+      .from("user_inventory")
+      .update({ is_equipped: true })
+      .eq("user_id", userId)
+      .eq("item_id", itemId);
+
+    if (error) {
+      console.error("Error equipping trail:", error);
+      throw new Error(`Failed to equip trail: ${error.message}`);
+    }
+  }
 }
-
-

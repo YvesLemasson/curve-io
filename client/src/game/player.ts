@@ -1,7 +1,7 @@
 // Lógica del jugador
 // Maneja posición, movimiento, rotación y trail
 
-import type { Position } from '@shared/types';
+import type { Position, TrailType, TrailEffectConfig } from "@shared/types";
 
 export class Player {
   public id: string;
@@ -12,21 +12,23 @@ export class Player {
   public speed: number;
   public alive: boolean;
   public trail: Array<Position | null>; // Permite null para gaps
-  
+  public trailType: TrailType = "normal"; // Tipo de trail premium (normal por defecto)
+  public trailEffect?: TrailEffectConfig; // Configuración del efecto (solo si se equipa un trail premium)
+
   // Sistema de huecos en el trail
   private trailTimer: number = 0; // Tiempo acumulado desde el inicio
   private readonly gapInterval: number = 3000; // 3 segundos en ms
   private readonly gapDuration: number = 500; // 0.5 segundos en ms
   private shouldDrawTrail: boolean = true;
   private wasDrawingTrail: boolean = true; // Estado anterior para detectar cambios
-  
+
   // Sistema de boost
   private boostActive: boolean = false;
   private boostRemaining: number = 0; // Tiempo restante de boost en ms
   private boostCharge: number = 100; // Carga del boost (0-100)
   private readonly boostDuration: number = 5000; // 5 segundos en ms
   private readonly boostSpeedMultiplier: number = 1.5; // 50% más rápido
-  
+
   // EXPERIMENTO: Sin límite de trail - monitorear rendimiento
   // FASE 1: Límite de trail para optimización
   // private readonly MAX_TRAIL_LENGTH: number = 1200; // Mantener últimos 1200 puntos (aumentado para reducir problemas de sincronización)
@@ -68,13 +70,15 @@ export class Player {
 
     // Actualizar timer del trail
     this.trailTimer += deltaTime;
-    
+
     // Calcular si estamos en un período de hueco
     const timeInCycle = this.trailTimer % this.gapInterval;
     this.shouldDrawTrail = timeInCycle >= this.gapDuration;
 
     // Calcular velocidad actual (con boost si está activo)
-    const currentSpeed = this.boostActive ? this.speed * this.boostSpeedMultiplier : this.speed;
+    const currentSpeed = this.boostActive
+      ? this.speed * this.boostSpeedMultiplier
+      : this.speed;
 
     // Calcular nueva posición
     const newX = this.position.x + Math.cos(this.angle) * currentSpeed;
@@ -85,17 +89,17 @@ export class Player {
       // Agregar un punto null para marcar el break (usaremos null como marcador)
       this.trail.push(null as any);
     }
-    
-      // Solo agregar al trail si no estamos en período de hueco
-      if (this.shouldDrawTrail) {
-        this.trail.push({ ...this.position });
-        
-        // EXPERIMENTO: Sin límite de trail - monitorear rendimiento
-        // FASE 1: Limitar tamaño del trail (mantener últimos 600 puntos)
-        // if (this.trail.length > this.MAX_TRAIL_LENGTH) {
-        //   this.trail = this.trail.slice(-this.MAX_TRAIL_LENGTH);
-        // }
-      }
+
+    // Solo agregar al trail si no estamos en período de hueco
+    if (this.shouldDrawTrail) {
+      this.trail.push({ ...this.position });
+
+      // EXPERIMENTO: Sin límite de trail - monitorear rendimiento
+      // FASE 1: Limitar tamaño del trail (mantener últimos 600 puntos)
+      // if (this.trail.length > this.MAX_TRAIL_LENGTH) {
+      //   this.trail = this.trail.slice(-this.MAX_TRAIL_LENGTH);
+      // }
+    }
 
     // Actualizar estado anterior
     this.wasDrawingTrail = this.shouldDrawTrail;
@@ -104,7 +108,7 @@ export class Player {
     this.position.x = newX;
     this.position.y = newY;
   }
-  
+
   /**
    * Actualiza el sistema de boost
    * @param isBoostRequested - Si el jugador está presionando ambas teclas
@@ -119,10 +123,10 @@ export class Player {
       } else {
         // Solo consumir tiempo si está activo Y se están presionando ambos botones
         this.boostRemaining = Math.max(0, this.boostRemaining - deltaTime);
-        
+
         // Actualizar charge para la UI (porcentaje del tiempo restante)
         this.boostCharge = (this.boostRemaining / this.boostDuration) * 100;
-        
+
         // Si se agotó el tiempo, desactivarlo
         if (this.boostRemaining <= 0) {
           this.boostActive = false;
@@ -139,7 +143,7 @@ export class Player {
       this.boostCharge = (this.boostRemaining / this.boostDuration) * 100;
     }
   }
-  
+
   /**
    * Intenta activar el boost
    * @returns true si se activó, false si no hay tiempo restante
@@ -148,16 +152,16 @@ export class Player {
     if (this.boostActive) {
       return true; // Ya está activo
     }
-    
+
     // Necesita tiempo restante para activar
     if (this.boostRemaining > 0) {
       this.boostActive = true;
       return true;
     }
-    
+
     return false; // No hay tiempo restante
   }
-  
+
   /**
    * Desactiva el boost manualmente
    */
@@ -165,7 +169,7 @@ export class Player {
     this.boostActive = false;
     this.boostRemaining = 0;
   }
-  
+
   /**
    * Obtiene el estado del boost
    */
@@ -173,10 +177,10 @@ export class Player {
     return {
       active: this.boostActive,
       charge: this.boostCharge,
-      remaining: this.boostRemaining
+      remaining: this.boostRemaining,
     };
   }
-  
+
   /**
    * Establece el estado del boost (para sincronización desde el servidor)
    */
@@ -185,7 +189,7 @@ export class Player {
     this.boostCharge = charge;
     this.boostRemaining = remaining;
   }
-  
+
   /**
    * Verifica si actualmente se debe dibujar el trail
    */
@@ -217,14 +221,17 @@ export class Player {
    * @param angleDelta - Velocidad de giro en radianes por frame
    *                     Ángulo más pequeño = giro menos cerrado (radio más amplio)
    */
-  applyRotation(action: 'left' | 'right' | null, angleDelta: number = Math.PI / 50): void {
+  applyRotation(
+    action: "left" | "right" | null,
+    angleDelta: number = Math.PI / 50
+  ): void {
     if (!this.alive || !action) return;
-    
+
     // Aplicar el mismo ángulo de giro para ambos lados
     // Ángulo más pequeño = giro más suave y menos cerrado
-    if (action === 'left') {
+    if (action === "left") {
       this.angle -= angleDelta;
-    } else if (action === 'right') {
+    } else if (action === "right") {
       this.angle += angleDelta;
     }
   }
@@ -260,4 +267,3 @@ export class Player {
     this.trail = [{ ...newPosition }];
   }
 }
-

@@ -379,7 +379,13 @@ export class Game {
       if (player.alive) {
         const trail = player.getTrail();
         if (trail.length >= 2) {
-          this.canvas.drawTrail(trail, player.color, 3);
+          this.canvas.drawTrail(
+            trail, 
+            player.color, 
+            3,
+            player.trailType || 'normal',
+            player.trailEffect
+          );
         }
 
         // Dibujar posición actual
@@ -640,6 +646,9 @@ export class Game {
               }
             : null
         );
+        // Sincronizar trailType y trailEffect
+        localPlayer.trailType = serverPlayer.trailType || 'normal';
+        localPlayer.trailEffect = serverPlayer.trailEffect;
         this.players.push(localPlayer);
         newPlayersCount++;
       }
@@ -677,6 +686,14 @@ export class Game {
           serverPlayer.boost.charge,
           serverPlayer.boost.remaining
         );
+      }
+
+      // Sincronizar trailType y trailEffect desde el servidor
+      if (serverPlayer.trailType !== undefined) {
+        localPlayer.trailType = serverPlayer.trailType;
+      }
+      if (serverPlayer.trailEffect !== undefined) {
+        localPlayer.trailEffect = serverPlayer.trailEffect;
       }
     }
 

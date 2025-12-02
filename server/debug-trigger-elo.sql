@@ -91,3 +91,5 @@ END $$;
 -- En Supabase, puedes ver los logs en el dashboard bajo "Logs" > "Postgres Logs"
 
 
+
+

@@ -107,3 +107,5 @@ Si después de seguir estos pasos el problema persiste, comparte:
 3. Una captura de pantalla del sidebar
 
 
+
+

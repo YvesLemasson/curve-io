@@ -121,3 +121,5 @@ $$ LANGUAGE plpgsql;
 SELECT 'Función update_player_stats_with_rating actualizada para usar total_players de games' AS status;
 
 
+
+

@@ -10,6 +10,7 @@ import type { PlayerJoinMessage, GameInputMessage, GameStateMessage, LobbyPlayer
 import type { Player } from './shared/types.js';
 import { GameModel } from './models/gameModel.js';
 import { UserModel } from './models/userModel.js';
+import { PremiumModel } from './models/premiumModel.js';
 import { supabase } from './config/supabase.js';
 import { MatchmakingManager } from './matchmaking/matchmakingManager.js';
 
@@ -309,7 +310,45 @@ io.on('connection', (socket: Socket) => {
       }
     }
     
-    // 6. Crear jugador
+    // 6. Obtener trail equipado del usuario (si está autenticado)
+    let equippedTrail: { trailType: string; trailEffect: any } | null = null;
+    if (userId) {
+      try {
+        const trail = await PremiumModel.getEquippedTrail(userId);
+        if (trail) {
+          // Determinar el tipo de trail basado en el nombre
+          const trailName = trail.name.toLowerCase();
+          let trailType: string = 'normal';
+          let trailEffect: any = {};
+
+          if (trailName.includes('fire') || trailName.includes('inferno') || trailName.includes('hellfire')) {
+            // Trail de fuego
+            trailType = 'fire';
+            trailEffect = {
+              glowIntensity: 4, // Resplandor del fuego
+            };
+          } else if (trailName.includes('particle')) {
+            // Trail de partículas
+            trailType = 'particles';
+            trailEffect = {
+              particleCount: 20, // Espaciado entre partículas en píxeles
+              particleSize: 3,
+              trailColor: trail.color_value, // Color del trail desde el item premium
+            };
+          }
+
+          equippedTrail = {
+            trailType,
+            trailEffect,
+          };
+        }
+      } catch (error) {
+        console.error(`❌ [${roomId}] Error al obtener trail equipado para ${userId}:`, error);
+        // Continuar sin trail premium si hay error
+      }
+    }
+
+    // 7. Crear jugador
     const player: Player = {
       id: playerId,
       name: message.name,
@@ -319,6 +358,8 @@ io.on('connection', (socket: Socket) => {
       speed: 2,
       alive: true,
       trail: [],
+      trailType: equippedTrail?.trailType || 'normal', // Usar trail equipado o normal por defecto
+      trailEffect: equippedTrail?.trailEffect,
     };
     
     // 7. Agregar jugador a la sala

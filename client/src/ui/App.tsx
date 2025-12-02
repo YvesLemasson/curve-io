@@ -687,7 +687,6 @@ function ColorPickerModal({
   return (
     <div className="color-picker-modal-overlay" onClick={onClose}>
       <div className="color-picker-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>{t("colorPicker.title")}</h2>
         {loading ? (
           <div style={{ textAlign: "center", padding: "20px" }}>"Loading"</div>
         ) : (
@@ -786,26 +785,631 @@ function ColorPickerModal({
   );
 }
 
-// Shop modal component for premium colors
+// Trail picker modal component
+function TrailPickerModal({
+  isOpen,
+  currentTrailId,
+  onClose,
+  onEquip,
+  userId,
+  onOpenShop,
+  preferredColor,
+}: {
+  isOpen: boolean;
+  currentTrailId?: string | null;
+  onClose: () => void;
+  onEquip: (trailId: string | null) => void;
+  userId?: string | null;
+  onOpenShop?: (itemId?: string) => void;
+  preferredColor?: string;
+}) {
+  // Helper function para determinar si un trail es de fuego
+  const isFireTrail = (trailName: string): boolean => {
+    const name = trailName.toLowerCase();
+    return name.includes('fire') || name.includes('inferno') || name.includes('hellfire');
+  };
+  const [selectedTrailId, setSelectedTrailId] = useState<string | null>(
+    currentTrailId || null
+  );
+  const [ownedTrails, setOwnedTrails] = useState<PremiumItem[]>([]);
+  const [availableTrails, setAvailableTrails] = useState<PremiumItem[]>([]);
+  const [equippedTrailId, setEquippedTrailId] = useState<string | null>(
+    currentTrailId || null
+  );
+  const [loading, setLoading] = useState<boolean>(false);
+  const [equipping, setEquipping] = useState<string | null>(null);
+
+  // Cargar trails cuando se abre el modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadTrails = async () => {
+      setLoading(true);
+      try {
+        // Cargar todos los trails disponibles
+        const allTrails = await PremiumModel.getPremiumItems("trail");
+
+        console.log(
+          "[TrailPickerModal] Total trails cargados:",
+          allTrails.length
+        );
+        console.log(
+          "[TrailPickerModal] Lista completa de trails:",
+          allTrails.map((t) => ({
+            id: t.id,
+            name: t.name,
+            rarity: t.rarity,
+            price_loops: t.price_loops,
+            is_active: t.is_active,
+          }))
+        );
+
+        // Verificar trails de fuego específicamente
+        const fireTrails = allTrails.filter(
+          (t) =>
+            t.name.toLowerCase().includes("fire") ||
+            t.name.toLowerCase().includes("inferno") ||
+            t.name.toLowerCase().includes("hellfire")
+        );
+        console.log(
+          "[TrailPickerModal] Trails de fuego encontrados:",
+          fireTrails.length,
+          fireTrails.map((t) => t.name)
+        );
+
+        if (userId) {
+          // Cargar inventario del usuario
+          const inventory = await PremiumModel.getUserInventory(
+            userId,
+            "trail"
+          );
+          const ownedIds = inventory.map((item) => item.item_id);
+          console.log(
+            "[TrailPickerModal] Trails en inventario del usuario:",
+            ownedIds.length,
+            ownedIds
+          );
+
+          // Separar trails en owned y available
+          const owned = allTrails.filter((trail) =>
+            ownedIds.includes(trail.id)
+          );
+          const available = allTrails.filter(
+            (trail) => !ownedIds.includes(trail.id)
+          );
+
+          console.log(
+            "[TrailPickerModal] Trails propios:",
+            owned.length,
+            owned.map((t) => t.name)
+          );
+          console.log(
+            "[TrailPickerModal] Trails disponibles para comprar:",
+            available.length,
+            available.map((t) => t.name)
+          );
+
+          setOwnedTrails(owned);
+          setAvailableTrails(available);
+
+          // Obtener trail equipado
+          const equipped = await PremiumModel.getEquippedTrail(userId);
+          console.log(
+            "[TrailPickerModal] Trail equipado actual:",
+            equipped?.name || "ninguno"
+          );
+          setEquippedTrailId(equipped?.id || null);
+          setSelectedTrailId(equipped?.id || null);
+        } else {
+          // Usuario no autenticado, todos los trails están disponibles para comprar
+          console.log(
+            "[TrailPickerModal] Usuario no autenticado - todos los trails disponibles:",
+            allTrails.length
+          );
+          setOwnedTrails([]);
+          setAvailableTrails(allTrails);
+        }
+      } catch (error) {
+        console.error("[TrailPickerModal] Error loading trails:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTrails();
+  }, [isOpen, userId]);
+
+  const handleEquip = async (trailId: string | null) => {
+    if (!userId) {
+      if (onOpenShop) {
+        onOpenShop();
+      }
+      return;
+    }
+
+    if (trailId === null) {
+      // Desequipar (equipar trail normal)
+      setEquipping("none");
+      try {
+        // Desequipar todos los trails
+        const allTrails = await PremiumModel.getUserInventory(userId, "trail");
+        for (const trail of allTrails) {
+          await supabase
+            .from("user_inventory")
+            .update({ is_equipped: false })
+            .eq("user_id", userId)
+            .eq("item_id", trail.item_id);
+        }
+        setEquippedTrailId(null);
+        setSelectedTrailId(null);
+        onEquip(null);
+      } catch (error) {
+        console.error("Error unequipping trail:", error);
+      } finally {
+        setEquipping(null);
+      }
+      return;
+    }
+
+    setEquipping(trailId);
+    try {
+      await PremiumModel.equipTrail(userId, trailId);
+      setEquippedTrailId(trailId);
+      setSelectedTrailId(trailId);
+      onEquip(trailId);
+    } catch (error: any) {
+      console.error("Error equipping trail:", error);
+      alert(error.message || "Error equipping trail");
+    } finally {
+      setEquipping(null);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="color-picker-modal-overlay" onClick={onClose}>
+      <div className="color-picker-modal" onClick={(e) => e.stopPropagation()}>
+        <h2>Select Trail</h2>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "20px" }}>Loading...</div>
+        ) : (
+          <>
+            {/* Trails del usuario */}
+            <div style={{ marginBottom: "24px" }}>
+              <h3
+                style={{
+                  color: "#ffffff",
+                  marginBottom: "12px",
+                  fontSize: "1.1rem",
+                }}
+              >
+                Your Trails
+              </h3>
+              <div className="color-picker-grid">
+                {/* Opción "Normal" (sin trail) */}
+                <button
+                  className={`color-picker-color ${
+                    selectedTrailId === null ? "selected" : ""
+                  }`}
+                  onClick={() => setSelectedTrailId(null)}
+                  style={{
+                    backgroundColor: "#333",
+                    border:
+                      selectedTrailId === null
+                        ? "3px solid #4CAF50"
+                        : "2px solid rgba(255, 255, 255, 0.3)",
+                  }}
+                  title="Normal trail (default)"
+                >
+                  <div style={{ fontSize: "0.8rem", color: "#fff" }}>
+                    Normal
+                  </div>
+                </button>
+
+                {ownedTrails.map((trail) => (
+                  <button
+                    key={trail.id}
+                    className={`color-picker-color ${
+                      selectedTrailId === trail.id ? "selected" : ""
+                    }`}
+                    onClick={() => setSelectedTrailId(trail.id)}
+                    style={{
+                      position: "relative",
+                      overflow: "visible",
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      minHeight: "60px",
+                      border:
+                        selectedTrailId === trail.id
+                          ? "3px solid #4CAF50"
+                          : "2px solid rgba(255, 255, 255, 0.3)",
+                    }}
+                    title={trail.name}
+                  >
+                    {equippedTrailId === trail.id && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "4px",
+                          right: "4px",
+                          fontSize: "12px",
+                          color: "#4CAF50",
+                        }}
+                      >
+                        ✓
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "5px",
+                        margin: "0",
+                        position: "absolute",
+                        top: "50%",
+                        left: "0",
+                        transform: "translateY(-50%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {isFireTrail(trail.name) ? (
+                        /* Trail de fuego - gradiente rojo-naranja-amarillo */
+                        <div
+                          style={{
+                            position: "absolute",
+                            width: "100%",
+                            height: "3px",
+                            background: "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
+                            top: "50%",
+                            left: 0,
+                            transform: "translateY(-50%)",
+                            borderRadius: "2px",
+                            boxShadow: "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
+                          }}
+                        />
+                      ) : (
+                        <>
+                          {/* Línea base del trail */}
+                          <div
+                            style={{
+                              position: "absolute",
+                              width: "100%",
+                              height: "1px",
+                              backgroundColor: trail.color_value,
+                              top: "50%",
+                              left: 0,
+                              transform: "translateY(-50%)",
+                              opacity: 1,
+                            }}
+                          />
+                          {/* Partículas del trail */}
+                          {Array.from({ length: 4 }).map((_, i) => {
+                        const particleSize = 3;
+                        const leftPercent = `${i * 25 + 12.5}%`;
+
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              position: "absolute",
+                              left: leftPercent,
+                              top: "50%",
+                              transform: "translate(-50%, -50%)",
+                              width: `${particleSize * 4}px`,
+                              height: `${particleSize * 4}px`,
+                              pointerEvents: "none",
+                            }}
+                          >
+                            {/* Halo exterior */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                width: `${particleSize * 1.5 * 2}px`,
+                                height: `${particleSize * 1.5 * 2}px`,
+                                borderRadius: "50%",
+                                backgroundColor: preferredColor || "#4caf50",
+                                opacity: 0.2,
+                                left: "50%",
+                                top: "50%",
+                                transform: "translate(-50%, -50%)",
+                              }}
+                            />
+                            {/* Círculo principal con resplandor */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                width: `${particleSize * 2}px`,
+                                height: `${particleSize * 2}px`,
+                                borderRadius: "50%",
+                                backgroundColor: preferredColor || "#4caf50",
+                                boxShadow: `0 0 8px ${
+                                  preferredColor || "#4caf50"
+                                }, 0 0 4px ${preferredColor || "#4caf50"}`,
+                                left: "50%",
+                                top: "50%",
+                                transform: "translate(-50%, -50%)",
+                              }}
+                            />
+                            {/* Punto blanco brillante en el centro */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                width: `${particleSize * 0.3 * 2}px`,
+                                height: `${particleSize * 0.3 * 2}px`,
+                                borderRadius: "50%",
+                                backgroundColor: "#ffffff",
+                                opacity: 0.6,
+                                left: "50%",
+                                top: "50%",
+                                transform: "translate(-50%, -50%)",
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                        </>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Trails disponibles para comprar */}
+            {availableTrails.length > 0 && (
+              <div>
+                <h3
+                  style={{
+                    color: "#ffffff",
+                    marginBottom: "12px",
+                    fontSize: "1.1rem",
+                  }}
+                >
+                  Available to Purchase
+                </h3>
+                <div className="color-picker-grid">
+                  {availableTrails.map((trail) => (
+                    <button
+                      key={trail.id}
+                      className="color-picker-color locked"
+                      onClick={() => {
+                        if (onOpenShop) {
+                          onOpenShop(trail.id);
+                        }
+                      }}
+                      style={{
+                        position: "relative",
+                        overflow: "visible",
+                        backgroundColor: "rgba(255, 255, 255, 0.05)",
+                        minHeight: "60px",
+                        opacity: 0.6,
+                      }}
+                      title={`${trail.name} - ${trail.price_loops} Loops`}
+                    >
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "5px",
+                          margin: "0",
+                          position: "absolute",
+                          top: "50%",
+                          left: "0",
+                          transform: "translateY(-50%)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {isFireTrail(trail.name) ? (
+                          /* Trail de fuego - gradiente rojo-naranja-amarillo */
+                          <div
+                            style={{
+                              position: "absolute",
+                              width: "100%",
+                              height: "3px",
+                              background: "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
+                              top: "50%",
+                              left: 0,
+                              transform: "translateY(-50%)",
+                              borderRadius: "2px",
+                              boxShadow: "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
+                            }}
+                          />
+                        ) : (
+                          <>
+                            {/* Línea base del trail */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                width: "100%",
+                                height: "1px",
+                                backgroundColor: trail.color_value,
+                                top: "50%",
+                                left: 0,
+                                transform: "translateY(-50%)",
+                                opacity: 1,
+                              }}
+                            />
+                            {/* Partículas del trail */}
+                            {Array.from({ length: 4 }).map((_, i) => {
+                          const particleSize = 3;
+                          const leftPercent = `${i * 25 + 12.5}%`;
+
+                          return (
+                            <div
+                              key={i}
+                              style={{
+                                position: "absolute",
+                                left: leftPercent,
+                                top: "50%",
+                                transform: "translate(-50%, -50%)",
+                                width: `${particleSize * 4}px`,
+                                height: `${particleSize * 4}px`,
+                                pointerEvents: "none",
+                              }}
+                            >
+                              {/* Halo exterior */}
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  width: `${particleSize * 1.5 * 2}px`,
+                                  height: `${particleSize * 1.5 * 2}px`,
+                                  borderRadius: "50%",
+                                  backgroundColor: preferredColor || "#4caf50",
+                                  opacity: 0.2,
+                                  left: "50%",
+                                  top: "50%",
+                                  transform: "translate(-50%, -50%)",
+                                }}
+                              />
+                              {/* Círculo principal con resplandor */}
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  width: `${particleSize * 2}px`,
+                                  height: `${particleSize * 2}px`,
+                                  borderRadius: "50%",
+                                  backgroundColor: preferredColor || "#4caf50",
+                                  boxShadow: `0 0 8px ${
+                                    preferredColor || "#4caf50"
+                                  }, 0 0 4px ${preferredColor || "#4caf50"}`,
+                                  left: "50%",
+                                  top: "50%",
+                                  transform: "translate(-50%, -50%)",
+                                }}
+                              />
+                              {/* Punto blanco brillante en el centro */}
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  width: `${particleSize * 0.3 * 2}px`,
+                                  height: `${particleSize * 0.3 * 2}px`,
+                                  borderRadius: "50%",
+                                  backgroundColor: "#ffffff",
+                                  opacity: 0.6,
+                                  left: "50%",
+                                  top: "50%",
+                                  transform: "translate(-50%, -50%)",
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                          </>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          position: "absolute",
+                          bottom: "4px",
+                          right: "4px",
+                          fontSize: "10px",
+                          color: "#4CAF50",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {trail.price_loops}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!userId && (
+              <div className="color-picker-premium-hint">
+                Sign in to purchase premium trails
+              </div>
+            )}
+
+            <div className="color-picker-actions">
+              <button className="color-picker-cancel" onClick={onClose}>
+                Cancel
+              </button>
+              <button
+                className="color-picker-confirm"
+                onClick={() => {
+                  // Si el trail seleccionado no está disponible (no está en ownedTrails ni es null), abrir tienda
+                  const isSelectedOwned =
+                    selectedTrailId === null ||
+                    ownedTrails.some((t) => t.id === selectedTrailId);
+
+                  if (!isSelectedOwned && onOpenShop) {
+                    // Encontrar el trail seleccionado en availableTrails
+                    const selectedTrail = availableTrails.find(
+                      (t) => t.id === selectedTrailId
+                    );
+                    if (selectedTrail) {
+                      onOpenShop(selectedTrail.id);
+                    }
+                  } else if (selectedTrailId === equippedTrailId) {
+                    onClose();
+                  } else {
+                    handleEquip(selectedTrailId);
+                  }
+                }}
+                disabled={equipping !== null}
+              >
+                {equipping
+                  ? "Processing..."
+                  : selectedTrailId === equippedTrailId
+                  ? "Close"
+                  : selectedTrailId === null ||
+                    ownedTrails.some((t) => t.id === selectedTrailId)
+                  ? "Equip"
+                  : "Buy Now"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Shop modal component for premium items (colors and trails)
 function ShopModal({
   isOpen,
   onClose,
   userId,
   onPurchaseComplete,
   highlightItemId,
+  initialShopType,
+  preferredColor,
 }: {
   isOpen: boolean;
   onClose: () => void;
   userId?: string | null;
   onPurchaseComplete?: () => void;
   highlightItemId?: string | null;
+  initialShopType?: "color" | "trail";
+  preferredColor?: string;
 }) {
   const [premiumItems, setPremiumItems] = useState<PremiumItem[]>([]);
   const [userInventory, setUserInventory] = useState<Set<string>>(new Set());
+  const [equippedTrailId, setEquippedTrailId] = useState<string | null>(null);
   const [userLoops, setUserLoops] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [equipping, setEquipping] = useState<string | null>(null);
+  const [shopType, setShopType] = useState<"color" | "trail">(
+    initialShopType || "color"
+  ); // Nuevo: selector de tipo
+  const [confirmPurchaseItem, setConfirmPurchaseItem] =
+    useState<PremiumItem | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const highlightedItemRef = useRef<HTMLDivElement>(null);
+  const selectedItemRef = useRef<HTMLDivElement>(null);
+
+  // Actualizar shopType cuando cambia initialShopType
+  useEffect(() => {
+    if (initialShopType) {
+      setShopType(initialShopType);
+    }
+    // Limpiar el item seleccionado cuando cambia el tipo de shop
+    setSelectedItemId(null);
+  }, [initialShopType]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -813,7 +1417,7 @@ function ShopModal({
     const loadShop = async () => {
       setLoading(true);
       try {
-        const items = await PremiumModel.getAllPremiumColors();
+        const items = await PremiumModel.getPremiumItems(shopType);
         // Ordenar items de más barato a más caro (por price_loops)
         // Manejar casos donde price_loops pueda ser 0, null o undefined
         const sortedItems = [...items].sort((a, b) => {
@@ -830,7 +1434,7 @@ function ShopModal({
         if (userId) {
           const inventory = await PremiumModel.getUserInventory(
             userId,
-            "color"
+            shopType
           );
           const ownedIds = new Set(inventory.map((item) => item.item_id));
           setUserInventory(ownedIds);
@@ -847,7 +1451,7 @@ function ShopModal({
     };
 
     loadShop();
-  }, [isOpen, userId]);
+  }, [isOpen, userId, shopType]); // Agregar shopType como dependencia
 
   // Hacer scroll al item resaltado cuando se carga
   useEffect(() => {
@@ -860,7 +1464,19 @@ function ShopModal({
         });
       }, 100);
     }
-  }, [highlightItemId, loading, premiumItems]);
+  }, [highlightItemId, loading]);
+
+  // Scroll al item seleccionado cuando cambia
+  useEffect(() => {
+    if (selectedItemId && selectedItemRef.current) {
+      setTimeout(() => {
+        selectedItemRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 100);
+    }
+  }, [selectedItemId]);
 
   const handlePurchase = async (item: PremiumItem) => {
     if (!userId) {
@@ -879,13 +1495,22 @@ function ShopModal({
       return;
     }
 
-    setPurchasing(item.id);
+    // Mostrar modal de confirmación
+    setConfirmPurchaseItem(item);
+  };
+
+  const confirmPurchase = async () => {
+    if (!confirmPurchaseItem || !userId) return;
+
+    setPurchasing(confirmPurchaseItem.id);
+    setConfirmPurchaseItem(null);
+
     try {
       // Comprar con Loops
-      await PremiumModel.purchaseItemWithLoops(userId, item.id);
+      await PremiumModel.purchaseItemWithLoops(userId, confirmPurchaseItem.id);
 
       // Actualizar inventario y balance
-      setUserInventory(new Set([...userInventory, item.id]));
+      setUserInventory(new Set([...userInventory, confirmPurchaseItem.id]));
       const newBalance = await PremiumModel.getUserLoops(userId);
       setUserLoops(newBalance);
 
@@ -895,11 +1520,43 @@ function ShopModal({
       }
 
       alert("Purchase successful!");
+
+      // Si es un trail, equiparlo automáticamente después de comprar
+      if (shopType === "trail" && confirmPurchaseItem.type === "trail") {
+        try {
+          await PremiumModel.equipTrail(userId, confirmPurchaseItem.id);
+          setEquippedTrailId(confirmPurchaseItem.id);
+          alert("Trail equipped!");
+        } catch (equipError: any) {
+          console.error("Error equipping trail:", equipError);
+          // No mostrar error, solo loguear
+        }
+      }
     } catch (error: any) {
       console.error("Error purchasing item:", error);
       alert(error.message || "Error processing purchase");
     } finally {
       setPurchasing(null);
+    }
+  };
+
+  const handleEquip = async (item: PremiumItem) => {
+    if (!userId || !item.id) return;
+
+    setEquipping(item.id);
+    try {
+      await PremiumModel.equipTrail(userId, item.id);
+      setEquippedTrailId(item.id);
+
+      // Notificar que se equipó (para recargar el sidebar)
+      if (onPurchaseComplete) {
+        onPurchaseComplete();
+      }
+    } catch (error: any) {
+      console.error("Error equipping trail:", error);
+      alert(error.message || "Error equipping trail");
+    } finally {
+      setEquipping(null);
     }
   };
 
@@ -934,94 +1591,529 @@ function ShopModal({
     <div className="shop-modal-overlay" onClick={onClose}>
       <div className="shop-modal" onClick={(e) => e.stopPropagation()}>
         <div className="shop-modal-header">
-          {userId && (
-            <div className="shop-balance">
-              Balance: <span className="shop-balance-amount">{userLoops}</span>{" "}
-              Loops
-            </div>
-          )}
-          {!userId && <div></div>}
-          <h2>Premium Colors Shop</h2>
-          <button className="shop-close-button" onClick={onClose}>
-            ×
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="shop-loading">Loading...</div>
-        ) : (
-          <div className="shop-content">
-            {!userId && (
-              <div className="shop-sign-in-hint">
-                Sign in to purchase premium colors
+          {/* Selector de tipo: Colores o Trails */}
+          <div
+            className="shop-type-selector"
+            style={{
+              display: "flex",
+              gap: "10px",
+              justifyContent: "flex-start",
+            }}
+          >
+            <button
+              style={{
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                backgroundColor: shopType === "color" ? "#4CAF50" : "#333",
+                color: "white",
+                fontWeight: shopType === "color" ? "bold" : "normal",
+              }}
+              onClick={() => setShopType("color")}
+            >
+              Colors
+            </button>
+            <button
+              style={{
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                backgroundColor: shopType === "trail" ? "#4CAF50" : "#333",
+                color: "white",
+                fontWeight: shopType === "trail" ? "bold" : "normal",
+              }}
+              onClick={() => setShopType("trail")}
+            >
+              Trails
+            </button>
+          </div>
+          <h2>Premium Shop</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {userId && (
+              <div className="shop-balance">
+                Balance:{" "}
+                <span className="shop-balance-amount">{userLoops}</span> Loops
               </div>
             )}
-            <div className="shop-items-grid">
-              {premiumItems.map((item) => {
-                const isOwned = userInventory.has(item.id);
-                const isPurchasing = purchasing === item.id;
-                const isHighlighted = highlightItemId === item.id;
+            <button className="shop-close-button" onClick={onClose}>
+              ×
+            </button>
+          </div>
+        </div>
 
-                return (
-                  <div
-                    key={item.id}
-                    ref={isHighlighted ? highlightedItemRef : null}
-                    className={`shop-item ${isOwned ? "owned" : ""} ${
-                      isHighlighted ? "highlighted" : ""
-                    }`}
-                  >
+        <div className="shop-content">
+          {loading ? (
+            <div className="shop-loading">Loading...</div>
+          ) : (
+            <>
+              {!userId && (
+                <div className="shop-sign-in-hint">
+                  Sign in to purchase premium{" "}
+                  {shopType === "color" ? "colors" : "trails"}
+                </div>
+              )}
+              <div className="shop-items-grid">
+                {premiumItems.map((item) => {
+                  const isOwned = userInventory.has(item.id);
+                  const isPurchasing = purchasing === item.id;
+                  // Si hay un item seleccionado por clic, solo resaltar ese. Si no, resaltar el highlightItemId inicial
+                  const isHighlighted = selectedItemId
+                    ? selectedItemId === item.id
+                    : highlightItemId === item.id;
+
+                  return (
                     <div
-                      className="shop-item-color"
-                      style={renderColorStyle(item.color_value)}
+                      key={item.id}
+                      ref={
+                        isHighlighted
+                          ? highlightItemId === item.id
+                            ? highlightedItemRef
+                            : selectedItemRef
+                          : null
+                      }
+                      className={`shop-item ${isOwned ? "owned" : ""} ${
+                        isHighlighted ? "highlighted" : ""
+                      }`}
+                      onClick={() => {
+                        // Al hacer clic, actualizar el item seleccionado
+                        setSelectedItemId(item.id);
+                      }}
+                      style={{ cursor: "pointer" }}
                     >
-                      {isOwned && <span className="shop-owned-badge">✓</span>}
-                    </div>
-                    <div className="shop-item-info">
-                      <h3>{item.name}</h3>
-                      {item.description && (
-                        <p className="shop-item-description">
-                          {item.description}
-                        </p>
-                      )}
-                      <div className="shop-item-meta">
-                        <span
-                          className="shop-item-rarity"
-                          style={{ color: getRarityColor(item.rarity) }}
-                        >
-                          {item.rarity.toUpperCase()}
-                        </span>
-                        <span
-                          className={`shop-item-price ${
-                            userLoops < item.price_loops ? "insufficient" : ""
-                          }`}
-                        >
-                          {item.price_loops} Loops
-                        </span>
-                      </div>
-                      <button
-                        className={`shop-item-buy-button ${
-                          isOwned ? "owned" : ""
-                        }`}
-                        onClick={() => handlePurchase(item)}
-                        disabled={isOwned || isPurchasing || !userId}
+                      <div
+                        className="shop-item-color"
+                        style={
+                          shopType === "trail"
+                            ? {
+                                position: "relative",
+                                overflow: "visible",
+                              }
+                            : renderColorStyle(item.color_value)
+                        }
                       >
-                        {isOwned ? (
-                          "Owned"
-                        ) : isPurchasing ? (
-                          "Processing..."
-                        ) : (
-                          <>
-                            <span className="buy-button-text-desktop">Buy</span>
-                            <span className="buy-button-text-mobile">
-                              {item.name}
-                            </span>
-                          </>
+                        {isOwned && <span className="shop-owned-badge">✓</span>}
+                        {shopType === "trail" && (
+                          <div
+                            style={{
+                              width: "100%",
+                              height: "5px",
+                              margin: "0",
+                              position: "absolute",
+                              top: "50%",
+                              left: "0",
+                              transform: "translateY(-50%)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {/* Línea base del trail */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                width: "100%",
+                                height: "1px",
+                                backgroundColor: item.color_value,
+                                top: "50%",
+                                left: 0,
+                                transform: "translateY(-50%)",
+                                opacity: 1,
+                              }}
+                            />
+                            {/* Partículas del trail */}
+                            {Array.from({ length: 4 }).map((_, i) => {
+                              const particleSize = 3;
+                              const leftPercent = `${i * 25 + 12.5}%`;
+
+                              return (
+                                <div
+                                  key={i}
+                                  style={{
+                                    position: "absolute",
+                                    left: leftPercent,
+                                    top: "50%",
+                                    transform: "translate(-50%, -50%)",
+                                    width: `${particleSize * 4}px`,
+                                    height: `${particleSize * 4}px`,
+                                    pointerEvents: "none",
+                                  }}
+                                >
+                                  {/* Halo exterior */}
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      width: `${particleSize * 1.5 * 2}px`,
+                                      height: `${particleSize * 1.5 * 2}px`,
+                                      borderRadius: "50%",
+                                      backgroundColor:
+                                        preferredColor || "#4caf50",
+                                      opacity: 0.2,
+                                      left: "50%",
+                                      top: "50%",
+                                      transform: "translate(-50%, -50%)",
+                                    }}
+                                  />
+                                  {/* Círculo principal con resplandor */}
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      width: `${particleSize * 2}px`,
+                                      height: `${particleSize * 2}px`,
+                                      borderRadius: "50%",
+                                      backgroundColor:
+                                        preferredColor || "#4caf50",
+                                      boxShadow: `0 0 8px ${
+                                        preferredColor || "#4caf50"
+                                      }, 0 0 4px ${
+                                        preferredColor || "#4caf50"
+                                      }`,
+                                      left: "50%",
+                                      top: "50%",
+                                      transform: "translate(-50%, -50%)",
+                                    }}
+                                  />
+                                  {/* Punto blanco brillante en el centro */}
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      width: `${particleSize * 0.3 * 2}px`,
+                                      height: `${particleSize * 0.3 * 2}px`,
+                                      borderRadius: "50%",
+                                      backgroundColor: "#ffffff",
+                                      opacity: 0.6,
+                                      left: "50%",
+                                      top: "50%",
+                                      transform: "translate(-50%, -50%)",
+                                    }}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
-                      </button>
+                      </div>
+                      <div className="shop-item-info">
+                        <h3>{item.name}</h3>
+                        {item.description && (
+                          <p className="shop-item-description">
+                            {item.description}
+                          </p>
+                        )}
+                        <div className="shop-item-meta">
+                          <span
+                            className="shop-item-rarity"
+                            style={{ color: getRarityColor(item.rarity) }}
+                          >
+                            {item.rarity.toUpperCase()}
+                          </span>
+                          <span
+                            className={`shop-item-price ${
+                              userLoops < item.price_loops ? "insufficient" : ""
+                            }`}
+                          >
+                            {item.price_loops} Loops
+                          </span>
+                        </div>
+                        {shopType === "trail" && isOwned ? (
+                          <button
+                            className={`shop-item-buy-button ${
+                              equippedTrailId === item.id ? "equipped" : "owned"
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEquip(item);
+                            }}
+                            disabled={
+                              equippedTrailId === item.id ||
+                              equipping === item.id ||
+                              !userId
+                            }
+                          >
+                            {equippedTrailId === item.id
+                              ? "Equipped"
+                              : equipping === item.id
+                              ? "Equipping..."
+                              : "Equip"}
+                          </button>
+                        ) : (
+                          <button
+                            className={`shop-item-buy-button ${
+                              isOwned ? "owned" : ""
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePurchase(item);
+                            }}
+                            disabled={isOwned || isPurchasing || !userId}
+                          >
+                            {isOwned ? (
+                              "Owned"
+                            ) : isPurchasing ? (
+                              "Processing..."
+                            ) : (
+                              <>
+                                <span className="buy-button-text-desktop">
+                                  Buy
+                                </span>
+                                <span className="buy-button-text-mobile">
+                                  {item.name}
+                                </span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Modal de confirmación de compra */}
+        {confirmPurchaseItem && (
+          <div
+            className="color-picker-modal-overlay"
+            onClick={() => setConfirmPurchaseItem(null)}
+          >
+            <div
+              className="color-picker-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ padding: "20px", textAlign: "center" }}>
+                <p
+                  style={{
+                    color: "#ffffff",
+                    marginBottom: "20px",
+                    fontSize: "1rem",
+                  }}
+                >
+                  Are you sure you want to purchase:
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "15px",
+                    marginBottom: "20px",
+                  }}
+                >
+                  <div
+                    className="shop-item-color"
+                    style={
+                      shopType === "trail"
+                        ? {
+                            position: "relative",
+                            overflow: "visible",
+                            width: "60px",
+                            height: "60px",
+                          }
+                        : {
+                            backgroundColor: confirmPurchaseItem.color_value,
+                            width: "60px",
+                            height: "60px",
+                          }
+                    }
+                  >
+                    {shopType === "trail" && (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "5px",
+                          margin: "0",
+                          position: "absolute",
+                          top: "50%",
+                          left: "0",
+                          transform: "translateY(-50%)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {/* Línea base del trail */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            width: "100%",
+                            height: "1px",
+                            backgroundColor: confirmPurchaseItem.color_value,
+                            top: "50%",
+                            left: 0,
+                            transform: "translateY(-50%)",
+                            opacity: 1,
+                          }}
+                        />
+                        {/* Partículas del trail */}
+                        {Array.from({ length: 4 }).map((_, i) => {
+                          const particleSize = 3;
+                          const leftPercent = `${i * 25 + 12.5}%`;
+
+                          return (
+                            <div
+                              key={i}
+                              style={{
+                                position: "absolute",
+                                left: leftPercent,
+                                top: "50%",
+                                transform: "translate(-50%, -50%)",
+                                width: `${particleSize * 4}px`,
+                                height: `${particleSize * 4}px`,
+                                pointerEvents: "none",
+                              }}
+                            >
+                              {/* Halo exterior */}
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  width: `${particleSize * 1.5 * 2}px`,
+                                  height: `${particleSize * 1.5 * 2}px`,
+                                  borderRadius: "50%",
+                                  backgroundColor: preferredColor || "#4caf50",
+                                  opacity: 0.2,
+                                  left: "50%",
+                                  top: "50%",
+                                  transform: "translate(-50%, -50%)",
+                                }}
+                              />
+                              {/* Círculo principal con resplandor */}
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  width: `${particleSize * 2}px`,
+                                  height: `${particleSize * 2}px`,
+                                  borderRadius: "50%",
+                                  backgroundColor: preferredColor || "#4caf50",
+                                  boxShadow: `0 0 8px ${
+                                    preferredColor || "#4caf50"
+                                  }, 0 0 4px ${preferredColor || "#4caf50"}`,
+                                  left: "50%",
+                                  top: "50%",
+                                  transform: "translate(-50%, -50%)",
+                                }}
+                              />
+                              {/* Punto blanco brillante en el centro */}
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  width: `${particleSize * 0.3 * 2}px`,
+                                  height: `${particleSize * 0.3 * 2}px`,
+                                  borderRadius: "50%",
+                                  backgroundColor: "#ffffff",
+                                  opacity: 0.6,
+                                  left: "50%",
+                                  top: "50%",
+                                  transform: "translate(-50%, -50%)",
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                );
-              })}
+                  <div style={{ textAlign: "left" }}>
+                    <h3
+                      style={{
+                        color: "#ffffff",
+                        margin: "0 0 5px 0",
+                        fontSize: "1.1rem",
+                      }}
+                    >
+                      {confirmPurchaseItem.name}
+                    </h3>
+                    <p
+                      style={{
+                        color: "rgba(255, 255, 255, 0.7)",
+                        margin: "0",
+                        fontSize: "0.9rem",
+                      }}
+                    >
+                      {confirmPurchaseItem.description}
+                    </p>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.1)",
+                    padding: "15px",
+                    borderRadius: "8px",
+                    marginBottom: "20px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span style={{ color: "#ffffff" }}>Price:</span>
+                    <span
+                      style={{
+                        color: "#FFD700",
+                        fontWeight: "bold",
+                        fontSize: "1.2rem",
+                      }}
+                    >
+                      {confirmPurchaseItem.price_loops} Loops
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginTop: "10px",
+                    }}
+                  >
+                    <span style={{ color: "#ffffff" }}>Your Balance:</span>
+                    <span
+                      style={{
+                        color:
+                          userLoops >= confirmPurchaseItem.price_loops
+                            ? "#4caf50"
+                            : "#f44336",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {userLoops} Loops
+                    </span>
+                  </div>
+                  {userLoops < confirmPurchaseItem.price_loops && (
+                    <p
+                      style={{
+                        color: "#f44336",
+                        marginTop: "10px",
+                        fontSize: "0.9rem",
+                      }}
+                    >
+                      Insufficient balance
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="color-picker-actions">
+                <button
+                  className="color-picker-cancel"
+                  onClick={() => setConfirmPurchaseItem(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="color-picker-confirm"
+                  onClick={confirmPurchase}
+                  disabled={
+                    userLoops < confirmPurchaseItem.price_loops ||
+                    purchasing !== null
+                  }
+                >
+                  {purchasing ? "Processing..." : "Confirm Purchase"}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1086,10 +2178,14 @@ function App() {
     countdown?: number;
   } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
+  const [showTrailPicker, setShowTrailPicker] = useState<boolean>(false);
   const [showShop, setShowShop] = useState<boolean>(false);
   const [highlightShopItemId, setHighlightShopItemId] = useState<string | null>(
     null
   );
+  const [initialShopTypeState, setInitialShopTypeState] = useState<
+    "color" | "trail" | undefined
+  >(undefined);
   const [showLanguageSelector, setShowLanguageSelector] =
     useState<boolean>(false);
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
@@ -1120,6 +2216,7 @@ function App() {
     total_wins: number;
   } | null>(null);
   const [userLoops, setUserLoops] = useState<number>(0);
+  const [equippedTrail, setEquippedTrail] = useState<PremiumItem | null>(null);
   const [leaderboardCategory, setLeaderboardCategory] = useState<
     "all-time" | "month" | "day"
   >("day");
@@ -1326,9 +2423,14 @@ function App() {
         try {
           const loops = await PremiumModel.getUserLoops(user.id);
           setUserLoops(loops);
+
+          // Cargar trail equipado
+          const trail = await PremiumModel.getEquippedTrail(user.id);
+          setEquippedTrail(trail);
         } catch (err) {
           console.error("Error loading user loops:", err);
           setUserLoops(0);
+          setEquippedTrail(null);
         }
       } else {
         setUserLoops(0);
@@ -2551,6 +3653,19 @@ function App() {
                 >
                   {t("menu.leaderboard")}
                 </button>
+                <button
+                  onClick={() => {
+                    setShowShop(true);
+                    setHighlightShopItemId(null);
+                    setInitialShopTypeState(undefined);
+                  }}
+                  className="menu-option"
+                  style={{
+                    textDecorationColor: preferredColor,
+                  }}
+                >
+                  Shop
+                </button>
                 {!user && (
                   <button
                     onClick={signInWithGoogle}
@@ -3074,6 +4189,105 @@ function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* Separador con trail actual */}
+                <div
+                  onClick={() => setShowTrailPicker(true)}
+                  style={{
+                    width: "100%",
+                    height: "5px",
+                    margin: "0",
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                  title="Click to change trail"
+                >
+                  {/* Línea base del trail */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      height: "1px",
+                      backgroundColor:
+                        equippedTrail?.color_value || preferredColor,
+                      top: "50%",
+                      left: 0,
+                      transform: "translateY(-50%)",
+                      opacity: 1,
+                    }}
+                  />
+                  {/* Partículas del trail - mismo estilo que en el juego */}
+                  {equippedTrail && equippedTrail.type === "trail" && (
+                    <>
+                      {Array.from({ length: 8 }).map((_, i) => {
+                        const particleSize = 3; // Mismo tamaño que en el juego (radio)
+                        const leftPercent = `${i * 12.5 + 6.25}%`;
+
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              position: "absolute",
+                              left: leftPercent,
+                              top: "50%",
+                              transform: "translate(-50%, -50%)",
+                              width: `${particleSize * 4}px`,
+                              height: `${particleSize * 4}px`,
+                              pointerEvents: "none",
+                            }}
+                          >
+                            {/* Halo exterior (opacidad 0.2) - radio particleSize * 1.5 */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                width: `${particleSize * 1.5 * 2}px`,
+                                height: `${particleSize * 1.5 * 2}px`,
+                                borderRadius: "50%",
+                                backgroundColor: preferredColor,
+                                opacity: 0.2,
+                                left: "50%",
+                                top: "50%",
+                                transform: "translate(-50%, -50%)",
+                              }}
+                            />
+                            {/* Círculo principal con resplandor - radio particleSize */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                width: `${particleSize * 2}px`,
+                                height: `${particleSize * 2}px`,
+                                borderRadius: "50%",
+                                backgroundColor: preferredColor,
+                                boxShadow: `0 0 8px ${preferredColor}, 0 0 4px ${preferredColor}`,
+                                left: "50%",
+                                top: "50%",
+                                transform: "translate(-50%, -50%)",
+                              }}
+                            />
+                            {/* Punto blanco brillante en el centro - radio particleSize * 0.3 */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                width: `${particleSize * 0.3 * 2}px`,
+                                height: `${particleSize * 0.3 * 2}px`,
+                                borderRadius: "50%",
+                                backgroundColor: "#ffffff",
+                                opacity: 0.6,
+                                left: "50%",
+                                top: "50%",
+                                transform: "translate(-50%, -50%)",
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+
                 {/* ESTADÍSTICAS */}
                 {user && (
                   <div className="player-sidebar-section">
@@ -3324,6 +4538,7 @@ function App() {
             onOpenShop={(itemId) => {
               setShowColorPicker(false);
               setHighlightShopItemId(itemId || null);
+              setInitialShopTypeState("color");
               setShowShop(true);
             }}
           />
@@ -3336,14 +4551,61 @@ function App() {
             onClose={() => {
               setShowShop(false);
               setHighlightShopItemId(null);
+              setInitialShopTypeState(undefined);
             }}
             userId={user?.id || null}
             highlightItemId={highlightShopItemId}
+            initialShopType={initialShopTypeState}
+            preferredColor={preferredColor}
             onPurchaseComplete={() => {
               // Recargar inventario después de compra
               setShowShop(false);
               setHighlightShopItemId(null);
               // El color picker se recargará automáticamente cuando se abra de nuevo
+            }}
+          />
+        )}
+
+        {/* Trail picker modal */}
+        {showTrailPicker && (
+          <TrailPickerModal
+            isOpen={showTrailPicker}
+            currentTrailId={equippedTrail?.id || null}
+            onClose={() => setShowTrailPicker(false)}
+            preferredColor={preferredColor}
+            onEquip={async (trailId) => {
+              if (trailId && user?.id) {
+                try {
+                  await PremiumModel.equipTrail(user.id, trailId);
+                  // Recargar trail equipado
+                  const trail = await PremiumModel.getEquippedTrail(user.id);
+                  setEquippedTrail(trail);
+                } catch (error) {
+                  console.error("Error equipping trail:", error);
+                }
+              } else if (!trailId && user?.id) {
+                // Desequipar todos los trails
+                const allTrails = await PremiumModel.getUserInventory(
+                  user.id,
+                  "trail"
+                );
+                for (const trail of allTrails) {
+                  await supabase
+                    .from("user_inventory")
+                    .update({ is_equipped: false })
+                    .eq("user_id", user.id)
+                    .eq("item_id", trail.item_id);
+                }
+                setEquippedTrail(null);
+              }
+              setShowTrailPicker(false);
+            }}
+            userId={user?.id || null}
+            onOpenShop={(itemId) => {
+              setShowTrailPicker(false);
+              setHighlightShopItemId(itemId || null);
+              setInitialShopTypeState("trail");
+              setShowShop(true);
             }}
           />
         )}

@@ -447,3 +447,5 @@ Agregar estilos para el input y botones de edición:
    - **Respuesta sugerida**: No, permitir nombres duplicados (múltiples jugadores pueden tener el mismo nombre).
 
 
+
+

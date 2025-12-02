@@ -54,3 +54,5 @@ WHERE g.id = (SELECT id FROM games ORDER BY created_at DESC LIMIT 1)
 ORDER BY gp.created_at DESC;
 
 
+
+

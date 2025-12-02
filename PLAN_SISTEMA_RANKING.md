@@ -700,3 +700,5 @@ Para medir si el sistema de ranking está funcionando:
 
 Estos 4 sistemas juntos crearán un ecosistema competitivo sólido sin sobrecargar la implementación inicial.
 
+
+

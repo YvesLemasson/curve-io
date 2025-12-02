@@ -66,6 +66,25 @@ export class PremiumModel {
       throw new Error(`Failed to fetch premium items: ${error.message}`);
     }
 
+    // Log para debugging - mostrar todos los items obtenidos
+    console.log(
+      `[PremiumModel] Obtenidos ${data?.length || 0} items de tipo "${type}":`,
+      data
+    );
+    if (type === "trail" && data) {
+      console.log(
+        "[PremiumModel] Trails encontrados:",
+        data.map((item) => ({
+          id: item.id,
+          name: item.name,
+          rarity: item.rarity,
+          price_loops: item.price_loops,
+          is_active: item.is_active,
+          display_order: item.display_order,
+        }))
+      );
+    }
+
     return data || [];
   }
 
@@ -78,10 +97,12 @@ export class PremiumModel {
   ): Promise<UserInventoryItem[]> {
     let query = supabase
       .from("user_inventory")
-      .select(`
+      .select(
+        `
         *,
         item:premium_items(*)
-      `)
+      `
+      )
       .eq("user_id", userId);
 
     if (type) {
@@ -107,10 +128,7 @@ export class PremiumModel {
   /**
    * Verifica si un usuario tiene un item específico
    */
-  static async userHasItem(
-    userId: string,
-    itemId: string
-  ): Promise<boolean> {
+  static async userHasItem(userId: string, itemId: string): Promise<boolean> {
     const { data, error } = await supabase
       .from("user_inventory")
       .select("item_id")
@@ -134,7 +152,9 @@ export class PremiumModel {
    */
   static async getAvailableColorsForUser(
     userId: string | null
-  ): Promise<{ color: string; isPremium: boolean; itemId?: string; item?: PremiumItem }[]> {
+  ): Promise<
+    { color: string; isPremium: boolean; itemId?: string; item?: PremiumItem }[]
+  > {
     // Colores gratuitos base (solo 8 colores básicos - el resto se compra)
     const freeColors = [
       "#ff0000", // Rojo
@@ -180,13 +200,11 @@ export class PremiumModel {
     userId: string,
     itemId: string
   ): Promise<void> {
-    const { error } = await supabase
-      .from("user_inventory")
-      .insert({
-        user_id: userId,
-        item_id: itemId,
-        is_equipped: false,
-      });
+    const { error } = await supabase.from("user_inventory").insert({
+      user_id: userId,
+      item_id: itemId,
+      is_equipped: false,
+    });
 
     if (error) {
       // Si el item ya existe, no hacer nada (idempotente)
@@ -224,8 +242,9 @@ export class PremiumModel {
    * Obtiene el balance de Loops de un usuario
    */
   static async getUserLoops(userId: string): Promise<number> {
-    const { data, error } = await supabase
-      .rpc("get_user_loops", { p_user_id: userId });
+    const { data, error } = await supabase.rpc("get_user_loops", {
+      p_user_id: userId,
+    });
 
     if (error) {
       console.error("Error fetching user loops:", error);
@@ -319,7 +338,9 @@ export class PremiumModel {
     // Verificar que el usuario tenga suficiente Loops
     const balance = await this.getUserLoops(userId);
     if (balance < item.price_loops) {
-      throw new Error(`Insufficient loops. You have ${balance}, need ${item.price_loops}`);
+      throw new Error(
+        `Insufficient loops. You have ${balance}, need ${item.price_loops}`
+      );
     }
 
     // Verificar que no lo tenga ya
@@ -329,7 +350,12 @@ export class PremiumModel {
     }
 
     // Gastar moneda
-    await this.spendLoops(userId, item.price_loops, itemId, `Purchased ${item.name}`);
+    await this.spendLoops(
+      userId,
+      item.price_loops,
+      itemId,
+      `Purchased ${item.name}`
+    );
 
     // Agregar al inventario
     await this.addItemToInventory(userId, itemId);
@@ -365,5 +391,96 @@ export class PremiumModel {
 
     return data || [];
   }
-}
 
+  /**
+   * Obtiene el trail equipado de un usuario
+   */
+  static async getEquippedTrail(userId: string): Promise<PremiumItem | null> {
+    // Primero obtener todos los items equipados del usuario
+    const { data, error } = await supabase
+      .from("user_inventory")
+      .select(
+        `
+        *,
+        item:premium_items(*)
+      `
+      )
+      .eq("user_id", userId)
+      .eq("is_equipped", true);
+
+    if (error) {
+      console.error("Error fetching equipped items:", error);
+      return null;
+    }
+
+    if (!data || data.length === 0) {
+      console.log("No equipped items found for user:", userId);
+      return null;
+    }
+
+    // Filtrar por tipo "trail" en el cliente
+    const trailItem = data.find(
+      (inventoryItem: any) =>
+        inventoryItem.item && inventoryItem.item.type === "trail"
+    );
+
+    if (trailItem && trailItem.item) {
+      const item = trailItem.item as PremiumItem;
+      console.log(
+        "Found equipped trail:",
+        item.name,
+        "Color:",
+        item.color_value
+      );
+      return item;
+    }
+
+    console.log("No equipped trail found for user:", userId);
+    return null;
+  }
+
+  /**
+   * Equipa un trail para un usuario (desequipa el anterior si existe)
+   */
+  static async equipTrail(userId: string, itemId: string): Promise<void> {
+    // Verificar que el usuario posee el item
+    const hasItem = await this.userHasItem(userId, itemId);
+    if (!hasItem) {
+      throw new Error("User does not own this trail");
+    }
+
+    // Verificar que es un trail
+    const item = await this.getPremiumItemById(itemId);
+    if (!item || item.type !== "trail") {
+      throw new Error("Item is not a trail");
+    }
+
+    // Obtener todos los trails del usuario y desequiparlos
+    const allTrails = await this.getUserInventory(userId, "trail");
+    const trailIds = allTrails.map((t) => t.item_id);
+
+    if (trailIds.length > 0) {
+      const { error: unequipError } = await supabase
+        .from("user_inventory")
+        .update({ is_equipped: false })
+        .eq("user_id", userId)
+        .in("item_id", trailIds);
+
+      if (unequipError) {
+        console.error("Error unequipping trails:", unequipError);
+      }
+    }
+
+    // Equipar el nuevo trail
+    const { error } = await supabase
+      .from("user_inventory")
+      .update({ is_equipped: true })
+      .eq("user_id", userId)
+      .eq("item_id", itemId);
+
+    if (error) {
+      console.error("Error equipping trail:", error);
+      throw new Error(`Failed to equip trail: ${error.message}`);
+    }
+  }
+}

@@ -449,3 +449,5 @@ CREATE TABLE virtual_currency (
 - Integración de pagos
 - Sistema de inventario
 
+
+

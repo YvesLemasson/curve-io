@@ -38,3 +38,5 @@ CREATE POLICY "Users can insert own purchases" ON public.purchases
 -- 2. Los usuarios podrán registrar sus compras en la tabla purchases
 -- 3. El error 403/406 debería desaparecer
 
+
+

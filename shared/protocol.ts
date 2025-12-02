@@ -52,6 +52,8 @@ export interface DeltaState {
     boost?: { active: boolean; charge: number; remaining: number };
     name?: string;
     color?: string;
+    trailType?: import('./types').TrailType;
+    trailEffect?: import('./types').TrailEffectConfig;
   }>;
   fullState?: boolean; // Si es true, es estado completo (primera vez o resync)
 }

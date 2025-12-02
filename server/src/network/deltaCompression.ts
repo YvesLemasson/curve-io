@@ -26,6 +26,8 @@ export interface DeltaState {
     boost?: { active: boolean; charge: number; remaining: number };
     name?: string;
     color?: string;
+    trailType?: import('../shared/types.js').TrailType;
+    trailEffect?: import('../shared/types.js').TrailEffectConfig;
   }>;
   fullState?: boolean; // Si es true, es estado completo (primera vez o resync)
 }
@@ -134,6 +136,8 @@ export class DeltaCompressor {
           boost: currentPlayer.boost,
           name: currentPlayer.name,
           color: currentPlayer.color,
+          trailType: currentPlayer.trailType,
+          trailEffect: currentPlayer.trailEffect,
         });
       } else {
         // Jugador existente - solo cambios
@@ -249,6 +253,18 @@ export class DeltaCompressor {
           hasChanges = true;
         }
 
+        // TrailType
+        if (currentPlayer.trailType !== previousPlayer.trailType) {
+          playerDelta.trailType = currentPlayer.trailType;
+          hasChanges = true;
+        }
+
+        // TrailEffect
+        if (JSON.stringify(currentPlayer.trailEffect) !== JSON.stringify(previousPlayer.trailEffect)) {
+          playerDelta.trailEffect = currentPlayer.trailEffect;
+          hasChanges = true;
+        }
+
         // Solo agregar si hay cambios
         if (hasChanges) {
           delta.players.push(playerDelta);
@@ -286,6 +302,8 @@ export class DeltaCompressor {
         boost: p.boost,
         name: p.name,
         color: p.color,
+        trailType: p.trailType,
+        trailEffect: p.trailEffect,
       })),
       fullState: true,
     };

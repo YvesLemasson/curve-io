@@ -100,3 +100,5 @@ END $$;
 -- Busca mensajes que contengan "update_player_stats_with_rating" o "WARNING"
 
 
+
+

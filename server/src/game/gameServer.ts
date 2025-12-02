@@ -473,6 +473,8 @@ export class GameServer {
         speed: p.speed,
         alive: p.alive,
         trail: p.trail.map(pos => pos ? { ...pos } : null), // Preservar nulls (gaps)
+        trailType: p.trailType,
+        trailEffect: p.trailEffect,
         boost: boostState ? {
           active: boostState.active,
           charge: boostState.charge,
@@ -996,6 +998,8 @@ export class GameServer {
       speed: p.speed,
       alive: p.alive,
       trail: p.trail.map(pos => pos ? { ...pos } : null), // Preservar nulls (gaps)
+      trailType: p.trailType,
+      trailEffect: p.trailEffect,
     }));
   }
 }

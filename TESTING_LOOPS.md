@@ -105,3 +105,5 @@ LIMIT 20;
 - **Cada transacción se registra** en `currency_transactions` para auditoría
 - **El balance se actualiza en tiempo real** cuando usas `window.testLoops.addTestLoops()`
 
+
+

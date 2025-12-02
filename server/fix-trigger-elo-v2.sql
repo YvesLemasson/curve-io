@@ -175,3 +175,5 @@ FROM pg_trigger
 WHERE tgname = 'update_stats_on_participant_insert';
 
 
+
+

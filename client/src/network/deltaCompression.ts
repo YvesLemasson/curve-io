@@ -26,6 +26,8 @@ export interface DeltaState {
     boost?: { active: boolean; charge: number; remaining: number };
     name?: string;
     color?: string;
+    trailType?: import('@shared/types').TrailType;
+    trailEffect?: import('@shared/types').TrailEffectConfig;
   }>;
   fullState?: boolean;
 }
@@ -65,6 +67,8 @@ export class DeltaDecompressor {
             y: pos.y * scaleY,
           } : null),
           boost: p.boost,
+          trailType: p.trailType,
+          trailEffect: p.trailEffect,
         })),
       };
       return this.localState;
@@ -131,6 +135,8 @@ export class DeltaDecompressor {
             y: pos.y * scaleY,
           } : null),
           boost: playerDelta.boost,
+          trailType: playerDelta.trailType,
+          trailEffect: playerDelta.trailEffect,
         };
         this.localState.players.push(player);
         playersMap.set(playerDelta.id, player);
@@ -225,6 +231,14 @@ export class DeltaDecompressor {
 
         if (playerDelta.color) {
           player.color = playerDelta.color;
+        }
+
+        if (playerDelta.trailType !== undefined) {
+          player.trailType = playerDelta.trailType;
+        }
+
+        if (playerDelta.trailEffect !== undefined) {
+          player.trailEffect = playerDelta.trailEffect;
         }
       }
     }

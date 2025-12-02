@@ -22,3 +22,5 @@ WHERE (price_loops = 0 OR price_loops IS NULL) AND is_active = true AND type = '
 -- WHERE type = 'color' AND is_active = true
 -- ORDER BY price_loops, display_order;
 
+
+
