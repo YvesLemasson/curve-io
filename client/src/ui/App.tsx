@@ -2339,11 +2339,6 @@ function App() {
   // Estado para el color del jugador local (se actualiza en el intervalo del juego)
   const [localPlayerColor, setLocalPlayerColor] = useState<string>("#4caf50");
 
-  // Obtener el color del jugador local (función para compatibilidad)
-  const getLocalPlayerColor = useCallback((): string => {
-    return localPlayerColor;
-  }, [localPlayerColor]);
-
   // Convertir color hex a rgba con opacidad para el gradiente (memoizado)
   const getLocalPlayerColorWithOpacity = useCallback(
     (opacity: number = 0.3): string => {
