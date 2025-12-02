@@ -31,7 +31,28 @@
     "title": "Select Color",
     "colorInUse": "Color in use",
     "cancel": "Cancel",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "loading": "Loading colors...",
+    "premiumLocked": "Premium color - Click to purchase",
+    "signInForPremium": "Sign in to unlock premium colors",
+    "buyNow": "Buy Now"
+  },
+  "shop": {
+    "title": "Premium Colors Shop",
+    "close": "Close",
+    "buy": "Buy",
+    "owned": "Owned",
+    "price": "Price",
+    "description": "Description",
+    "rarity": "Rarity",
+    "signInToBuy": "Sign in to purchase premium colors",
+    "purchasing": "Processing...",
+    "purchaseSuccess": "Purchase successful!",
+    "purchaseError": "Error processing purchase",
+    "comingSoon": "Payment integration coming soon",
+    "balance": "Balance",
+    "loops": "Loops",
+    "insufficientLoops": "Insufficient Loops. You need {needed}, but you have {have}."
   },
   "menu": {
     "loading": "Loading...",

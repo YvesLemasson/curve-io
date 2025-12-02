@@ -106,3 +106,4 @@ Si después de seguir estos pasos el problema persiste, comparte:
 2. Cualquier error en rojo en la consola
 3. Una captura de pantalla del sidebar
 
+

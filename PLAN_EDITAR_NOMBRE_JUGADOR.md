@@ -446,3 +446,4 @@ Agregar estilos para el input y botones de edición:
 3. ¿Debemos validar nombres duplicados?
    - **Respuesta sugerida**: No, permitir nombres duplicados (múltiples jugadores pueden tener el mismo nombre).
 
+

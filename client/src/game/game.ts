@@ -120,14 +120,16 @@ export class Game {
     const width = this.canvas.getWidth();
     const height = this.canvas.getHeight();
 
-    // Colores para los jugadores
+    // Colores para los jugadores (solo 8 colores básicos gratuitos)
     const colors = [
-      "#ff0000",
-      "#00ff00",
-      "#0000ff",
-      "#ffff00",
-      "#ff00ff",
-      "#00ffff",
+      "#ff0000", // Rojo
+      "#00ff00", // Verde
+      "#0000ff", // Azul
+      "#ffff00", // Amarillo
+      "#ff00ff", // Magenta
+      "#00ffff", // Cyan
+      "#ff8000", // Naranja
+      "#8000ff", // Morado
     ];
 
     // Posiciones iniciales distribuidas

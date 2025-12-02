@@ -436,3 +436,4 @@ Después de la implementación:
 **Autor:** Plan de implementación para sistema de matchmaking
 **Estado:** Pendiente de revisión e implementación
 
+

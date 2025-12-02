@@ -53,3 +53,4 @@ LEFT JOIN rating_history rh ON rh.user_id = gp.user_id AND rh.game_id = g.id
 WHERE g.id = (SELECT id FROM games ORDER BY created_at DESC LIMIT 1)
 ORDER BY gp.created_at DESC;
 
+

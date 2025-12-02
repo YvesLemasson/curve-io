@@ -30,3 +30,4 @@ Este script mejora el cálculo de ELO cuando hay jugadores guest (no autenticado
 - Si no está disponible, el trigger usa el conteo de participantes autenticados como fallback
 - Los jugadores guest siguen sin guardarse en `game_participants`, pero ahora se consideran en el cálculo de ELO
 
+

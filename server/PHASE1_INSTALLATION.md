@@ -148,3 +148,4 @@ Después de instalar la Fase 1, puedes proceder con:
 
 ¿Problemas? Revisa los logs del servidor y la consola del navegador para más detalles.
 
+

@@ -78,8 +78,18 @@ const socketToUserId: Map<string, string> = new Map();
 const socketToRoomId: Map<string, string> = new Map();
 
 // Función para encontrar un color disponible que no esté en uso
+// Solo usa los 8 colores básicos gratuitos (el resto se compra)
 function getAvailableColor(existingPlayers: Player[]): string {
-  const availableColors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+  const availableColors = [
+    '#ff0000', // Rojo
+    '#00ff00', // Verde
+    '#0000ff', // Azul
+    '#ffff00', // Amarillo
+    '#ff00ff', // Magenta
+    '#00ffff', // Cyan
+    '#ff8000', // Naranja
+    '#8000ff', // Morado
+  ];
   const usedColors = new Set(existingPlayers.map(p => p.color));
   
   // Buscar el primer color disponible que no esté en uso
@@ -89,21 +99,9 @@ function getAvailableColor(existingPlayers: Player[]): string {
     }
   }
   
-  // Si todos los colores están en uso, generar un color aleatorio
-  const randomColor = () => {
-    const r = Math.floor(Math.random() * 200) + 55; // 55-255 para evitar colores muy oscuros
-    const g = Math.floor(Math.random() * 200) + 55;
-    const b = Math.floor(Math.random() * 200) + 55;
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-  };
-  
-  // Generar un color aleatorio y verificar que no esté en uso
-  let newColor: string;
-  do {
-    newColor = randomColor();
-  } while (usedColors.has(newColor));
-  
-  return newColor;
+  // Si todos los 8 colores básicos están en uso, usar el primero (puede haber duplicados)
+  // En este caso, el jugador debería comprar más colores
+  return availableColors[0];
 }
 
 // Función para enviar lista de jugadores en el lobby a una sala específica

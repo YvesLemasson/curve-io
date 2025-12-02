@@ -99,3 +99,4 @@ END $$;
 -- En Supabase: Dashboard > Logs > Postgres Logs
 -- Busca mensajes que contengan "update_player_stats_with_rating" o "WARNING"
 
+

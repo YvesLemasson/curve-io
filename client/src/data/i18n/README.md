@@ -47,3 +47,4 @@ Example: `"roundFinished": "Round {round} Finished"` becomes `"Round 3 Finished"
 - All texts should be in English in the base file (`en.json`).
 - When translating, maintain the same structure and keys.
 
+

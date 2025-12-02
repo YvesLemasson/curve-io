@@ -13,3 +13,4 @@ CREATE POLICY "Anyone can read user names for leaderboard" ON public.users
 --   FOR SELECT USING (true)
 --   WITH CHECK (true);
 
+

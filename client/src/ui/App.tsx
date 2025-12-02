@@ -1,7 +1,7 @@
 // Main React application component
 // Handles routing and general UI structure
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Game } from "../game/game";
 import { useAuth } from "../auth/AuthContext";
 import { supabase } from "../config/supabase";
@@ -13,6 +13,7 @@ import {
   onLanguageChange,
   type Language,
 } from "../utils/i18n";
+import { PremiumModel, type PremiumItem } from "../models/premiumModel";
 import "./App.css";
 
 // Import Game here to avoid circular reference error
@@ -22,23 +23,40 @@ import "./App.css";
 function BoostBar({
   charge,
   active,
-  remaining,
+  color,
 }: {
   charge: number;
   active: boolean;
-  remaining: number;
+  color?: string;
 }) {
-  const remainingSeconds = (remaining / 1000).toFixed(1);
+  const playerColor = color || "#4caf50";
+
+  // Memoizar el gradiente para evitar recálculos en cada render
+  const boostGradient = useMemo(() => {
+    if (color && color.startsWith("#")) {
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      // Crear una versión más clara para el gradiente
+      const rLight = Math.min(255, r + 40);
+      const gLight = Math.min(255, g + 40);
+      const bLight = Math.min(255, b + 40);
+      return `linear-gradient(90deg, ${color}, rgb(${rLight}, ${gLight}, ${bLight}))`;
+    }
+    return `linear-gradient(90deg, ${playerColor}, ${playerColor})`;
+  }, [color, playerColor]);
 
   return (
     <div className="boost-bar-wrapper">
       <div className="boost-bar">
         <div
           className={`boost-fill ${active ? "boost-active" : ""}`}
-          style={{ width: `${charge}%` }}
+          style={{
+            width: `${charge}%`,
+            background: boostGradient,
+          }}
         />
       </div>
-      {active && <div className="boost-timer">{remainingSeconds}s</div>}
     </div>
   );
 }
@@ -102,13 +120,122 @@ function GameOverModal({
     }))
     .sort((a, b) => b.points - a.points);
 
+  // Memoizar los datos de los jugadores para evitar re-ejecutar el efecto
+  const playersDataKey = useMemo(() => {
+    return JSON.stringify(
+      playersWithPoints.map((p) => ({
+        id: p.id,
+        eloRating: p.eloRating,
+        ratingChange: p.ratingChange,
+      }))
+    );
+  }, [playersWithPoints]);
+
+  // Estado para animar ELO y rating change
+  const [animatedValues, setAnimatedValues] = useState<
+    Record<string, { elo: number; change: number }>
+  >({});
+  const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasStartedAnimation = useRef(false);
+
+  // Inicializar valores animados y empezar animación después de 1 segundo
+  useEffect(() => {
+    // Solo ejecutar una vez por conjunto de datos
+    if (hasStartedAnimation.current) {
+      return;
+    }
+
+    hasStartedAnimation.current = true;
+
+    const initialValues: Record<string, { elo: number; change: number }> = {};
+    playersWithPoints.forEach((player) => {
+      if (player.eloRating !== undefined) {
+        initialValues[player.id] = {
+          elo: player.eloRating,
+          change: player.ratingChange || 0,
+        };
+      }
+    });
+    setAnimatedValues(initialValues);
+
+    // Esperar 1 segundo antes de empezar la animación
+    const startTimeout = setTimeout(() => {
+      // Calcular el número total de pasos necesarios (máximo cambio absoluto)
+      let maxSteps = 0;
+      playersWithPoints.forEach((player) => {
+        if (player.ratingChange !== undefined) {
+          maxSteps = Math.max(maxSteps, Math.abs(player.ratingChange));
+        }
+      });
+
+      if (maxSteps === 0) {
+        return;
+      }
+
+      let currentStep = 0;
+
+      // Animar paso a paso cada 0.125 segundos
+      animationIntervalRef.current = setInterval(() => {
+        const newValues: Record<string, { elo: number; change: number }> = {};
+        let allFinished = true;
+
+        playersWithPoints.forEach((player) => {
+          if (
+            player.eloRating !== undefined &&
+            player.ratingChange !== undefined
+          ) {
+            const totalChange = player.ratingChange;
+            const stepsNeeded = Math.abs(totalChange);
+            const stepSize = totalChange > 0 ? 1 : -1;
+
+            // Calcular cuántos pasos se han completado para este jugador
+            const stepsCompleted = Math.min(currentStep, stepsNeeded);
+            const currentChange = stepsCompleted * stepSize;
+            const remainingChange = totalChange - currentChange;
+
+            newValues[player.id] = {
+              elo: player.eloRating + currentChange,
+              change: remainingChange,
+            };
+
+            if (stepsCompleted < stepsNeeded) {
+              allFinished = false;
+            }
+          } else if (player.eloRating !== undefined) {
+            // Jugador sin cambio de rating, mantener valores iniciales
+            newValues[player.id] = {
+              elo: player.eloRating,
+              change: 0,
+            };
+          }
+        });
+
+        setAnimatedValues(newValues);
+        currentStep++;
+
+        // Detener cuando todos los cambios estén completos
+        if (allFinished && currentStep > maxSteps) {
+          if (animationIntervalRef.current) {
+            clearInterval(animationIntervalRef.current);
+            animationIntervalRef.current = null;
+          }
+        }
+      }, 125); // 0.125 segundos entre cada paso
+    }, 1000); // Esperar 1 segundo antes de empezar
+
+    return () => {
+      hasStartedAnimation.current = false;
+      clearTimeout(startTimeout);
+      if (animationIntervalRef.current) {
+        clearInterval(animationIntervalRef.current);
+        animationIntervalRef.current = null;
+      }
+    };
+  }, [playersDataKey]);
+
   return (
     <div className="game-over-modal-overlay">
       <div className="game-over-modal">
-        <h1 className="game-over-title">
-          {winner ? t("gameOver.title") : t("gameOver.tie")}
-        </h1>
-
         <div className="game-over-content">
           {/* Left column: Game information */}
           <div className="game-over-left">
@@ -181,23 +308,27 @@ function GameOverModal({
                               : undefined
                           }
                         >
-                          {Math.round(player.eloRating)} {t("gameOver.elo")}
+                          {animatedValues[player.id]?.elo ??
+                            Math.round(player.eloRating)}{" "}
+                          {t("gameOver.elo")}
                         </span>
                       )}
-                      {player.ratingChange !== undefined && (
-                        <span
-                          className={`player-rating-change ${
-                            player.ratingChange > 0
-                              ? "rating-change-positive"
-                              : player.ratingChange < 0
-                              ? "rating-change-negative"
-                              : ""
-                          }`}
-                        >
-                          {player.ratingChange > 0 ? "+" : ""}
-                          {player.ratingChange}
-                        </span>
-                      )}
+                      {player.ratingChange !== undefined &&
+                        animatedValues[player.id]?.change !== undefined &&
+                        animatedValues[player.id].change !== 0 && (
+                          <span
+                            className={`player-rating-change ${
+                              player.ratingChange > 0
+                                ? "rating-change-positive"
+                                : player.ratingChange < 0
+                                ? "rating-change-negative"
+                                : ""
+                            }`}
+                          >
+                            {animatedValues[player.id].change > 0 ? "+" : ""}
+                            {animatedValues[player.id].change}
+                          </span>
+                        )}
                       <span className="player-points">
                         {player.points} {t("gameOver.points")}
                       </span>
@@ -289,10 +420,6 @@ function RoundSummaryModal({
   return (
     <div className="game-over-modal-overlay">
       <div className="game-over-modal">
-        <h1 className="game-over-title">
-          {t("roundSummary.roundFinished", { round: currentRound.toString() })}
-        </h1>
-
         <div className="game-over-content">
           {/* Left column: Round information */}
           <div className="game-over-left">
@@ -454,83 +581,450 @@ function ColorPickerModal({
   usedColors,
   onClose,
   onConfirm,
+  userId,
+  onOpenShop,
 }: {
   isOpen: boolean;
   currentColor: string;
   usedColors: Set<string>;
   onClose: () => void;
   onConfirm: (color: string) => void;
+  userId?: string | null;
+  onOpenShop?: (itemId?: string) => void;
 }) {
   const [selectedColor, setSelectedColor] = useState<string>(currentColor);
+  const [availableColors, setAvailableColors] = useState<
+    Array<{
+      color: string;
+      isPremium: boolean;
+      itemId?: string;
+      item?: PremiumItem;
+      locked?: boolean;
+    }>
+  >([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  // 16 colores predefinidos
-  const availableColors = [
-    "#ff0000", // Rojo
-    "#00ff00", // Verde
-    "#0000ff", // Azul
-    "#ffff00", // Amarillo
-    "#ff00ff", // Magenta
-    "#00ffff", // Cyan
-    "#ff8000", // Naranja
-    "#8000ff", // Morado
-    "#ff0080", // Rosa
-    "#00ff80", // Verde claro
-    "#0080ff", // Azul claro
-    "#ff8080", // Rosa claro
-    "#80ff80", // Verde menta
-    "#8080ff", // Azul claro
-    "#ffff80", // Amarillo claro
-    "#ff80ff", // Rosa magenta
-  ];
+  // Cargar colores disponibles cuando se abre el modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadColors = async () => {
+      setLoading(true);
+      try {
+        // Colores gratuitos base (solo 8 colores básicos)
+        const freeColors = [
+          "#ff0000", // Rojo
+          "#00ff00", // Verde
+          "#0000ff", // Azul
+          "#ffff00", // Amarillo
+          "#ff00ff", // Magenta
+          "#00ffff", // Cyan
+          "#ff8000", // Naranja
+          "#8000ff", // Morado
+        ].map((color) => ({ color, isPremium: false }));
+
+        // Si el usuario está autenticado, cargar colores premium
+        if (userId) {
+          // Obtener todos los colores premium disponibles
+          const allPremium = await PremiumModel.getAllPremiumColors();
+
+          // Obtener inventario del usuario
+          const inventory = await PremiumModel.getUserInventory(
+            userId,
+            "color"
+          );
+          const ownedItemIds = new Set(inventory.map((item) => item.item_id));
+
+          // Combinar colores gratuitos con premium
+          const premiumColors = allPremium.map((item) => ({
+            color: item.color_value,
+            isPremium: true,
+            itemId: item.id,
+            item,
+            locked: !ownedItemIds.has(item.id),
+          }));
+
+          setAvailableColors([...freeColors, ...premiumColors]);
+        } else {
+          // Usuario no autenticado, solo colores gratuitos
+          setAvailableColors(freeColors);
+        }
+      } catch (error) {
+        console.error("Error loading colors:", error);
+        // En caso de error, usar solo colores gratuitos (8 básicos)
+        const freeColors = [
+          "#ff0000", // Rojo
+          "#00ff00", // Verde
+          "#0000ff", // Azul
+          "#ffff00", // Amarillo
+          "#ff00ff", // Magenta
+          "#00ffff", // Cyan
+          "#ff8000", // Naranja
+          "#8000ff", // Morado
+        ].map((color) => ({ color, isPremium: false }));
+        setAvailableColors(freeColors);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadColors();
+  }, [isOpen, userId]);
 
   if (!isOpen) return null;
+
+  // Función para renderizar el color (maneja gradientes especiales como "rainbow")
+  const renderColorStyle = (colorValue: string) => {
+    if (colorValue === "rainbow") {
+      return {
+        background:
+          "linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000)",
+      };
+    }
+    return { backgroundColor: colorValue };
+  };
 
   return (
     <div className="color-picker-modal-overlay" onClick={onClose}>
       <div className="color-picker-modal" onClick={(e) => e.stopPropagation()}>
         <h2>{t("colorPicker.title")}</h2>
-        <div className="color-picker-grid">
-          {availableColors.map((color) => {
-            const isUsed = usedColors.has(color) && color !== currentColor;
-            const isSelected = selectedColor === color;
-            return (
-              <button
-                key={color}
-                className={`color-option ${isSelected ? "selected" : ""} ${
-                  isUsed ? "used" : ""
-                }`}
-                style={{ backgroundColor: color }}
-                onClick={() => !isUsed && setSelectedColor(color)}
-                disabled={isUsed}
-                title={isUsed ? t("colorPicker.colorInUse") : color}
-              >
-                {isSelected && <span className="check-mark">✓</span>}
-                {isUsed && <span className="used-mark">✗</span>}
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "20px" }}>"Loading"</div>
+        ) : (
+          <>
+            <div className="color-picker-grid">
+              {availableColors.map((colorData) => {
+                const isUsed =
+                  usedColors.has(colorData.color) &&
+                  colorData.color !== currentColor;
+                const isSelected = selectedColor === colorData.color;
+                const isLocked = colorData.locked;
+
+                return (
+                  <button
+                    key={colorData.color + (colorData.itemId || "")}
+                    className={`color-option ${isSelected ? "selected" : ""} ${
+                      isUsed ? "used" : ""
+                    } ${isLocked ? "locked" : ""} ${
+                      colorData.isPremium ? "premium" : ""
+                    }`}
+                    style={renderColorStyle(colorData.color)}
+                    onClick={() => {
+                      if (isLocked && onOpenShop) {
+                        // Pasar el itemId del color bloqueado para resaltarlo en la tienda
+                        onOpenShop(colorData.itemId);
+                      } else if (!isUsed) {
+                        setSelectedColor(colorData.color);
+                      }
+                    }}
+                    disabled={isUsed}
+                    title={
+                      isLocked
+                        ? "Locked"
+                        : isUsed
+                        ? t("colorPicker.colorInUse")
+                        : colorData.item?.name || colorData.color
+                    }
+                  >
+                    {isSelected && !isLocked && (
+                      <span className="check-mark">✓</span>
+                    )}
+                    {isUsed && <span className="used-mark">✗</span>}
+                    {isLocked && (
+                      <span className="lock-mark" title={"Locked"}>
+                        🔒
+                      </span>
+                    )}
+                    {colorData.isPremium && !isLocked && (
+                      <span className="premium-badge">⭐</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {!userId && (
+              <div className="color-picker-premium-hint">
+                {t("colorPicker.signInForPremium")}
+              </div>
+            )}
+            <div className="color-picker-actions">
+              <button className="color-picker-cancel" onClick={onClose}>
+                {t("colorPicker.cancel")}
               </button>
-            );
-          })}
-        </div>
-        <div className="color-picker-actions">
-          <button className="color-picker-cancel" onClick={onClose}>
-            {t("colorPicker.cancel")}
+              <button
+                className="color-picker-confirm"
+                onClick={() => {
+                  const selected = availableColors.find(
+                    (c) => c.color === selectedColor
+                  );
+                  if (
+                    selected &&
+                    !selected.locked &&
+                    ((selectedColor && !usedColors.has(selectedColor)) ||
+                      selectedColor === currentColor)
+                  ) {
+                    onConfirm(selectedColor);
+                  } else if (selected?.locked && onOpenShop) {
+                    onOpenShop(selected.itemId);
+                  }
+                }}
+                disabled={
+                  (usedColors.has(selectedColor) &&
+                    selectedColor !== currentColor) ||
+                  availableColors.find((c) => c.color === selectedColor)?.locked
+                }
+              >
+                {availableColors.find((c) => c.color === selectedColor)?.locked
+                  ? t("colorPicker.buyNow")
+                  : t("colorPicker.confirm")}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Shop modal component for premium colors
+function ShopModal({
+  isOpen,
+  onClose,
+  userId,
+  onPurchaseComplete,
+  highlightItemId,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  userId?: string | null;
+  onPurchaseComplete?: () => void;
+  highlightItemId?: string | null;
+}) {
+  const [premiumItems, setPremiumItems] = useState<PremiumItem[]>([]);
+  const [userInventory, setUserInventory] = useState<Set<string>>(new Set());
+  const [userLoops, setUserLoops] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [purchasing, setPurchasing] = useState<string | null>(null);
+  const highlightedItemRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadShop = async () => {
+      setLoading(true);
+      try {
+        const items = await PremiumModel.getAllPremiumColors();
+        // Ordenar items de más barato a más caro (por price_loops)
+        // Manejar casos donde price_loops pueda ser 0, null o undefined
+        const sortedItems = [...items].sort((a, b) => {
+          const priceA = a.price_loops || 0;
+          const priceB = b.price_loops || 0;
+          // Si tienen el mismo precio, ordenar por display_order para mantener consistencia
+          if (priceA === priceB) {
+            return (a.display_order || 0) - (b.display_order || 0);
+          }
+          return priceA - priceB;
+        });
+        setPremiumItems(sortedItems);
+
+        if (userId) {
+          const inventory = await PremiumModel.getUserInventory(
+            userId,
+            "color"
+          );
+          const ownedIds = new Set(inventory.map((item) => item.item_id));
+          setUserInventory(ownedIds);
+
+          // Cargar balance de Loops
+          const loops = await PremiumModel.getUserLoops(userId);
+          setUserLoops(loops);
+        }
+      } catch (error) {
+        console.error("Error loading shop:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadShop();
+  }, [isOpen, userId]);
+
+  // Hacer scroll al item resaltado cuando se carga
+  useEffect(() => {
+    if (highlightItemId && highlightedItemRef.current && !loading) {
+      // Pequeño delay para asegurar que el DOM esté renderizado
+      setTimeout(() => {
+        highlightedItemRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 100);
+    }
+  }, [highlightItemId, loading, premiumItems]);
+
+  const handlePurchase = async (item: PremiumItem) => {
+    if (!userId) {
+      alert("Sign in to purchase premium colors");
+      return;
+    }
+
+    if (userInventory.has(item.id)) {
+      return; // Ya lo tiene
+    }
+
+    if (userLoops < item.price_loops) {
+      alert(
+        `Insufficient Loops. You need ${item.price_loops}, but you have ${userLoops}.`
+      );
+      return;
+    }
+
+    setPurchasing(item.id);
+    try {
+      // Comprar con Loops
+      await PremiumModel.purchaseItemWithLoops(userId, item.id);
+
+      // Actualizar inventario y balance
+      setUserInventory(new Set([...userInventory, item.id]));
+      const newBalance = await PremiumModel.getUserLoops(userId);
+      setUserLoops(newBalance);
+
+      // Notificar éxito
+      if (onPurchaseComplete) {
+        onPurchaseComplete();
+      }
+
+      alert("Purchase successful!");
+    } catch (error: any) {
+      console.error("Error purchasing item:", error);
+      alert(error.message || "Error processing purchase");
+    } finally {
+      setPurchasing(null);
+    }
+  };
+
+  const renderColorStyle = (colorValue: string) => {
+    if (colorValue === "rainbow") {
+      return {
+        background:
+          "linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000)",
+      };
+    }
+    return { backgroundColor: colorValue };
+  };
+
+  const getRarityColor = (rarity: string) => {
+    switch (rarity) {
+      case "common":
+        return "#9d9d9d";
+      case "rare":
+        return "#0070dd";
+      case "epic":
+        return "#a335ee";
+      case "legendary":
+        return "#ff8000";
+      default:
+        return "#ffffff";
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="shop-modal-overlay" onClick={onClose}>
+      <div className="shop-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="shop-modal-header">
+          {userId && (
+            <div className="shop-balance">
+              Balance: <span className="shop-balance-amount">{userLoops}</span>{" "}
+              Loops
+            </div>
+          )}
+          {!userId && <div></div>}
+          <h2>Premium Colors Shop</h2>
+          <button className="shop-close-button" onClick={onClose}>
+            ×
           </button>
-          <button
-            className="color-picker-confirm"
-            onClick={() => {
-              if (
-                (selectedColor && !usedColors.has(selectedColor)) ||
-                selectedColor === currentColor
-              ) {
-                onConfirm(selectedColor);
-              }
-            }}
-            disabled={
-              usedColors.has(selectedColor) && selectedColor !== currentColor
-            }
-          >
-            {t("colorPicker.confirm")}
-          </button>
         </div>
+
+        {loading ? (
+          <div className="shop-loading">Loading...</div>
+        ) : (
+          <div className="shop-content">
+            {!userId && (
+              <div className="shop-sign-in-hint">
+                Sign in to purchase premium colors
+              </div>
+            )}
+            <div className="shop-items-grid">
+              {premiumItems.map((item) => {
+                const isOwned = userInventory.has(item.id);
+                const isPurchasing = purchasing === item.id;
+                const isHighlighted = highlightItemId === item.id;
+
+                return (
+                  <div
+                    key={item.id}
+                    ref={isHighlighted ? highlightedItemRef : null}
+                    className={`shop-item ${isOwned ? "owned" : ""} ${
+                      isHighlighted ? "highlighted" : ""
+                    }`}
+                  >
+                    <div
+                      className="shop-item-color"
+                      style={renderColorStyle(item.color_value)}
+                    >
+                      {isOwned && <span className="shop-owned-badge">✓</span>}
+                    </div>
+                    <div className="shop-item-info">
+                      <h3>{item.name}</h3>
+                      {item.description && (
+                        <p className="shop-item-description">
+                          {item.description}
+                        </p>
+                      )}
+                      <div className="shop-item-meta">
+                        <span
+                          className="shop-item-rarity"
+                          style={{ color: getRarityColor(item.rarity) }}
+                        >
+                          {item.rarity.toUpperCase()}
+                        </span>
+                        <span
+                          className={`shop-item-price ${
+                            userLoops < item.price_loops ? "insufficient" : ""
+                          }`}
+                        >
+                          {item.price_loops} Loops
+                        </span>
+                      </div>
+                      <button
+                        className={`shop-item-buy-button ${
+                          isOwned ? "owned" : ""
+                        }`}
+                        onClick={() => handlePurchase(item)}
+                        disabled={isOwned || isPurchasing || !userId}
+                      >
+                        {isOwned ? (
+                          "Owned"
+                        ) : isPurchasing ? (
+                          "Processing..."
+                        ) : (
+                          <>
+                            <span className="buy-button-text-desktop">Buy</span>
+                            <span className="buy-button-text-mobile">
+                              {item.name}
+                            </span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -592,6 +1086,10 @@ function App() {
     countdown?: number;
   } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
+  const [showShop, setShowShop] = useState<boolean>(false);
+  const [highlightShopItemId, setHighlightShopItemId] = useState<string | null>(
+    null
+  );
   const [showLanguageSelector, setShowLanguageSelector] =
     useState<boolean>(false);
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
@@ -621,6 +1119,7 @@ function App() {
     total_games: number;
     total_wins: number;
   } | null>(null);
+  const [userLoops, setUserLoops] = useState<number>(0);
   const [leaderboardCategory, setLeaderboardCategory] = useState<
     "all-time" | "month" | "day"
   >("day");
@@ -675,18 +1174,6 @@ function App() {
       // Calcular espacio disponible a la derecha (desde el borde derecho del canvas hasta el borde derecho de la ventana)
       const rightSpace = windowWidth - canvasRect.right;
 
-      // Logs para debugging del espacio morado
-      console.log("=== Debug espacio morado ===");
-      console.log("windowWidth:", windowWidth);
-      console.log("canvasRect.right:", canvasRect.right);
-      console.log("rightSpace calculado:", rightSpace);
-      console.log("hudRightPanelWidth actual:", hudRightPanelWidth);
-      console.log(
-        "Diferencia:",
-        windowWidth - (canvasRect.right + (hudRightPanelWidth || 0))
-      );
-      console.log("============================");
-
       // Asignar cada espacio a su respectivo panel
       setHudLeftPanelWidth(Math.max(0, leftSpace));
       setHudRightPanelWidth(Math.max(0, rightSpace));
@@ -694,9 +1181,9 @@ function App() {
 
     calculateHudWidth();
 
-    // Recalcular periódicamente y en resize para mantener sincronizado
-    const interval = setInterval(calculateHudWidth, 100);
+    // Recalcular en resize y periódicamente (menos frecuente)
     window.addEventListener("resize", calculateHudWidth);
+    const interval = setInterval(calculateHudWidth, 300); // Reducido de 100ms a 300ms
 
     return () => {
       clearInterval(interval);
@@ -828,6 +1315,37 @@ function App() {
     // Recargar estadísticas cada 5 segundos cuando el sidebar está abierto
     if (showPlayerSidebar && user?.id) {
       const interval = setInterval(loadPlayerStats, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user, showPlayerSidebar]);
+
+  // Cargar loops del usuario
+  useEffect(() => {
+    const loadUserLoops = async () => {
+      if (user?.id) {
+        try {
+          const loops = await PremiumModel.getUserLoops(user.id);
+          setUserLoops(loops);
+        } catch (err) {
+          console.error("Error loading user loops:", err);
+          setUserLoops(0);
+        }
+      } else {
+        setUserLoops(0);
+      }
+    };
+
+    // Cargar inmediatamente si el sidebar está abierto
+    if (showPlayerSidebar && user?.id) {
+      loadUserLoops();
+    } else if (user?.id) {
+      // También cargar cuando hay usuario, aunque el sidebar no esté abierto
+      loadUserLoops();
+    }
+
+    // Recargar loops cada 5 segundos cuando el sidebar está abierto
+    if (showPlayerSidebar && user?.id) {
+      const interval = setInterval(loadUserLoops, 5000);
       return () => clearInterval(interval);
     }
   }, [user, showPlayerSidebar]);
@@ -995,36 +1513,82 @@ function App() {
     };
   }, []);
 
-  // Actualizar estado del boost cada frame
+  // Actualizar estado del boost (optimizado: solo cuando cambia)
   useEffect(() => {
     if (currentView !== "game" || !gameRef.current) return;
 
+    let lastBoostState: any = null;
+    let lastRoundInfo: any = null;
+    let lastLeaderboardHash = "";
+
     const interval = setInterval(() => {
       if (gameRef.current) {
+        // Solo actualizar boost si cambió
         const state = gameRef.current.getLocalPlayerBoostState();
-        setBoostState(state);
+        if (
+          state &&
+          (!lastBoostState ||
+            lastBoostState.charge !== state.charge ||
+            lastBoostState.active !== state.active ||
+            lastBoostState.remaining !== state.remaining)
+        ) {
+          setBoostState(state);
+          lastBoostState = state;
+        }
 
-        // Actualizar información de ronda
+        // Actualizar información de ronda solo si cambió
         const gameState = gameRef.current.getGameState();
-        setRoundInfo({
+        const newRoundInfo = {
           currentRound: gameState.currentRound,
           totalRounds: gameState.totalRounds,
+        };
+        if (
+          !lastRoundInfo ||
+          lastRoundInfo.currentRound !== newRoundInfo.currentRound ||
+          lastRoundInfo.totalRounds !== newRoundInfo.totalRounds
+        ) {
+          setRoundInfo(newRoundInfo);
+          lastRoundInfo = newRoundInfo;
+        }
+
+        // Actualizar clasificación solo si cambió (usar hash simple)
+        const players = gameRef.current.getPlayers();
+
+        // Actualizar color del jugador local
+        const localPlayer = players.find(
+          (p) =>
+            p.id === localPlayerId ||
+            (!gameRef.current?.isUsingNetwork() && players.indexOf(p) === 0)
+        );
+        const newColor = localPlayer?.color || "#4caf50";
+        setLocalPlayerColor((prev) => {
+          if (prev !== newColor) {
+            return newColor;
+          }
+          return prev;
         });
 
-        // Actualizar clasificación
-        const players = gameRef.current.getPlayers();
-        const playersWithPoints = players
-          .map((player) => ({
-            id: player.id,
-            name: player.name,
-            color: player.color,
-            points: gameState.playerPoints?.[player.id] || 0,
-            alive: player.alive,
-          }))
-          .sort((a, b) => b.points - a.points);
-        setLeaderboardData(playersWithPoints);
+        const currentHash = players
+          .map(
+            (p) => `${p.id}:${gameState.playerPoints?.[p.id] || 0}:${p.alive}`
+          )
+          .join("|");
+
+        if (currentHash !== lastLeaderboardHash) {
+          const playersWithPoints = players
+            .map((player) => ({
+              id: player.id,
+              name: player.name,
+              color: player.color,
+              points: gameState.playerPoints?.[player.id] || 0,
+              alive: player.alive,
+            }))
+            .sort((a, b) => b.points - a.points);
+          setLeaderboardData(playersWithPoints);
+          lastLeaderboardHash = currentHash;
+        }
       }
-    }, 16); // ~60 FPS
+    }, 50); // Reducido a 20 FPS (suficiente para UI)
 
     return () => clearInterval(interval);
   }, [currentView]);
@@ -1772,33 +2336,30 @@ function App() {
     handleConnectToServer();
   };
 
-  // Obtener el color del jugador local para el feedback visual
-  const getLocalPlayerColor = (): string => {
-    if (gameRef.current) {
-      const players = gameRef.current.getPlayers();
-      const localPlayer = players.find(
-        (p) =>
-          p.id === localPlayerId ||
-          (!gameRef.current?.isUsingNetwork() && players.indexOf(p) === 0)
-      );
-      return localPlayer?.color || "#ffffff";
-    }
-    return "#ffffff";
-  };
+  // Estado para el color del jugador local (se actualiza en el intervalo del juego)
+  const [localPlayerColor, setLocalPlayerColor] = useState<string>("#4caf50");
 
-  // Convertir color hex a rgba con opacidad para el gradiente
-  const getLocalPlayerColorWithOpacity = (opacity: number = 0.3): string => {
-    const color = getLocalPlayerColor();
-    // Si es un color hex (#rrggbb), convertirlo a rgba
-    if (color.startsWith("#")) {
-      const r = parseInt(color.slice(1, 3), 16);
-      const g = parseInt(color.slice(3, 5), 16);
-      const b = parseInt(color.slice(5, 7), 16);
-      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-    }
-    // Si ya es rgba o rgb, mantenerlo
-    return color;
-  };
+  // Obtener el color del jugador local (función para compatibilidad)
+  const getLocalPlayerColor = useCallback((): string => {
+    return localPlayerColor;
+  }, [localPlayerColor]);
+
+  // Convertir color hex a rgba con opacidad para el gradiente (memoizado)
+  const getLocalPlayerColorWithOpacity = useCallback(
+    (opacity: number = 0.3): string => {
+      const color = localPlayerColor;
+      // Si es un color hex (#rrggbb), convertirlo a rgba
+      if (color.startsWith("#")) {
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+      }
+      // Si ya es rgba o rgb, mantenerlo
+      return color;
+    },
+    [localPlayerColor]
+  );
 
   return (
     <div className="app">
@@ -2293,8 +2854,8 @@ function App() {
                         </div>
                       </div>
                     ) : (
-                      <div
-                        className="player-sidebar-name"
+                      <span
+                        className="player-sidebar-name-text"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (currentView === "game" && !gameOverState) {
@@ -2314,7 +2875,7 @@ function App() {
                           cursor:
                             currentView === "game" && !gameOverState
                               ? "default"
-                              : "pointer",
+                              : "text",
                           opacity:
                             currentView === "game" && !gameOverState ? 0.6 : 1,
                         }}
@@ -2324,50 +2885,13 @@ function App() {
                             : "Click para editar"
                         }
                       >
-                        <span className="player-sidebar-name-text">
-                          {playerDisplayName ||
-                            (user
-                              ? user.user_metadata?.full_name ||
-                                user.email?.split("@")[0] ||
-                                "Player"
-                              : "Guest Player")}
-                        </span>
-                        {!(currentView === "game" && !gameOverState) && (
-                          <span
-                            className="player-sidebar-name-edit-icon"
-                            title="Click para editar"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (currentView === "game" && !gameOverState) {
-                                return;
-                              }
-                              setNameEditValue(
-                                playerDisplayName ||
-                                  (user
-                                    ? user.user_metadata?.full_name ||
-                                      user.email?.split("@")[0] ||
-                                      "Player"
-                                    : t("defaults.guestPlayer"))
-                              );
-                              setIsEditingName(true);
-                            }}
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                          </span>
-                        )}
-                      </div>
+                        {playerDisplayName ||
+                          (user
+                            ? user.user_metadata?.full_name ||
+                              user.email?.split("@")[0] ||
+                              "Player"
+                            : "Guest Player")}
+                      </span>
                     )}
                     <div className="player-sidebar-email">
                       {user?.email || "Playing as guest"}
@@ -2412,7 +2936,7 @@ function App() {
                   <BoostBar
                     charge={boostState.charge}
                     active={boostState.active}
-                    remaining={boostState.remaining}
+                    color={localPlayerColor}
                   />
                 </div>
               )}
@@ -2511,13 +3035,12 @@ function App() {
                         </div>
                       </div>
                     ) : (
-                      <div
-                        className="player-sidebar-name"
+                      <span
+                        className="player-sidebar-name-text"
                         onClick={(e) => {
-                          e.stopPropagation(); // Prevenir que el click se propague
-                          // Solo permitir editar si no estamos en una partida activa
+                          e.stopPropagation();
                           if (currentView === "game" && !gameOverState) {
-                            return; // No hacer nada si estamos en partida activa
+                            return;
                           }
                           setNameEditValue(
                             playerDisplayName ||
@@ -2533,7 +3056,7 @@ function App() {
                           cursor:
                             currentView === "game" && !gameOverState
                               ? "default"
-                              : "pointer",
+                              : "text",
                           opacity:
                             currentView === "game" && !gameOverState ? 0.6 : 1,
                         }}
@@ -2543,50 +3066,13 @@ function App() {
                             : "Click para editar"
                         }
                       >
-                        <span className="player-sidebar-name-text">
-                          {playerDisplayName ||
-                            (user
-                              ? user.user_metadata?.full_name ||
-                                user.email?.split("@")[0] ||
-                                "Player"
-                              : "Guest Player")}
-                        </span>
-                        {!(currentView === "game" && !gameOverState) && (
-                          <span
-                            className="player-sidebar-name-edit-icon"
-                            title="Click para editar"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (currentView === "game" && !gameOverState) {
-                                return;
-                              }
-                              setNameEditValue(
-                                playerDisplayName ||
-                                  (user
-                                    ? user.user_metadata?.full_name ||
-                                      user.email?.split("@")[0] ||
-                                      "Player"
-                                    : t("defaults.guestPlayer"))
-                              );
-                              setIsEditingName(true);
-                            }}
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                          </span>
-                        )}
-                      </div>
+                        {playerDisplayName ||
+                          (user
+                            ? user.user_metadata?.full_name ||
+                              user.email?.split("@")[0] ||
+                              "Player"
+                            : "Guest Player")}
+                      </span>
                     )}
                     <div className="player-sidebar-email">
                       {user?.email || "Playing as guest"}
@@ -2596,9 +3082,16 @@ function App() {
                 {/* ESTADÍSTICAS */}
                 {user && (
                   <div className="player-sidebar-section">
-                    <h3 className="player-sidebar-stats-title">
-                      {t("playerSidebar.stats")}
-                    </h3>
+                    <div className="player-sidebar-stats-header">
+                      <h3 className="player-sidebar-stats-title">
+                        {t("playerSidebar.stats")}
+                      </h3>
+                      {user && (
+                        <span className="player-sidebar-loops-display">
+                          {userLoops.toLocaleString()} Loops
+                        </span>
+                      )}
+                    </div>
                     <div
                       className="player-sidebar-stats"
                       style={{
@@ -2815,6 +3308,7 @@ function App() {
                 ? new Set(lobbyPlayers.map((p) => p.color))
                 : new Set()
             }
+            userId={user?.id || null}
             onClose={() => setShowColorPicker(false)}
             onConfirm={(color) => {
               // Si estamos en el lobby y hay un jugador local, cambiar el color en el juego
@@ -2831,6 +3325,30 @@ function App() {
               setHasCustomColor(true);
               localStorage.setItem("hasCustomColor", "true");
               setShowColorPicker(false);
+            }}
+            onOpenShop={(itemId) => {
+              setShowColorPicker(false);
+              setHighlightShopItemId(itemId || null);
+              setShowShop(true);
+            }}
+          />
+        )}
+
+        {/* Shop modal */}
+        {showShop && (
+          <ShopModal
+            isOpen={showShop}
+            onClose={() => {
+              setShowShop(false);
+              setHighlightShopItemId(null);
+            }}
+            userId={user?.id || null}
+            highlightItemId={highlightShopItemId}
+            onPurchaseComplete={() => {
+              // Recargar inventario después de compra
+              setShowShop(false);
+              setHighlightShopItemId(null);
+              // El color picker se recargará automáticamente cuando se abra de nuevo
             }}
           />
         )}

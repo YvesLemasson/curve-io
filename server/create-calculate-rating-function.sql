@@ -64,3 +64,4 @@ SELECT
 FROM pg_proc 
 WHERE proname = 'calculate_new_rating';
 
+

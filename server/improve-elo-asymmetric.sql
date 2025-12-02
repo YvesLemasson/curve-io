@@ -87,3 +87,4 @@ $$ LANGUAGE plpgsql;
 -- Verificar que la función se creó correctamente
 SELECT 'Función calculate_new_rating actualizada con sistema asimétrico' AS status;
 
+

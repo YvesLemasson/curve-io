@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import App from './ui/App';
 import { AuthCallback } from './auth/AuthCallback';
+import './utils/testLoops'; // Cargar utilidades de testing (solo en desarrollo)
 
 // Inicializar React UI
 const root = ReactDOM.createRoot(document.getElementById('root')!);
