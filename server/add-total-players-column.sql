@@ -12,3 +12,4 @@ SELECT 'Columna total_players agregada a games' AS status;
 
 
 
+

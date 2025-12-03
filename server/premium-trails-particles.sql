@@ -47,3 +47,4 @@ ON CONFLICT DO NOTHING;
 -- Todos usan el mismo efecto 'particles' con la misma configuración.
 
 
+

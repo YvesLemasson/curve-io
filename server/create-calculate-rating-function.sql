@@ -67,3 +67,4 @@ WHERE proname = 'calculate_new_rating';
 
 
 
+

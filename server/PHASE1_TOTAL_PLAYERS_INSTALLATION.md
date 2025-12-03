@@ -33,3 +33,4 @@ Este script mejora el cálculo de ELO cuando hay jugadores guest (no autenticado
 
 
 
+

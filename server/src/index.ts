@@ -7,7 +7,7 @@ import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { CLIENT_EVENTS, SERVER_EVENTS } from './shared/protocol.js';
 import type { PlayerJoinMessage, GameInputMessage, GameStateMessage, LobbyPlayersMessage, AuthUserMessage } from './shared/protocol.js';
-import type { Player } from './shared/types.js';
+import type { Player, TrailType } from './shared/types.js';
 import { GameModel } from './models/gameModel.js';
 import { UserModel } from './models/userModel.js';
 import { PremiumModel } from './models/premiumModel.js';
@@ -311,14 +311,14 @@ io.on('connection', (socket: Socket) => {
     }
     
     // 6. Obtener trail equipado del usuario (si está autenticado)
-    let equippedTrail: { trailType: string; trailEffect: any } | null = null;
+    let equippedTrail: { trailType: TrailType; trailEffect: any } | null = null;
     if (userId) {
       try {
         const trail = await PremiumModel.getEquippedTrail(userId);
         if (trail) {
           // Determinar el tipo de trail basado en el nombre
           const trailName = trail.name.toLowerCase();
-          let trailType: string = 'normal';
+          let trailType: TrailType = 'normal';
           let trailEffect: any = {};
 
           if (trailName.includes('fire') || trailName.includes('inferno') || trailName.includes('hellfire')) {

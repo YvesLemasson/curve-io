@@ -24,3 +24,4 @@ WHERE (price_loops = 0 OR price_loops IS NULL) AND is_active = true AND type = '
 
 
 
+

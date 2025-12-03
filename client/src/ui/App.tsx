@@ -1386,6 +1386,11 @@ function ShopModal({
   initialShopType?: "color" | "trail";
   preferredColor?: string;
 }) {
+  // Helper function para determinar si un trail es de fuego
+  const isFireTrail = (trailName: string): boolean => {
+    const name = trailName.toLowerCase();
+    return name.includes('fire') || name.includes('inferno') || name.includes('hellfire');
+  };
   const [premiumItems, setPremiumItems] = useState<PremiumItem[]>([]);
   const [userInventory, setUserInventory] = useState<Set<string>>(new Set());
   const [equippedTrailId, setEquippedTrailId] = useState<string | null>(null);
@@ -1709,21 +1714,38 @@ function ShopModal({
                               justifyContent: "center",
                             }}
                           >
-                            {/* Línea base del trail */}
-                            <div
-                              style={{
-                                position: "absolute",
-                                width: "100%",
-                                height: "1px",
-                                backgroundColor: item.color_value,
-                                top: "50%",
-                                left: 0,
-                                transform: "translateY(-50%)",
-                                opacity: 1,
-                              }}
-                            />
-                            {/* Partículas del trail */}
-                            {Array.from({ length: 4 }).map((_, i) => {
+                            {isFireTrail(item.name) ? (
+                              /* Trail de fuego - gradiente rojo-naranja-amarillo */
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  width: "100%",
+                                  height: "3px",
+                                  background: "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
+                                  top: "50%",
+                                  left: 0,
+                                  transform: "translateY(-50%)",
+                                  borderRadius: "2px",
+                                  boxShadow: "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
+                                }}
+                              />
+                            ) : (
+                              <>
+                                {/* Línea base del trail */}
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    width: "100%",
+                                    height: "1px",
+                                    backgroundColor: item.color_value,
+                                    top: "50%",
+                                    left: 0,
+                                    transform: "translateY(-50%)",
+                                    opacity: 1,
+                                  }}
+                                />
+                                {/* Partículas del trail */}
+                                {Array.from({ length: 4 }).map((_, i) => {
                               const particleSize = 3;
                               const leftPercent = `${i * 25 + 12.5}%`;
 
@@ -1791,6 +1813,8 @@ function ShopModal({
                                 </div>
                               );
                             })}
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

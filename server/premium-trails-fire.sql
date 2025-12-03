@@ -30,3 +30,4 @@ ON CONFLICT DO NOTHING;
 -- La configuración del efecto (glowIntensity, etc.) se aplicará por defecto en el código.
 
 
+

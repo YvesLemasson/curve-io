@@ -40,3 +40,4 @@ CREATE POLICY "Users can insert own purchases" ON public.purchases
 
 
 
+
