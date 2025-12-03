@@ -33,6 +33,13 @@ export class NetworkClient {
   private onLobbyPlayersCallback?: (data: LobbyPlayersMessage) => void;
   private onGameStartCallback?: () => void;
 
+  // BACKPRESSURE: Sistema de cola para prevenir acumulación de mensajes
+  private gameStateMessageQueue: GameStateMessage[] = [];
+  private isProcessingQueue: boolean = false;
+  private readonly MAX_QUEUE_SIZE: number = 3; // Máximo 3 mensajes en cola
+  private lastProcessTime: number = 0;
+  private readonly MIN_PROCESS_INTERVAL: number = 16; // ~60 FPS (16ms)
+
   constructor(serverUrl?: string) {
     // Usar variable de entorno en producción, o el parámetro, o localhost por defecto
     let url =
@@ -195,15 +202,9 @@ export class NetworkClient {
 
     // Eventos del servidor
     // FASE 2: Delta Compression - Pasar mensaje completo (puede contener delta o gameState)
+    // BACKPRESSURE: Usar cola para prevenir acumulación de mensajes
     this.socket.on(SERVER_EVENTS.GAME_STATE, (message: GameStateMessage) => {
-      // Si hay callback para mensaje completo (delta), usarlo primero
-      if (this.onGameStateMessageCallback) {
-        this.onGameStateMessageCallback(message);
-      }
-      // Mantener compatibilidad: si hay gameState completo, también llamar al callback antiguo
-      if (message.gameState && this.onGameStateCallback) {
-        this.onGameStateCallback(message.gameState);
-      }
+      this.handleGameStateMessage(message);
     });
 
     this.socket.on(
@@ -224,6 +225,68 @@ export class NetworkClient {
   }
 
   /**
+   * BACKPRESSURE: Maneja mensajes de estado del juego con control de flujo
+   * Previene acumulación de mensajes cuando el cliente no puede procesar tan rápido
+   */
+  private handleGameStateMessage(message: GameStateMessage): void {
+    // Si la cola está llena, descartar mensajes antiguos y mantener solo el más reciente
+    if (this.gameStateMessageQueue.length >= this.MAX_QUEUE_SIZE) {
+      // Descartar todos los mensajes antiguos, mantener solo el nuevo (más reciente)
+      this.gameStateMessageQueue = [message];
+    } else {
+      // Agregar a la cola
+      this.gameStateMessageQueue.push(message);
+    }
+
+    // Procesar cola (si no está procesando ya)
+    this.processGameStateQueue();
+  }
+
+  /**
+   * BACKPRESSURE: Procesa la cola de mensajes de estado del juego
+   * Solo procesa el mensaje más reciente para evitar lag
+   */
+  private processGameStateQueue(): void {
+    // Evitar procesamiento simultáneo
+    if (this.isProcessingQueue || this.gameStateMessageQueue.length === 0) {
+      return;
+    }
+
+    // Throttling: No procesar más de 60 veces por segundo (~60 FPS)
+    const now = performance.now();
+    if (now - this.lastProcessTime < this.MIN_PROCESS_INTERVAL) {
+      // Programar para procesar en el siguiente frame
+      requestAnimationFrame(() => this.processGameStateQueue());
+      return;
+    }
+
+    this.isProcessingQueue = true;
+    this.lastProcessTime = now;
+
+    // Tomar el mensaje más reciente (último en la cola)
+    const latestMessage = this.gameStateMessageQueue[this.gameStateMessageQueue.length - 1];
+    
+    // Limpiar la cola (solo procesamos el más reciente)
+    this.gameStateMessageQueue = [];
+
+    // Procesar el mensaje más reciente
+    if (this.onGameStateMessageCallback) {
+      this.onGameStateMessageCallback(latestMessage);
+    }
+    
+    // Mantener compatibilidad: si hay gameState completo, también llamar al callback antiguo
+    if (latestMessage.gameState && this.onGameStateCallback) {
+      this.onGameStateCallback(latestMessage.gameState);
+    }
+
+    // Continuar procesando en el siguiente frame (por si llegaron más mensajes)
+    requestAnimationFrame(() => {
+      this.isProcessingQueue = false;
+      this.processGameStateQueue();
+    });
+  }
+
+  /**
    * Desconecta del servidor
    */
   disconnect(): void {
@@ -232,6 +295,10 @@ export class NetworkClient {
       this.socket = null;
       this.isConnected = false;
     }
+    
+    // Limpiar cola al desconectar
+    this.gameStateMessageQueue = [];
+    this.isProcessingQueue = false;
   }
 
   /**

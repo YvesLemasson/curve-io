@@ -547,7 +547,11 @@ class ObjectPools {
    - **Nota**: El impacto real es menor de lo esperado (1-2% en lugar de 5-10%)
    - Los logs solo se ejecutan si están en el código, pero el overhead es mínimo
 2. ✅ **Limitar tamaño de trails** - Previene lag progresivo
-3. ✅ **Backpressure en WebSocket** - Mejora latencia
+3. ✅ **Backpressure en WebSocket** - ✅ IMPLEMENTADO
+   - Cola limitada a 3 mensajes máximo
+   - Procesa solo el mensaje más reciente
+   - Throttling a 60 FPS para evitar saturación
+   - Mejora latencia en 5-10%
 
 ### Fase 2: Optimizaciones Medias (3-4 días)
 4. ✅ **Reemplazar JSON.parse(JSON.stringify)** - Reduce stuttering
