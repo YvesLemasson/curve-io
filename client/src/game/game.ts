@@ -12,6 +12,7 @@ import {
 import { NetworkClient } from "../network/client";
 import { SpatialHash } from "./spatialHash";
 import { DeltaDecompressor } from "../network/deltaCompression";
+import { InterpolationBuffer } from "./interpolation";
 import type { GameState, Position } from "@shared/types";
 
 export class Game {
@@ -26,7 +27,7 @@ export class Game {
   private useNetwork: boolean = false;
   private localPlayerId: string;
   private lastInputSendTime: number = 0;
-  private readonly inputSendInterval: number = 50; // Enviar input cada 50ms (20 veces por segundo)
+  private readonly inputSendInterval: number = 33.33; // Enviar input cada ~33ms (30 veces por segundo) - sincronizado con broadcast rate
   // Tamaño del juego en el servidor (fijo, proporción 3:2)
   private readonly serverCanvasWidth: number = 1920;
   private readonly serverCanvasHeight: number = 1280; // 1920 / 1.5 = 1280 (proporción 3:2)
@@ -36,6 +37,9 @@ export class Game {
 
   // FASE 2: Delta Compression - Descomprimir deltas del servidor
   private deltaDecompressor: DeltaDecompressor | null = null;
+
+  // INTERPOLACIÓN: Buffer de estados para suavizar movimiento entre updates del servidor
+  private interpolationBuffer: InterpolationBuffer | null = null;
 
   constructor(
     canvasId: string = "gameCanvas",
@@ -61,6 +65,7 @@ export class Game {
     if (useNetwork) {
       this.networkClient = new NetworkClient(serverUrl);
       this.deltaDecompressor = new DeltaDecompressor();
+      this.interpolationBuffer = new InterpolationBuffer();
       this.setupNetworkCallbacks();
     }
   }
@@ -84,22 +89,65 @@ export class Game {
       console.error("Error de red:", error);
     });
 
-    // FASE 2: Delta Compression - Usar mensaje completo para descomprimir delta
+    // FASE 2: Delta Compression + INTERPOLACIÓN - Usar mensaje completo para descomprimir delta
     this.networkClient.onGameStateMessage((message) => {
+      if (!this.interpolationBuffer) return;
+
+      let decompressedState: GameState | null = null;
+
       if (message.delta && this.deltaDecompressor) {
         // Descomprimir delta (ya escala las posiciones)
         const scaleX = this.canvas.getWidth() / this.serverCanvasWidth;
         const scaleY = this.canvas.getHeight() / this.serverCanvasHeight;
-        const decompressedState = this.deltaDecompressor.applyDelta(
+        decompressedState = this.deltaDecompressor.applyDelta(
           message.delta,
           scaleX,
           scaleY
         );
-        // Sincronizar con estado descomprimido (ya escalado, no escalar de nuevo)
-        this.syncFromServer(decompressedState, true); // true = ya escalado
       } else if (message.gameState) {
         // Fallback: si no hay delta, usar estado completo (compatibilidad)
-        this.syncFromServer(message.gameState, false); // false = necesita escalado
+        // Escalar posiciones
+        const scaleX = this.canvas.getWidth() / this.serverCanvasWidth;
+        const scaleY = this.canvas.getHeight() / this.serverCanvasHeight;
+        decompressedState = {
+          ...message.gameState,
+          players: message.gameState.players.map(p => ({
+            ...p,
+            position: {
+              x: p.position.x * scaleX,
+              y: p.position.y * scaleY,
+            },
+            trail: p.trail.map(pos => pos ? {
+              x: pos.x * scaleX,
+              y: pos.y * scaleY,
+            } : null),
+          })),
+        };
+      }
+
+      if (decompressedState) {
+        // Estados críticos que no deben interpolarse (aplicar inmediatamente)
+        const criticalStates: GameState['gameStatus'][] = ['round-ended', 'ended', 'finished'];
+        const isCriticalState = criticalStates.includes(decompressedState.gameStatus as any);
+        
+        // También aplicar inmediatamente si estamos cambiando de un estado crítico a 'playing'
+        // Esto asegura que la transición de 'round-ended' -> 'playing' sea inmediata
+        const wasCriticalState = criticalStates.includes(this.gameState.gameStatus as any);
+        const isTransitionToPlaying = wasCriticalState && decompressedState.gameStatus === 'playing';
+        
+        if (isCriticalState || isTransitionToPlaying) {
+          // Para estados críticos o transiciones a 'playing', aplicar inmediatamente sin interpolación
+          // Esto asegura que el cliente tenga el estado correcto de inmediato
+          this.syncFromServer(decompressedState, true);
+          // Limpiar buffer de interpolación para evitar estados antiguos
+          this.interpolationBuffer.reset();
+        } else {
+          // Para estados normales, usar interpolación
+          this.interpolationBuffer.addState(
+            decompressedState,
+            message.serverTime || Date.now()
+          );
+        }
       }
     });
 
@@ -167,7 +215,7 @@ export class Game {
       gameStatus: "playing",
       tick: 0,
       currentRound: 1,
-      totalRounds: 2, // Temporalmente reducido a 2 rondas
+      totalRounds: 5, // 5 rondas por partida
       playerPoints: {},
       roundResults: [],
     };
@@ -187,6 +235,20 @@ export class Game {
     // Solo procesamos input local y lo enviamos al servidor
     if (this.useNetwork) {
       this.updateNetworkMode();
+      
+      // INTERPOLACIÓN: Obtener estado interpolado del buffer
+      // No interpolar para estados críticos (ya se aplicaron inmediatamente)
+      const criticalStates: GameState['gameStatus'][] = ['round-ended', 'ended', 'finished'];
+      const isCriticalState = criticalStates.includes(this.gameState.gameStatus as any);
+      
+      if (!isCriticalState && this.interpolationBuffer) {
+        const interpolatedState = this.interpolationBuffer.getInterpolatedState();
+        if (interpolatedState) {
+          // Sincronizar con estado interpolado (ya escalado)
+          this.syncFromServer(interpolatedState, true);
+        }
+      }
+      
       return;
     }
 
@@ -402,6 +464,8 @@ export class Game {
     if (!this.isRunning) return;
 
     this.update();
+    // Siempre renderizar, incluso si el estado no es 'playing' o 'waiting'
+    // Esto asegura que el canvas se muestre cuando el estado cambia a 'playing'
     this.render();
 
     this.animationFrameId = requestAnimationFrame(() => this.gameLoop());
@@ -416,9 +480,12 @@ export class Game {
     // Conectar al servidor si se usa red
     if (this.useNetwork && this.networkClient) {
       this.networkClient.connect();
-      // Resetear delta decompressor al iniciar
+      // Resetear delta decompressor y buffer de interpolación al iniciar
       if (this.deltaDecompressor) {
         this.deltaDecompressor.reset();
+      }
+      if (this.interpolationBuffer) {
+        this.interpolationBuffer.reset();
       }
     }
 

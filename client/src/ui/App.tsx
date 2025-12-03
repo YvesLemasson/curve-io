@@ -806,7 +806,11 @@ function TrailPickerModal({
   // Helper function para determinar si un trail es de fuego
   const isFireTrail = (trailName: string): boolean => {
     const name = trailName.toLowerCase();
-    return name.includes('fire') || name.includes('inferno') || name.includes('hellfire');
+    return (
+      name.includes("fire") ||
+      name.includes("inferno") ||
+      name.includes("hellfire")
+    );
   };
   const [selectedTrailId, setSelectedTrailId] = useState<string | null>(
     currentTrailId || null
@@ -1060,12 +1064,14 @@ function TrailPickerModal({
                             position: "absolute",
                             width: "100%",
                             height: "3px",
-                            background: "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
+                            background:
+                              "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
                             top: "50%",
                             left: 0,
                             transform: "translateY(-50%)",
                             borderRadius: "2px",
-                            boxShadow: "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
+                            boxShadow:
+                              "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
                           }}
                         />
                       ) : (
@@ -1085,69 +1091,71 @@ function TrailPickerModal({
                           />
                           {/* Partículas del trail */}
                           {Array.from({ length: 4 }).map((_, i) => {
-                        const particleSize = 3;
-                        const leftPercent = `${i * 25 + 12.5}%`;
+                            const particleSize = 3;
+                            const leftPercent = `${i * 25 + 12.5}%`;
 
-                        return (
-                          <div
-                            key={i}
-                            style={{
-                              position: "absolute",
-                              left: leftPercent,
-                              top: "50%",
-                              transform: "translate(-50%, -50%)",
-                              width: `${particleSize * 4}px`,
-                              height: `${particleSize * 4}px`,
-                              pointerEvents: "none",
-                            }}
-                          >
-                            {/* Halo exterior */}
-                            <div
-                              style={{
-                                position: "absolute",
-                                width: `${particleSize * 1.5 * 2}px`,
-                                height: `${particleSize * 1.5 * 2}px`,
-                                borderRadius: "50%",
-                                backgroundColor: preferredColor || "#4caf50",
-                                opacity: 0.2,
-                                left: "50%",
-                                top: "50%",
-                                transform: "translate(-50%, -50%)",
-                              }}
-                            />
-                            {/* Círculo principal con resplandor */}
-                            <div
-                              style={{
-                                position: "absolute",
-                                width: `${particleSize * 2}px`,
-                                height: `${particleSize * 2}px`,
-                                borderRadius: "50%",
-                                backgroundColor: preferredColor || "#4caf50",
-                                boxShadow: `0 0 8px ${
-                                  preferredColor || "#4caf50"
-                                }, 0 0 4px ${preferredColor || "#4caf50"}`,
-                                left: "50%",
-                                top: "50%",
-                                transform: "translate(-50%, -50%)",
-                              }}
-                            />
-                            {/* Punto blanco brillante en el centro */}
-                            <div
-                              style={{
-                                position: "absolute",
-                                width: `${particleSize * 0.3 * 2}px`,
-                                height: `${particleSize * 0.3 * 2}px`,
-                                borderRadius: "50%",
-                                backgroundColor: "#ffffff",
-                                opacity: 0.6,
-                                left: "50%",
-                                top: "50%",
-                                transform: "translate(-50%, -50%)",
-                              }}
-                            />
-                          </div>
-                        );
-                      })}
+                            return (
+                              <div
+                                key={i}
+                                style={{
+                                  position: "absolute",
+                                  left: leftPercent,
+                                  top: "50%",
+                                  transform: "translate(-50%, -50%)",
+                                  width: `${particleSize * 4}px`,
+                                  height: `${particleSize * 4}px`,
+                                  pointerEvents: "none",
+                                }}
+                              >
+                                {/* Halo exterior */}
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    width: `${particleSize * 1.5 * 2}px`,
+                                    height: `${particleSize * 1.5 * 2}px`,
+                                    borderRadius: "50%",
+                                    backgroundColor:
+                                      preferredColor || "#4caf50",
+                                    opacity: 0.2,
+                                    left: "50%",
+                                    top: "50%",
+                                    transform: "translate(-50%, -50%)",
+                                  }}
+                                />
+                                {/* Círculo principal con resplandor */}
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    width: `${particleSize * 2}px`,
+                                    height: `${particleSize * 2}px`,
+                                    borderRadius: "50%",
+                                    backgroundColor:
+                                      preferredColor || "#4caf50",
+                                    boxShadow: `0 0 8px ${
+                                      preferredColor || "#4caf50"
+                                    }, 0 0 4px ${preferredColor || "#4caf50"}`,
+                                    left: "50%",
+                                    top: "50%",
+                                    transform: "translate(-50%, -50%)",
+                                  }}
+                                />
+                                {/* Punto blanco brillante en el centro */}
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    width: `${particleSize * 0.3 * 2}px`,
+                                    height: `${particleSize * 0.3 * 2}px`,
+                                    borderRadius: "50%",
+                                    backgroundColor: "#ffffff",
+                                    opacity: 0.6,
+                                    left: "50%",
+                                    top: "50%",
+                                    transform: "translate(-50%, -50%)",
+                                  }}
+                                />
+                              </div>
+                            );
+                          })}
                         </>
                       )}
                     </div>
@@ -1208,12 +1216,14 @@ function TrailPickerModal({
                               position: "absolute",
                               width: "100%",
                               height: "3px",
-                              background: "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
+                              background:
+                                "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
                               top: "50%",
                               left: 0,
                               transform: "translateY(-50%)",
                               borderRadius: "2px",
-                              boxShadow: "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
+                              boxShadow:
+                                "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
                             }}
                           />
                         ) : (
@@ -1233,69 +1243,73 @@ function TrailPickerModal({
                             />
                             {/* Partículas del trail */}
                             {Array.from({ length: 4 }).map((_, i) => {
-                          const particleSize = 3;
-                          const leftPercent = `${i * 25 + 12.5}%`;
+                              const particleSize = 3;
+                              const leftPercent = `${i * 25 + 12.5}%`;
 
-                          return (
-                            <div
-                              key={i}
-                              style={{
-                                position: "absolute",
-                                left: leftPercent,
-                                top: "50%",
-                                transform: "translate(-50%, -50%)",
-                                width: `${particleSize * 4}px`,
-                                height: `${particleSize * 4}px`,
-                                pointerEvents: "none",
-                              }}
-                            >
-                              {/* Halo exterior */}
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  width: `${particleSize * 1.5 * 2}px`,
-                                  height: `${particleSize * 1.5 * 2}px`,
-                                  borderRadius: "50%",
-                                  backgroundColor: preferredColor || "#4caf50",
-                                  opacity: 0.2,
-                                  left: "50%",
-                                  top: "50%",
-                                  transform: "translate(-50%, -50%)",
-                                }}
-                              />
-                              {/* Círculo principal con resplandor */}
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  width: `${particleSize * 2}px`,
-                                  height: `${particleSize * 2}px`,
-                                  borderRadius: "50%",
-                                  backgroundColor: preferredColor || "#4caf50",
-                                  boxShadow: `0 0 8px ${
-                                    preferredColor || "#4caf50"
-                                  }, 0 0 4px ${preferredColor || "#4caf50"}`,
-                                  left: "50%",
-                                  top: "50%",
-                                  transform: "translate(-50%, -50%)",
-                                }}
-                              />
-                              {/* Punto blanco brillante en el centro */}
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  width: `${particleSize * 0.3 * 2}px`,
-                                  height: `${particleSize * 0.3 * 2}px`,
-                                  borderRadius: "50%",
-                                  backgroundColor: "#ffffff",
-                                  opacity: 0.6,
-                                  left: "50%",
-                                  top: "50%",
-                                  transform: "translate(-50%, -50%)",
-                                }}
-                              />
-                            </div>
-                          );
-                        })}
+                              return (
+                                <div
+                                  key={i}
+                                  style={{
+                                    position: "absolute",
+                                    left: leftPercent,
+                                    top: "50%",
+                                    transform: "translate(-50%, -50%)",
+                                    width: `${particleSize * 4}px`,
+                                    height: `${particleSize * 4}px`,
+                                    pointerEvents: "none",
+                                  }}
+                                >
+                                  {/* Halo exterior */}
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      width: `${particleSize * 1.5 * 2}px`,
+                                      height: `${particleSize * 1.5 * 2}px`,
+                                      borderRadius: "50%",
+                                      backgroundColor:
+                                        preferredColor || "#4caf50",
+                                      opacity: 0.2,
+                                      left: "50%",
+                                      top: "50%",
+                                      transform: "translate(-50%, -50%)",
+                                    }}
+                                  />
+                                  {/* Círculo principal con resplandor */}
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      width: `${particleSize * 2}px`,
+                                      height: `${particleSize * 2}px`,
+                                      borderRadius: "50%",
+                                      backgroundColor:
+                                        preferredColor || "#4caf50",
+                                      boxShadow: `0 0 8px ${
+                                        preferredColor || "#4caf50"
+                                      }, 0 0 4px ${
+                                        preferredColor || "#4caf50"
+                                      }`,
+                                      left: "50%",
+                                      top: "50%",
+                                      transform: "translate(-50%, -50%)",
+                                    }}
+                                  />
+                                  {/* Punto blanco brillante en el centro */}
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      width: `${particleSize * 0.3 * 2}px`,
+                                      height: `${particleSize * 0.3 * 2}px`,
+                                      borderRadius: "50%",
+                                      backgroundColor: "#ffffff",
+                                      opacity: 0.6,
+                                      left: "50%",
+                                      top: "50%",
+                                      transform: "translate(-50%, -50%)",
+                                    }}
+                                  />
+                                </div>
+                              );
+                            })}
                           </>
                         )}
                       </div>
@@ -1389,7 +1403,11 @@ function ShopModal({
   // Helper function para determinar si un trail es de fuego
   const isFireTrail = (trailName: string): boolean => {
     const name = trailName.toLowerCase();
-    return name.includes('fire') || name.includes('inferno') || name.includes('hellfire');
+    return (
+      name.includes("fire") ||
+      name.includes("inferno") ||
+      name.includes("hellfire")
+    );
   };
   const [premiumItems, setPremiumItems] = useState<PremiumItem[]>([]);
   const [userInventory, setUserInventory] = useState<Set<string>>(new Set());
@@ -1721,12 +1739,14 @@ function ShopModal({
                                   position: "absolute",
                                   width: "100%",
                                   height: "3px",
-                                  background: "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
+                                  background:
+                                    "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
                                   top: "50%",
                                   left: 0,
                                   transform: "translateY(-50%)",
                                   borderRadius: "2px",
-                                  boxShadow: "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
+                                  boxShadow:
+                                    "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
                                 }}
                               />
                             ) : (
@@ -1746,73 +1766,73 @@ function ShopModal({
                                 />
                                 {/* Partículas del trail */}
                                 {Array.from({ length: 4 }).map((_, i) => {
-                              const particleSize = 3;
-                              const leftPercent = `${i * 25 + 12.5}%`;
+                                  const particleSize = 3;
+                                  const leftPercent = `${i * 25 + 12.5}%`;
 
-                              return (
-                                <div
-                                  key={i}
-                                  style={{
-                                    position: "absolute",
-                                    left: leftPercent,
-                                    top: "50%",
-                                    transform: "translate(-50%, -50%)",
-                                    width: `${particleSize * 4}px`,
-                                    height: `${particleSize * 4}px`,
-                                    pointerEvents: "none",
-                                  }}
-                                >
-                                  {/* Halo exterior */}
-                                  <div
-                                    style={{
-                                      position: "absolute",
-                                      width: `${particleSize * 1.5 * 2}px`,
-                                      height: `${particleSize * 1.5 * 2}px`,
-                                      borderRadius: "50%",
-                                      backgroundColor:
-                                        preferredColor || "#4caf50",
-                                      opacity: 0.2,
-                                      left: "50%",
-                                      top: "50%",
-                                      transform: "translate(-50%, -50%)",
-                                    }}
-                                  />
-                                  {/* Círculo principal con resplandor */}
-                                  <div
-                                    style={{
-                                      position: "absolute",
-                                      width: `${particleSize * 2}px`,
-                                      height: `${particleSize * 2}px`,
-                                      borderRadius: "50%",
-                                      backgroundColor:
-                                        preferredColor || "#4caf50",
-                                      boxShadow: `0 0 8px ${
-                                        preferredColor || "#4caf50"
-                                      }, 0 0 4px ${
-                                        preferredColor || "#4caf50"
-                                      }`,
-                                      left: "50%",
-                                      top: "50%",
-                                      transform: "translate(-50%, -50%)",
-                                    }}
-                                  />
-                                  {/* Punto blanco brillante en el centro */}
-                                  <div
-                                    style={{
-                                      position: "absolute",
-                                      width: `${particleSize * 0.3 * 2}px`,
-                                      height: `${particleSize * 0.3 * 2}px`,
-                                      borderRadius: "50%",
-                                      backgroundColor: "#ffffff",
-                                      opacity: 0.6,
-                                      left: "50%",
-                                      top: "50%",
-                                      transform: "translate(-50%, -50%)",
-                                    }}
-                                  />
-                                </div>
-                              );
-                            })}
+                                  return (
+                                    <div
+                                      key={i}
+                                      style={{
+                                        position: "absolute",
+                                        left: leftPercent,
+                                        top: "50%",
+                                        transform: "translate(-50%, -50%)",
+                                        width: `${particleSize * 4}px`,
+                                        height: `${particleSize * 4}px`,
+                                        pointerEvents: "none",
+                                      }}
+                                    >
+                                      {/* Halo exterior */}
+                                      <div
+                                        style={{
+                                          position: "absolute",
+                                          width: `${particleSize * 1.5 * 2}px`,
+                                          height: `${particleSize * 1.5 * 2}px`,
+                                          borderRadius: "50%",
+                                          backgroundColor:
+                                            preferredColor || "#4caf50",
+                                          opacity: 0.2,
+                                          left: "50%",
+                                          top: "50%",
+                                          transform: "translate(-50%, -50%)",
+                                        }}
+                                      />
+                                      {/* Círculo principal con resplandor */}
+                                      <div
+                                        style={{
+                                          position: "absolute",
+                                          width: `${particleSize * 2}px`,
+                                          height: `${particleSize * 2}px`,
+                                          borderRadius: "50%",
+                                          backgroundColor:
+                                            preferredColor || "#4caf50",
+                                          boxShadow: `0 0 8px ${
+                                            preferredColor || "#4caf50"
+                                          }, 0 0 4px ${
+                                            preferredColor || "#4caf50"
+                                          }`,
+                                          left: "50%",
+                                          top: "50%",
+                                          transform: "translate(-50%, -50%)",
+                                        }}
+                                      />
+                                      {/* Punto blanco brillante en el centro */}
+                                      <div
+                                        style={{
+                                          position: "absolute",
+                                          width: `${particleSize * 0.3 * 2}px`,
+                                          height: `${particleSize * 0.3 * 2}px`,
+                                          borderRadius: "50%",
+                                          backgroundColor: "#ffffff",
+                                          opacity: 0.6,
+                                          left: "50%",
+                                          top: "50%",
+                                          transform: "translate(-50%, -50%)",
+                                        }}
+                                      />
+                                    </div>
+                                  );
+                                })}
                               </>
                             )}
                           </div>
@@ -2201,6 +2221,8 @@ function App() {
     }>;
     countdown?: number;
   } | null>(null);
+  const [showBackToMenuConfirm, setShowBackToMenuConfirm] =
+    useState<boolean>(false);
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [showTrailPicker, setShowTrailPicker] = useState<boolean>(false);
   const [showShop, setShowShop] = useState<boolean>(false);
@@ -3440,6 +3462,34 @@ function App() {
     setTouchRight(false);
   };
 
+  // Function to handle back to menu from game (with confirmation)
+  const handleBackToMenuFromGame = () => {
+    setShowBackToMenuConfirm(true);
+  };
+
+  // Function to confirm back to menu
+  const handleConfirmBackToMenu = () => {
+    if (gameRef.current) {
+      gameRef.current.stop();
+      if (gameRef.current.isUsingNetwork()) {
+        const networkClient = gameRef.current.getNetworkClient();
+        if (networkClient) {
+          networkClient.disconnect();
+        }
+        gameRef.current.destroy();
+        gameRef.current = new Game("gameCanvas");
+      }
+    }
+    setGameOverState(null);
+    setRoundSummaryState(null);
+    setCurrentView("menu");
+    setLobbyPlayers([]);
+    setShowBackToMenuConfirm(false);
+    // Limpiar estado de toques
+    setTouchLeft(false);
+    setTouchRight(false);
+  };
+
   // Function to go to next match (matchmaking) from game over modal
   const handleNextMatchFromGameOver = () => {
     if (gameRef.current) {
@@ -4039,6 +4089,40 @@ function App() {
 
         {currentView === "game" && (
           <div className="game-hud">
+            {/* Botón Back to main - Esquina superior derecha */}
+            <button
+              className="back-to-main-button"
+              onClick={handleBackToMenuFromGame}
+              style={{
+                position: "absolute",
+                top: "10px",
+                right: "10px",
+                zIndex: 1000,
+                pointerEvents: "auto",
+                background: "#ffffff",
+                color: "#000000",
+                border: "2px solid #ffffff",
+                borderRadius: "8px",
+                padding: "10px 20px",
+                fontSize: "0.9rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "Roboto, Arial, sans-serif",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                transition: "all 0.3s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "0.8";
+                e.currentTarget.style.transform = "scale(1.05)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "1";
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+            >
+              Back to main
+            </button>
+
             {/* Panel izquierdo: Info del juego */}
             <div
               className="hud-left-panel"
@@ -4654,6 +4738,85 @@ function App() {
             localPlayerId={localPlayerId}
             preferredColor={preferredColor}
           />
+        )}
+
+        {/* Back to menu confirmation modal */}
+        {showBackToMenuConfirm && (
+          <div className="game-over-modal-overlay">
+            <div className="game-over-modal" style={{ maxWidth: "400px" }}>
+              <div className="game-over-content">
+                <h2 style={{ marginBottom: "20px", textAlign: "center" }}>
+                  {t("confirmExit.title") || "Leave Game?"}
+                </h2>
+                <p
+                  style={{
+                    marginBottom: "30px",
+                    textAlign: "center",
+                    fontSize: "1rem",
+                  }}
+                >
+                  {t("confirmExit.message") ||
+                    "Are you sure you want to leave the game? Your progress will be lost."}
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "15px",
+                    justifyContent: "center",
+                  }}
+                >
+                  <button
+                    className="back-to-menu-button"
+                    onClick={() => setShowBackToMenuConfirm(false)}
+                    style={{
+                      background: "#666666",
+                      border: "2px solid #666666",
+                      color: "#ffffff",
+                      padding: "12px 30px",
+                      borderRadius: "8px",
+                      fontSize: "1rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: "Roboto, Arial, sans-serif",
+                      transition: "all 0.3s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = "0.8";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = "1";
+                    }}
+                  >
+                    {t("confirmExit.cancel") || "Cancel"}
+                  </button>
+                  <button
+                    className="back-to-menu-button"
+                    onClick={handleConfirmBackToMenu}
+                    style={{
+                      background: "#ffffff",
+                      border: "2px solid #ffffff",
+                      color: "#000000",
+                      padding: "12px 30px",
+                      borderRadius: "8px",
+                      fontSize: "1rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: "Roboto, Arial, sans-serif",
+                      transition: "all 0.3s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = "0.8";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = "1";
+                    }}
+                  >
+                    {t("confirmExit.confirm") || "Leave Game"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
