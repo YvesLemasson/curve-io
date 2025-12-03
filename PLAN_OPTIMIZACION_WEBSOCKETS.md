@@ -523,3 +523,4 @@ function adjustForBattery(batteryLevel: number, baseRate: number): number {
 - Delta Compression ya implementado en `server/src/network/deltaCompression.ts`
 - Spatial Hash ya implementado en `client/src/game/spatialHash.ts`
 
+

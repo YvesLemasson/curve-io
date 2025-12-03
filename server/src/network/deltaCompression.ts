@@ -15,6 +15,7 @@ export interface DeltaState {
     deathOrder: Array<{ playerId: string; points: number }>;
   }>;
   nextRoundCountdown?: number;
+  preGameCountdown?: number;
   players: Array<{
     id: string;
     position?: { x: number; y: number };
@@ -113,6 +114,13 @@ export class DeltaCompressor {
       currentState.nextRoundCountdown !== this.previousState.nextRoundCountdown
     ) {
       delta.nextRoundCountdown = currentState.nextRoundCountdown;
+    }
+
+    // Comparar preGameCountdown
+    if (
+      currentState.preGameCountdown !== this.previousState.preGameCountdown
+    ) {
+      delta.preGameCountdown = currentState.preGameCountdown;
     }
 
     // Comparar jugadores
@@ -291,6 +299,7 @@ export class DeltaCompressor {
       playerPoints: state.playerPoints,
       roundResults: state.roundResults,
       nextRoundCountdown: state.nextRoundCountdown,
+      preGameCountdown: state.preGameCountdown,
       players: state.players.map((p) => ({
         id: p.id,
         position: p.position,

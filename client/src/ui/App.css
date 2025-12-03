@@ -1,4 +1,23 @@
 /* ============================================
+   FUENTES
+   ============================================ */
+@font-face {
+  font-family: "Genos";
+  src: url("/fonts/Genos-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Genos";
+  src: url("/fonts/Genos-Italic-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ============================================
    MOBILE-FIRST CSS PARA LANDSCAPE
    Estilos base optimizados para móviles en landscape
    Tema: Minimalista, moderno, Dark Mode
@@ -12,7 +31,7 @@ body {
   overflow: hidden;
   background: #000000;
   color: #ffffff;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .app {
@@ -57,7 +76,7 @@ body {
   min-width: 200px;
   text-align: center;
   font-weight: 600;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.4),
     0 0 25px rgba(255, 255, 255, 0.2), 0 0 35px rgba(255, 255, 255, 0.1);
   animation: installGlow 2s ease-in-out infinite;
@@ -132,12 +151,12 @@ body {
   background-color: var(--preferred-color, #ffffff);
   z-index: 2;
   pointer-events: none;
-  mask-image: url("/curveIO.png");
+  mask-image: url("/curvepw.png");
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
   mask-composite: intersect;
-  -webkit-mask-image: url("/curveIO.png");
+  -webkit-mask-image: url("/curvepw.png");
   -webkit-mask-size: contain;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
@@ -150,7 +169,7 @@ body {
   color: #ffffff;
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
   font-weight: 800;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   text-align: center;
   line-height: 1.1;
 }
@@ -160,7 +179,7 @@ body {
   margin: 0;
   color: #ffffff;
   text-align: center;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-style: italic;
   line-height: 1.4;
   padding: 0 10px;
@@ -180,7 +199,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   z-index: 50;
   min-height: 44px;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
@@ -262,7 +281,7 @@ body {
   font-size: 1.5rem;
   color: #ffffff;
   margin: 0;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -357,7 +376,7 @@ body {
   color: #ffffff;
   font-weight: 600;
   margin-bottom: 6px;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   word-break: break-word;
   display: inline-block;
   transition: all 0.2s;
@@ -411,7 +430,7 @@ body {
   color: #ffffff;
   font-size: 1rem;
   font-weight: 600;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   flex: 1;
   min-width: 0;
   outline: none;
@@ -441,7 +460,7 @@ body {
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   min-width: 28px;
   height: 28px;
   display: flex;
@@ -462,7 +481,7 @@ body {
 .player-sidebar-email {
   font-size: 0.65rem;
   color: rgba(255, 255, 255, 0.7);
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   word-break: break-word;
 }
 
@@ -470,7 +489,7 @@ body {
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.8);
   margin-bottom: 8px;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 500;
 }
 
@@ -479,14 +498,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 .player-sidebar-stats-title {
   font-size: 1.1rem;
   color: #ffffff;
   margin: 0;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -495,7 +514,7 @@ body {
 .player-sidebar-loops-display {
   font-size: 0.95rem;
   color: #4caf50;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 700;
   margin-left: auto;
 }
@@ -525,14 +544,14 @@ body {
 .player-sidebar-stat-label {
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.7);
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 500;
 }
 
 .player-sidebar-stat-value {
   font-size: 1rem;
   color: #ffffff;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
   margin-left: auto;
 }
@@ -540,14 +559,14 @@ body {
 .player-sidebar-stat-secondary {
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.5);
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   margin-left: 6px;
 }
 
 .player-sidebar-rating-change {
   font-size: 0.85rem;
   font-weight: 600;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   margin-left: 8px;
   padding: 2px 6px;
   border-radius: 4px;
@@ -712,7 +731,7 @@ body {
   transition: all 0.3s;
   min-height: 44px;
   text-align: center;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 400;
 }
 
@@ -740,7 +759,7 @@ body {
   font-size: 1rem;
   color: #ffffff;
   font-style: italic;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   line-height: 1.4;
 }
 
@@ -759,14 +778,14 @@ body {
   color: #ffffff;
   font-size: 0.75rem;
   font-weight: 600;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .controls-info p {
   margin: 3px 0;
   font-size: 0.7rem;
   color: #ffffff;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 /* ============================================
@@ -791,7 +810,7 @@ body {
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
   text-align: center;
   width: 100%;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 700;
 }
 
@@ -820,7 +839,7 @@ body {
   margin-bottom: 8px;
   color: #ffffff;
   text-align: center;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -839,7 +858,7 @@ body {
   color: #ffffff;
   font-size: 1.1rem;
   padding: 20px 0;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .player-item {
@@ -874,7 +893,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   flex: 1;
   min-width: 0;
 }
@@ -883,7 +902,7 @@ body {
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.7);
   font-weight: 600;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   margin-left: auto;
   padding-left: 8px;
 }
@@ -908,7 +927,7 @@ body {
   transition: all 0.3s;
   text-align: center;
   font-weight: 600;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   min-height: 44px;
   color: #ffffff;
@@ -965,7 +984,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
     0 0 25px rgba(255, 255, 255, 0.15);
@@ -1046,7 +1065,7 @@ body {
   font-size: 1rem;
   font-weight: 600;
   white-space: nowrap;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   box-shadow: none;
   border: none;
   width: 100%;
@@ -1097,7 +1116,7 @@ body {
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .leaderboard-list {
@@ -1147,7 +1166,7 @@ body {
   color: #ffffff;
   min-width: 18px;
   text-align: center;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .leaderboard-name {
@@ -1157,7 +1176,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .leaderboard-points {
@@ -1165,7 +1184,7 @@ body {
   color: #ffffff;
   font-weight: 600;
   white-space: nowrap;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .boost-bar {
@@ -1319,7 +1338,7 @@ body {
   text-align: center;
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
   line-height: 1.2;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 700;
 }
 
@@ -1344,7 +1363,7 @@ body {
   font-size: 0.85rem;
   color: #ffffff;
   margin: 0;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .winner-points {
@@ -1352,7 +1371,7 @@ body {
   color: #ffffff;
   margin-top: 4px;
   font-weight: 600;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .tie-section {
@@ -1369,7 +1388,7 @@ body {
   color: #ffffff;
   margin: 0;
   line-height: 1.2;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .game-summary {
@@ -1381,7 +1400,7 @@ body {
   color: #ffffff;
   margin-bottom: 8px;
   text-align: center;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -1407,14 +1426,14 @@ body {
 .stat-label {
   font-size: 0.75rem;
   color: #ffffff;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .stat-value {
   font-size: 0.9rem;
   font-weight: 600;
   color: #ffffff;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .players-summary {
@@ -1426,7 +1445,7 @@ body {
   color: #ffffff;
   margin-bottom: 8px;
   text-align: center;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -1469,7 +1488,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .player-points {
@@ -1479,7 +1498,7 @@ body {
   margin-left: auto;
   margin-right: 6px;
   white-space: nowrap;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .player-elo-rating {
@@ -1488,7 +1507,7 @@ body {
   font-weight: 500;
   margin-right: 6px;
   white-space: nowrap;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .player-rating-change {
@@ -1497,7 +1516,7 @@ body {
   padding: 2px 6px;
   border-radius: 4px;
   margin-right: 6px;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .player-rating-change.rating-change-positive {
@@ -1516,7 +1535,7 @@ body {
   font-weight: 400;
   margin-right: 6px;
   white-space: nowrap;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .player-status {
@@ -1559,7 +1578,7 @@ body {
   cursor: pointer;
   transition: all 0.3s;
   font-weight: 600;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
     0 0 25px rgba(255, 255, 255, 0.15);
   min-height: 44px;
@@ -1591,7 +1610,7 @@ body {
   cursor: pointer;
   transition: all 0.3s;
   font-weight: 600;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   box-shadow: 0 0 15px rgba(76, 175, 80, 0.4), 0 0 25px rgba(76, 175, 80, 0.2);
   min-height: 44px;
 }
@@ -1649,6 +1668,8 @@ body {
   justify-content: center;
   z-index: 2000;
   animation: fadeIn 0.3s ease-in;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .color-picker-modal {
@@ -1660,11 +1681,12 @@ body {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
   border: 2px solid rgba(255, 255, 255, 0.2);
   animation: slideUp 0.4s ease-out;
-  max-height: 95vh;
+  height: calc(100vh - 40px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .color-picker-modal h2 {
@@ -1673,23 +1695,29 @@ body {
   color: #ffffff;
   text-align: center;
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
 .color-picker-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  gap: 4px;
+  grid-auto-rows: auto;
+  gap: 8px;
   margin-bottom: 10px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 4px;
+  width: 100%;
 }
 
-.color-option {
+.color-option,
+.color-picker-color {
   aspect-ratio: 1;
   border: 1.5px solid rgba(255, 255, 255, 0.3);
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
   position: relative;
   display: flex;
   align-items: center;
@@ -1698,24 +1726,30 @@ body {
   color: #fff;
   text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  min-height: 0;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
-.color-option:active:not(:disabled) {
+.color-option:active:not(:disabled),
+.color-picker-color:active:not(:disabled) {
   transform: scale(1.05);
   border-color: rgba(255, 255, 255, 0.6);
 }
 
-.color-option.selected {
+.color-option.selected,
+.color-picker-color.selected {
   border-color: #fff;
   border-width: 4px;
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
   transform: scale(1.05);
 }
 
-.color-option.used {
+.color-option.used,
+.color-picker-color.used {
   opacity: 0.5;
   cursor: not-allowed;
   filter: grayscale(50%);
@@ -1760,7 +1794,7 @@ body {
   color: #ffffff;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-size: 1rem;
   text-align: left;
   width: 100%;
@@ -1807,7 +1841,7 @@ body {
   border: 2px solid #ffffff;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
     0 0 25px rgba(255, 255, 255, 0.15);
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -1823,7 +1857,7 @@ body {
   border: 2px solid #ffffff;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
     0 0 25px rgba(255, 255, 255, 0.15);
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
 }
 
@@ -1847,7 +1881,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
     0 0 25px rgba(255, 255, 255, 0.15);
@@ -2185,7 +2219,7 @@ body {
   .color-picker-modal {
     padding: 12px;
     max-width: 95%;
-    max-height: 90vh;
+    height: calc(100vh - 40px);
     padding-top: 10px;
     padding-bottom: 10px;
   }
@@ -2226,14 +2260,26 @@ body {
   }
 
   .color-picker-grid {
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 4px;
+    width: 100%;
+    grid-auto-rows: auto;
   }
 
-  .color-option {
+  .color-option,
+  .color-picker-color {
     border-width: 2px;
     border-radius: 8px;
     font-size: 1rem;
+    min-width: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    overflow: visible;
   }
 
   .color-picker-actions {
@@ -2661,12 +2707,22 @@ body {
   .color-picker-grid {
     gap: 8px;
     margin-bottom: 25px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 4px;
   }
 
-  .color-option {
+  .color-option,
+  .color-picker-color {
     border-width: 2px;
     border-radius: 8px;
     font-size: 0.8rem;
+    min-width: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    overflow: visible;
   }
 
   .color-option:hover:not(:disabled) {
@@ -2857,7 +2913,7 @@ body {
   font-size: 1.5rem;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   z-index: 100;
   display: flex;
   align-items: center;
@@ -2897,7 +2953,7 @@ body {
   align-items: center;
   justify-content: center;
   transition: all 0.3s;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
   padding: 0;
 }
@@ -2923,7 +2979,7 @@ body {
   font-size: 1.5rem;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2987,7 +3043,7 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   text-align: left;
   width: 100%;
   display: flex;
@@ -3010,7 +3066,7 @@ body {
 .leaderboard-countdown {
   color: rgba(255, 255, 255, 0.5);
   font-size: 0.75rem;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   text-align: center;
   padding: 8px;
   background: rgba(255, 255, 255, 0.05);
@@ -3020,7 +3076,7 @@ body {
 .leaderboard-countdown-inline {
   color: rgba(255, 255, 255, 0.5);
   font-size: 0.75rem;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 400;
   margin-left: auto;
   white-space: nowrap;
@@ -3043,7 +3099,7 @@ body {
   color: #ffffff;
   font-size: 1.1rem;
   padding: 40px 0;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   height: 100%;
 }
 
@@ -3076,7 +3132,7 @@ body {
   font-weight: 600;
   color: #ffffff;
   text-align: center;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
 }
 
 .leaderboard-header-name {
@@ -3122,7 +3178,7 @@ body {
 .leaderboard-wr {
   font-size: 0.9rem;
   color: #ffffff;
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   text-align: center;
 }
 
@@ -3303,19 +3359,22 @@ body {
 /* ============================================
    PREMIUM COLORS - Color Picker Enhancements
    ============================================ */
-.color-option.locked {
+.color-option.locked,
+.color-picker-color.locked {
   opacity: 0.6;
   cursor: pointer;
   position: relative;
   filter: brightness(0.7);
 }
 
-.color-option.locked:hover {
+.color-option.locked:hover,
+.color-picker-color.locked:hover {
   filter: brightness(0.9);
   opacity: 0.8;
 }
 
-.color-option.premium {
+.color-option.premium,
+.color-picker-color.premium {
   border-color: rgba(255, 215, 0, 0.5);
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
@@ -3345,6 +3404,91 @@ body {
   border-radius: 6px;
   color: rgba(255, 215, 0, 0.9);
   font-size: 0.85rem;
+}
+
+/* ============================================
+   WELCOME BONUS MODAL
+   ============================================ */
+.welcome-bonus-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.welcome-bonus-modal {
+  background: #212121;
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  height: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  animation: slideUp 0.4s ease-out;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.welcome-bonus-close-button {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 1.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.welcome-bonus-close-button:hover {
+  opacity: 0.7;
+  transform: scale(1.1);
+}
+
+.welcome-bonus-content {
+  text-align: center;
+  padding-top: 10px;
+}
+
+.welcome-bonus-title {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  color: #4caf50;
+  text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
+  font-weight: 600;
+}
+
+.welcome-bonus-message {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #ffd700;
+  margin-bottom: 15px;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.welcome-bonus-description {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 20px;
+  line-height: 1.5;
 }
 
 /* ============================================
@@ -3395,7 +3539,7 @@ body {
   font-size: 1.5rem;
   color: #ffffff;
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
-  font-family: "Roboto", "Arial", sans-serif;
+  font-family: "Genos", "Roboto", "Arial", sans-serif;
   font-weight: 600;
   margin: 0;
   text-align: center;

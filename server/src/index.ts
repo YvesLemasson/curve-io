@@ -376,28 +376,55 @@ io.on('connection', (socket: Socket) => {
       room.gameServer.initializePlayers();
       logger.log(`🎯 [${roomId}] Primer jugador, inicializando posiciones`);
     } else {
-      // Ya hay jugadores, inicializar este jugador en una posición
+      // Ya hay jugadores, inicializar este jugador en una posición aleatoria
       const players = room.playerManager.getAllPlayers();
       const existingPlayersForColor = players.filter(p => p.id !== playerId);
-      const positions = [
-        { x: 1920 * 0.25, y: 1280 * 0.25 },
-        { x: 1920 * 0.75, y: 1280 * 0.25 },
-        { x: 1920 * 0.25, y: 1280 * 0.75 },
-        { x: 1920 * 0.75, y: 1280 * 0.75 },
-        { x: 1920 * 0.5, y: 1280 * 0.25 },
-        { x: 1920 * 0.5, y: 1280 * 0.75 },
-        { x: 1920 * 0.25, y: 1280 * 0.5 },
-        { x: 1920 * 0.75, y: 1280 * 0.5 },
-      ];
-      const angles = [
-        0, Math.PI, Math.PI / 2, -Math.PI / 2,
-        Math.PI / 4, -Math.PI / 4, 3 * Math.PI / 4, -3 * Math.PI / 4,
-      ];
       
-      const index = players.length - 1;
-      const posIndex = index % positions.length;
-      player.position = { ...positions[posIndex] };
-      player.angle = angles[posIndex];
+      // Generar posición aleatoria con margen del borde
+      const canvasWidth = 1920;
+      const canvasHeight = 1280;
+      const margin = 0.15; // 15% de margen
+      const minDistance = 150; // Distancia mínima entre jugadores
+      
+      const marginX = canvasWidth * margin;
+      const marginY = canvasHeight * margin;
+      const minX = marginX;
+      const maxX = canvasWidth - marginX;
+      const minY = marginY;
+      const maxY = canvasHeight - marginY;
+      
+      // Obtener posiciones de jugadores existentes
+      const existingPositions = players
+        .filter(p => p.id !== playerId)
+        .map(p => p.position);
+      
+      // Generar posición aleatoria que no esté demasiado cerca de otros jugadores
+      let position: { x: number; y: number };
+      let attempts = 0;
+      const maxAttempts = 100;
+      
+      do {
+        position = {
+          x: minX + Math.random() * (maxX - minX),
+          y: minY + Math.random() * (maxY - minY),
+        };
+        attempts++;
+      } while (
+        attempts < maxAttempts &&
+        existingPositions.some(
+          (existing) =>
+            Math.sqrt(
+              Math.pow(position.x - existing.x, 2) +
+                Math.pow(position.y - existing.y, 2)
+            ) < minDistance
+        )
+      );
+      
+      // Ángulo aleatorio
+      const angle = Math.random() * 2 * Math.PI;
+      
+      player.position = position;
+      player.angle = angle;
       
       // Asegurar color correcto
       if (message.preferredColor && !existingPlayersForColor.some(p => p.color === message.preferredColor)) {
@@ -406,7 +433,7 @@ io.on('connection', (socket: Socket) => {
         player.color = getAvailableColor(existingPlayersForColor);
       }
       
-      player.trail = [{ ...positions[posIndex] }];
+      player.trail = [{ ...position }];
       room.gameServer.initializePlayerGaps(playerId);
       
       logger.log(`📍 [${roomId}] Jugador ${message.name} posicionado en (${player.position.x.toFixed(0)}, ${player.position.y.toFixed(0)}) con color ${player.color}`);

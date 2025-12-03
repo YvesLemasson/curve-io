@@ -144,5 +144,12 @@
     "title": "Select Language",
     "selectLanguage": "Select a language",
     "close": "Close"
+  },
+  "welcomeBonus": {
+    "title": "Welcome to the Curve!",
+    "message": "You've received 200 Loops as a gift",
+    "description": "Use your Loops to unlock premium colors and trails in the shop",
+    "close": "Close",
+    "openShop": "Open Shop"
   }
 }

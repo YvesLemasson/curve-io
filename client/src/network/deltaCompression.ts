@@ -15,6 +15,7 @@ export interface DeltaState {
     deathOrder: Array<{ playerId: string; points: number }>;
   }>;
   nextRoundCountdown?: number;
+  preGameCountdown?: number;
   players: Array<{
     id: string;
     position?: { x: number; y: number };
@@ -41,7 +42,7 @@ export class DeltaDecompressor {
   applyDelta(delta: DeltaState, scaleX: number = 1, scaleY: number = 1): GameState {
     // Si es estado completo, reemplazar todo
     if (delta.fullState || !this.localState) {
-      const gameStatus = (delta.gameStatus as 'waiting' | 'playing' | 'finished' | 'round-ended' | 'ended') || 'waiting';
+      const gameStatus = (delta.gameStatus as 'waiting' | 'pre-game' | 'playing' | 'finished' | 'round-ended' | 'ended') || 'waiting';
       this.localState = {
         tick: delta.tick,
         gameStatus,
@@ -51,6 +52,7 @@ export class DeltaDecompressor {
         playerPoints: delta.playerPoints ? { ...delta.playerPoints } : undefined,
         roundResults: delta.roundResults ? [...delta.roundResults] : undefined,
         nextRoundCountdown: delta.nextRoundCountdown,
+        preGameCountdown: delta.preGameCountdown,
         players: delta.players.map(p => ({
           id: p.id,
           name: p.name || `Player ${p.id.substring(0, 8)}`,
@@ -82,7 +84,7 @@ export class DeltaDecompressor {
     this.localState.tick = delta.tick;
 
     if (delta.gameStatus !== undefined) {
-      this.localState.gameStatus = delta.gameStatus as 'waiting' | 'playing' | 'finished' | 'round-ended' | 'ended';
+      this.localState.gameStatus = delta.gameStatus as 'waiting' | 'pre-game' | 'playing' | 'finished' | 'round-ended' | 'ended';
     }
 
     if (delta.winnerId !== undefined) {
@@ -107,6 +109,10 @@ export class DeltaDecompressor {
 
     if (delta.nextRoundCountdown !== undefined) {
       this.localState.nextRoundCountdown = delta.nextRoundCountdown;
+    }
+
+    if (delta.preGameCountdown !== undefined) {
+      this.localState.preGameCountdown = delta.preGameCountdown;
     }
 
     // Aplicar cambios a jugadores

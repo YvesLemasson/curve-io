@@ -17,3 +17,4 @@ CREATE POLICY "Anyone can read user names for leaderboard" ON public.users
 
 
 
+

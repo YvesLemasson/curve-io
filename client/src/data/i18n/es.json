@@ -123,6 +123,13 @@
     "title": "Seleccionar Idioma",
     "selectLanguage": "Selecciona un idioma",
     "close": "Cerrar"
+  },
+  "welcomeBonus": {
+    "title": "¡Bienvenido a Curve!",
+    "message": "Has recibido 200 Loops de regalo",
+    "description": "Usa tus Loops para desbloquear colores y trails premium en la tienda",
+    "close": "Cerrar",
+    "openShop": "Abrir Tienda"
   }
 }
 

@@ -49,7 +49,9 @@ export class Player {
     this.speed = speed;
     this.alive = true;
     this.trail = [{ ...startPosition }];
-    this.trailTimer = 0;
+    // Inicializar el timer en gapDuration para que empiece dibujando la línea directamente
+    // en lugar de empezar con un gap
+    this.trailTimer = this.gapDuration;
     this.shouldDrawTrail = true;
     this.wasDrawingTrail = true;
     this.boostActive = false;

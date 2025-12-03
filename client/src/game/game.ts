@@ -111,30 +111,44 @@ export class Game {
         const scaleY = this.canvas.getHeight() / this.serverCanvasHeight;
         decompressedState = {
           ...message.gameState,
-          players: message.gameState.players.map(p => ({
+          players: message.gameState.players.map((p) => ({
             ...p,
             position: {
               x: p.position.x * scaleX,
               y: p.position.y * scaleY,
             },
-            trail: p.trail.map(pos => pos ? {
-              x: pos.x * scaleX,
-              y: pos.y * scaleY,
-            } : null),
+            trail: p.trail.map((pos) =>
+              pos
+                ? {
+                    x: pos.x * scaleX,
+                    y: pos.y * scaleY,
+                  }
+                : null
+            ),
           })),
         };
       }
 
       if (decompressedState) {
         // Estados críticos que no deben interpolarse (aplicar inmediatamente)
-        const criticalStates: GameState['gameStatus'][] = ['round-ended', 'ended', 'finished'];
-        const isCriticalState = criticalStates.includes(decompressedState.gameStatus as any);
-        
+        const criticalStates: GameState["gameStatus"][] = [
+          "round-ended",
+          "ended",
+          "finished",
+          "pre-game",
+        ];
+        const isCriticalState = criticalStates.includes(
+          decompressedState.gameStatus as any
+        );
+
         // También aplicar inmediatamente si estamos cambiando de un estado crítico a 'playing'
         // Esto asegura que la transición de 'round-ended' -> 'playing' sea inmediata
-        const wasCriticalState = criticalStates.includes(this.gameState.gameStatus as any);
-        const isTransitionToPlaying = wasCriticalState && decompressedState.gameStatus === 'playing';
-        
+        const wasCriticalState = criticalStates.includes(
+          this.gameState.gameStatus as any
+        );
+        const isTransitionToPlaying =
+          wasCriticalState && decompressedState.gameStatus === "playing";
+
         if (isCriticalState || isTransitionToPlaying) {
           // Para estados críticos o transiciones a 'playing', aplicar inmediatamente sin interpolación
           // Esto asegura que el cliente tenga el estado correcto de inmediato
@@ -180,23 +194,53 @@ export class Game {
       "#8000ff", // Morado
     ];
 
-    // Posiciones iniciales distribuidas
-    const positions = [
-      { x: width * 0.25, y: height * 0.25 }, // Esquina superior izquierda
-      { x: width * 0.75, y: height * 0.25 }, // Esquina superior derecha
-      { x: width * 0.25, y: height * 0.75 }, // Esquina inferior izquierda
-      { x: width * 0.75, y: height * 0.75 }, // Esquina inferior derecha
-    ];
+    // Generar posiciones aleatorias con margen del borde
+    const margin = 0.15; // 15% de margen
+    const minDistance = 150; // Distancia mínima entre jugadores
+    const marginX = width * margin;
+    const marginY = height * margin;
+    const minX = marginX;
+    const maxX = width - marginX;
+    const minY = marginY;
+    const maxY = height - marginY;
 
-    const angles = [0, Math.PI, Math.PI / 2, -Math.PI / 2]; // Derecha, Izquierda, Abajo, Arriba
+    const positions: Array<{ x: number; y: number }> = [];
 
     for (let i = 0; i < numPlayers; i++) {
+      let position: { x: number; y: number };
+      let attempts = 0;
+      const maxAttempts = 100;
+
+      do {
+        position = {
+          x: minX + Math.random() * (maxX - minX),
+          y: minY + Math.random() * (maxY - minY),
+        };
+        attempts++;
+      } while (
+        attempts < maxAttempts &&
+        positions.some(
+          (existing) =>
+            Math.sqrt(
+              Math.pow(position.x - existing.x, 2) +
+                Math.pow(position.y - existing.y, 2)
+            ) < minDistance
+        )
+      );
+
+      positions.push(position);
+    }
+
+    for (let i = 0; i < numPlayers; i++) {
+      // Ángulo aleatorio
+      const angle = Math.random() * 2 * Math.PI;
+
       const player = new Player(
         `player-${i}`,
         `Player ${i + 1}`,
         colors[i % colors.length],
-        positions[i % positions.length],
-        angles[i % angles.length]
+        positions[i],
+        angle
       );
       this.players.push(player);
     }
@@ -227,7 +271,8 @@ export class Game {
   private update(): void {
     if (
       this.gameState.gameStatus !== "playing" &&
-      this.gameState.gameStatus !== "waiting"
+      this.gameState.gameStatus !== "waiting" &&
+      this.gameState.gameStatus !== "pre-game"
     )
       return;
 
@@ -235,20 +280,34 @@ export class Game {
     // Solo procesamos input local y lo enviamos al servidor
     if (this.useNetwork) {
       this.updateNetworkMode();
-      
+
       // INTERPOLACIÓN: Obtener estado interpolado del buffer
       // No interpolar para estados críticos (ya se aplicaron inmediatamente)
-      const criticalStates: GameState['gameStatus'][] = ['round-ended', 'ended', 'finished'];
-      const isCriticalState = criticalStates.includes(this.gameState.gameStatus as any);
-      
+      const criticalStates: GameState["gameStatus"][] = [
+        "round-ended",
+        "ended",
+        "finished",
+        "pre-game",
+      ];
+      const isCriticalState = criticalStates.includes(
+        this.gameState.gameStatus as any
+      );
+
       if (!isCriticalState && this.interpolationBuffer) {
-        const interpolatedState = this.interpolationBuffer.getInterpolatedState();
+        const interpolatedState =
+          this.interpolationBuffer.getInterpolatedState();
         if (interpolatedState) {
           // Sincronizar con estado interpolado (ya escalado)
           this.syncFromServer(interpolatedState, true);
         }
+      } else if (isCriticalState && this.interpolationBuffer) {
+        // Para estados críticos como 'pre-game', obtener el estado más reciente del buffer sin interpolar
+        const latestState = this.interpolationBuffer.getLatestState();
+        if (latestState) {
+          this.syncFromServer(latestState, true);
+        }
       }
-      
+
       return;
     }
 
@@ -386,10 +445,10 @@ export class Game {
       nearbyPlayerIds.delete(player.id); // Excluir el propio jugador
 
       // Colisión con otros trails (solo verificar jugadores cercanos)
+      // Incluir trails de todos los jugadores (vivos y muertos) excepto el propio
+      // Los jugadores muertos mantienen su trail para que otros puedan chocar con él
       const otherTrails = this.players
-        .filter(
-          (p) => nearbyPlayerIds.has(p.id) && p.id !== player.id && p.alive
-        )
+        .filter((p) => nearbyPlayerIds.has(p.id) && p.id !== player.id)
         .map((p) => ({
           trail: p.getTrail() as Array<Position | null>,
           playerId: p.id,
@@ -436,21 +495,22 @@ export class Game {
   private render(): void {
     this.canvas.clear();
 
-    // Dibujar todos los jugadores vivos
+    // Dibujar trails de todos los jugadores (vivos y muertos)
+    // Los jugadores muertos mantienen su trail para que otros puedan chocar con él
     for (const player of this.players) {
-      if (player.alive) {
-        const trail = player.getTrail();
-        if (trail.length >= 2) {
-          this.canvas.drawTrail(
-            trail, 
-            player.color, 
-            3,
-            player.trailType || 'normal',
-            player.trailEffect
-          );
-        }
+      const trail = player.getTrail();
+      if (trail.length >= 2) {
+        this.canvas.drawTrail(
+          trail,
+          player.color,
+          3,
+          player.trailType || "normal",
+          player.trailEffect
+        );
+      }
 
-        // Dibujar posición actual
+      // Solo dibujar posición actual de jugadores vivos
+      if (player.alive) {
         const pos = player.getCurrentPosition();
         this.canvas.drawPoint(pos.x, pos.y, player.color, 5);
       }
@@ -714,7 +774,7 @@ export class Game {
             : null
         );
         // Sincronizar trailType y trailEffect
-        localPlayer.trailType = serverPlayer.trailType || 'normal';
+        localPlayer.trailType = serverPlayer.trailType || "normal";
         localPlayer.trailEffect = serverPlayer.trailEffect;
         this.players.push(localPlayer);
         newPlayersCount++;

@@ -969,6 +969,209 @@ function TrailPickerModal({
     }
   };
 
+  // Función helper para renderizar un trail
+  const renderTrailButton = (trail: PremiumItem | null, isOwned: boolean) => {
+    const isLocked = !isOwned && trail !== null;
+    const isSelected =
+      trail === null ? selectedTrailId === null : selectedTrailId === trail.id;
+    const isEquipped = trail !== null && equippedTrailId === trail.id;
+
+    return (
+      <button
+        key={trail?.id || "normal"}
+        className={`color-picker-color ${isSelected ? "selected" : ""} ${
+          isLocked ? "locked" : ""
+        }`}
+        onClick={() => {
+          if (isLocked && onOpenShop) {
+            onOpenShop(trail?.id);
+          } else {
+            setSelectedTrailId(trail?.id || null);
+          }
+        }}
+        style={{
+          position: "relative",
+          overflow: "visible",
+          backgroundColor:
+            trail === null ? "#333" : "rgba(255, 255, 255, 0.05)",
+          minHeight: "60px",
+        }}
+        title={
+          trail === null
+            ? "Normal trail (default)"
+            : isLocked
+            ? `${trail.name} - ${trail.price_loops} Loops`
+            : trail.name
+        }
+      >
+        {/* Candado para trails bloqueados */}
+        {isLocked && (
+          <span className="lock-mark" title="Locked">
+            🔒
+          </span>
+        )}
+
+        {/* Checkmark para trail equipado */}
+        {isEquipped && !isLocked && (
+          <div
+            style={{
+              position: "absolute",
+              top: "4px",
+              right: "4px",
+              fontSize: "12px",
+              color: "#4CAF50",
+            }}
+          >
+            ✓
+          </div>
+        )}
+
+        {/* Contenido del trail */}
+        {trail === null ? (
+          <div style={{ fontSize: "0.8rem", color: "#fff" }}>Normal</div>
+        ) : (
+          <div
+            style={{
+              width: "100%",
+              height: "5px",
+              margin: "0",
+              position: "absolute",
+              top: "50%",
+              left: "0",
+              transform: "translateY(-50%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {isFireTrail(trail.name) ? (
+              /* Trail de fuego - gradiente rojo-naranja-amarillo */
+              <div
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "3px",
+                  background:
+                    "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
+                  top: "50%",
+                  left: 0,
+                  transform: "translateY(-50%)",
+                  borderRadius: "2px",
+                  boxShadow:
+                    "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
+                }}
+              />
+            ) : (
+              <>
+                {/* Línea base del trail */}
+                <div
+                  style={{
+                    position: "absolute",
+                    width: "100%",
+                    height: "1px",
+                    backgroundColor: trail.color_value,
+                    top: "50%",
+                    left: 0,
+                    transform: "translateY(-50%)",
+                    opacity: 1,
+                  }}
+                />
+                {/* Partículas del trail */}
+                {Array.from({ length: 4 }).map((_, i) => {
+                  const particleSize = 3;
+                  const leftPercent = `${i * 25 + 12.5}%`;
+
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        position: "absolute",
+                        left: leftPercent,
+                        top: "50%",
+                        transform: "translate(-50%, -50%)",
+                        width: `${particleSize * 4}px`,
+                        height: `${particleSize * 4}px`,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      {/* Halo exterior */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          width: `${particleSize * 1.5 * 2}px`,
+                          height: `${particleSize * 1.5 * 2}px`,
+                          borderRadius: "50%",
+                          backgroundColor: preferredColor || "#4caf50",
+                          opacity: 0.2,
+                          left: "50%",
+                          top: "50%",
+                          transform: "translate(-50%, -50%)",
+                        }}
+                      />
+                      {/* Círculo principal con resplandor */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          width: `${particleSize * 2}px`,
+                          height: `${particleSize * 2}px`,
+                          borderRadius: "50%",
+                          backgroundColor: preferredColor || "#4caf50",
+                          boxShadow: `0 0 8px ${
+                            preferredColor || "#4caf50"
+                          }, 0 0 4px ${preferredColor || "#4caf50"}`,
+                          left: "50%",
+                          top: "50%",
+                          transform: "translate(-50%, -50%)",
+                        }}
+                      />
+                      {/* Punto blanco brillante en el centro */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          width: `${particleSize * 0.3 * 2}px`,
+                          height: `${particleSize * 0.3 * 2}px`,
+                          borderRadius: "50%",
+                          backgroundColor: "#ffffff",
+                          opacity: 0.6,
+                          left: "50%",
+                          top: "50%",
+                          transform: "translate(-50%, -50%)",
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Precio para trails bloqueados */}
+        {isLocked && trail && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "4px",
+              right: "4px",
+              fontSize: "10px",
+              color: "#4CAF50",
+              fontWeight: "bold",
+            }}
+          >
+            {trail.price_loops}
+          </div>
+        )}
+      </button>
+    );
+  };
+
+  // Combinar todos los trails en una sola lista
+  const allTrails: Array<{ trail: PremiumItem | null; isOwned: boolean }> = [
+    { trail: null, isOwned: true }, // Opción "Normal" siempre disponible
+    ...ownedTrails.map((trail) => ({ trail, isOwned: true })),
+    ...availableTrails.map((trail) => ({ trail, isOwned: false })),
+  ];
+
   if (!isOpen) return null;
 
   return (
@@ -979,355 +1182,15 @@ function TrailPickerModal({
           <div style={{ textAlign: "center", padding: "20px" }}>Loading...</div>
         ) : (
           <>
-            {/* Trails del usuario */}
-            <div style={{ marginBottom: "24px" }}>
-              <h3
-                style={{
-                  color: "#ffffff",
-                  marginBottom: "12px",
-                  fontSize: "1.1rem",
-                }}
-              >
-                Your Trails
-              </h3>
-              <div className="color-picker-grid">
-                {/* Opción "Normal" (sin trail) */}
-                <button
-                  className={`color-picker-color ${
-                    selectedTrailId === null ? "selected" : ""
-                  }`}
-                  onClick={() => setSelectedTrailId(null)}
-                  style={{
-                    backgroundColor: "#333",
-                    border:
-                      selectedTrailId === null
-                        ? "3px solid #4CAF50"
-                        : "2px solid rgba(255, 255, 255, 0.3)",
-                  }}
-                  title="Normal trail (default)"
-                >
-                  <div style={{ fontSize: "0.8rem", color: "#fff" }}>
-                    Normal
-                  </div>
-                </button>
-
-                {ownedTrails.map((trail) => (
-                  <button
-                    key={trail.id}
-                    className={`color-picker-color ${
-                      selectedTrailId === trail.id ? "selected" : ""
-                    }`}
-                    onClick={() => setSelectedTrailId(trail.id)}
-                    style={{
-                      position: "relative",
-                      overflow: "visible",
-                      backgroundColor: "rgba(255, 255, 255, 0.05)",
-                      minHeight: "60px",
-                      border:
-                        selectedTrailId === trail.id
-                          ? "3px solid #4CAF50"
-                          : "2px solid rgba(255, 255, 255, 0.3)",
-                    }}
-                    title={trail.name}
-                  >
-                    {equippedTrailId === trail.id && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "4px",
-                          right: "4px",
-                          fontSize: "12px",
-                          color: "#4CAF50",
-                        }}
-                      >
-                        ✓
-                      </div>
-                    )}
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "5px",
-                        margin: "0",
-                        position: "absolute",
-                        top: "50%",
-                        left: "0",
-                        transform: "translateY(-50%)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {isFireTrail(trail.name) ? (
-                        /* Trail de fuego - gradiente rojo-naranja-amarillo */
-                        <div
-                          style={{
-                            position: "absolute",
-                            width: "100%",
-                            height: "3px",
-                            background:
-                              "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
-                            top: "50%",
-                            left: 0,
-                            transform: "translateY(-50%)",
-                            borderRadius: "2px",
-                            boxShadow:
-                              "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
-                          }}
-                        />
-                      ) : (
-                        <>
-                          {/* Línea base del trail */}
-                          <div
-                            style={{
-                              position: "absolute",
-                              width: "100%",
-                              height: "1px",
-                              backgroundColor: trail.color_value,
-                              top: "50%",
-                              left: 0,
-                              transform: "translateY(-50%)",
-                              opacity: 1,
-                            }}
-                          />
-                          {/* Partículas del trail */}
-                          {Array.from({ length: 4 }).map((_, i) => {
-                            const particleSize = 3;
-                            const leftPercent = `${i * 25 + 12.5}%`;
-
-                            return (
-                              <div
-                                key={i}
-                                style={{
-                                  position: "absolute",
-                                  left: leftPercent,
-                                  top: "50%",
-                                  transform: "translate(-50%, -50%)",
-                                  width: `${particleSize * 4}px`,
-                                  height: `${particleSize * 4}px`,
-                                  pointerEvents: "none",
-                                }}
-                              >
-                                {/* Halo exterior */}
-                                <div
-                                  style={{
-                                    position: "absolute",
-                                    width: `${particleSize * 1.5 * 2}px`,
-                                    height: `${particleSize * 1.5 * 2}px`,
-                                    borderRadius: "50%",
-                                    backgroundColor:
-                                      preferredColor || "#4caf50",
-                                    opacity: 0.2,
-                                    left: "50%",
-                                    top: "50%",
-                                    transform: "translate(-50%, -50%)",
-                                  }}
-                                />
-                                {/* Círculo principal con resplandor */}
-                                <div
-                                  style={{
-                                    position: "absolute",
-                                    width: `${particleSize * 2}px`,
-                                    height: `${particleSize * 2}px`,
-                                    borderRadius: "50%",
-                                    backgroundColor:
-                                      preferredColor || "#4caf50",
-                                    boxShadow: `0 0 8px ${
-                                      preferredColor || "#4caf50"
-                                    }, 0 0 4px ${preferredColor || "#4caf50"}`,
-                                    left: "50%",
-                                    top: "50%",
-                                    transform: "translate(-50%, -50%)",
-                                  }}
-                                />
-                                {/* Punto blanco brillante en el centro */}
-                                <div
-                                  style={{
-                                    position: "absolute",
-                                    width: `${particleSize * 0.3 * 2}px`,
-                                    height: `${particleSize * 0.3 * 2}px`,
-                                    borderRadius: "50%",
-                                    backgroundColor: "#ffffff",
-                                    opacity: 0.6,
-                                    left: "50%",
-                                    top: "50%",
-                                    transform: "translate(-50%, -50%)",
-                                  }}
-                                />
-                              </div>
-                            );
-                          })}
-                        </>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
+            <div className="color-picker-grid">
+              {allTrails.map(({ trail, isOwned }) =>
+                renderTrailButton(trail, isOwned)
+              )}
             </div>
 
-            {/* Trails disponibles para comprar */}
-            {availableTrails.length > 0 && (
-              <div>
-                <h3
-                  style={{
-                    color: "#ffffff",
-                    marginBottom: "12px",
-                    fontSize: "1.1rem",
-                  }}
-                >
-                  Available to Purchase
-                </h3>
-                <div className="color-picker-grid">
-                  {availableTrails.map((trail) => (
-                    <button
-                      key={trail.id}
-                      className="color-picker-color locked"
-                      onClick={() => {
-                        if (onOpenShop) {
-                          onOpenShop(trail.id);
-                        }
-                      }}
-                      style={{
-                        position: "relative",
-                        overflow: "visible",
-                        backgroundColor: "rgba(255, 255, 255, 0.05)",
-                        minHeight: "60px",
-                        opacity: 0.6,
-                      }}
-                      title={`${trail.name} - ${trail.price_loops} Loops`}
-                    >
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "5px",
-                          margin: "0",
-                          position: "absolute",
-                          top: "50%",
-                          left: "0",
-                          transform: "translateY(-50%)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {isFireTrail(trail.name) ? (
-                          /* Trail de fuego - gradiente rojo-naranja-amarillo */
-                          <div
-                            style={{
-                              position: "absolute",
-                              width: "100%",
-                              height: "3px",
-                              background:
-                                "linear-gradient(to right, #ff0000, #ff6600, #ffaa00, #ffff00)",
-                              top: "50%",
-                              left: 0,
-                              transform: "translateY(-50%)",
-                              borderRadius: "2px",
-                              boxShadow:
-                                "0 0 8px rgba(255, 102, 0, 0.6), 0 0 4px rgba(255, 102, 0, 0.4)",
-                            }}
-                          />
-                        ) : (
-                          <>
-                            {/* Línea base del trail */}
-                            <div
-                              style={{
-                                position: "absolute",
-                                width: "100%",
-                                height: "1px",
-                                backgroundColor: trail.color_value,
-                                top: "50%",
-                                left: 0,
-                                transform: "translateY(-50%)",
-                                opacity: 1,
-                              }}
-                            />
-                            {/* Partículas del trail */}
-                            {Array.from({ length: 4 }).map((_, i) => {
-                              const particleSize = 3;
-                              const leftPercent = `${i * 25 + 12.5}%`;
-
-                              return (
-                                <div
-                                  key={i}
-                                  style={{
-                                    position: "absolute",
-                                    left: leftPercent,
-                                    top: "50%",
-                                    transform: "translate(-50%, -50%)",
-                                    width: `${particleSize * 4}px`,
-                                    height: `${particleSize * 4}px`,
-                                    pointerEvents: "none",
-                                  }}
-                                >
-                                  {/* Halo exterior */}
-                                  <div
-                                    style={{
-                                      position: "absolute",
-                                      width: `${particleSize * 1.5 * 2}px`,
-                                      height: `${particleSize * 1.5 * 2}px`,
-                                      borderRadius: "50%",
-                                      backgroundColor:
-                                        preferredColor || "#4caf50",
-                                      opacity: 0.2,
-                                      left: "50%",
-                                      top: "50%",
-                                      transform: "translate(-50%, -50%)",
-                                    }}
-                                  />
-                                  {/* Círculo principal con resplandor */}
-                                  <div
-                                    style={{
-                                      position: "absolute",
-                                      width: `${particleSize * 2}px`,
-                                      height: `${particleSize * 2}px`,
-                                      borderRadius: "50%",
-                                      backgroundColor:
-                                        preferredColor || "#4caf50",
-                                      boxShadow: `0 0 8px ${
-                                        preferredColor || "#4caf50"
-                                      }, 0 0 4px ${
-                                        preferredColor || "#4caf50"
-                                      }`,
-                                      left: "50%",
-                                      top: "50%",
-                                      transform: "translate(-50%, -50%)",
-                                    }}
-                                  />
-                                  {/* Punto blanco brillante en el centro */}
-                                  <div
-                                    style={{
-                                      position: "absolute",
-                                      width: `${particleSize * 0.3 * 2}px`,
-                                      height: `${particleSize * 0.3 * 2}px`,
-                                      borderRadius: "50%",
-                                      backgroundColor: "#ffffff",
-                                      opacity: 0.6,
-                                      left: "50%",
-                                      top: "50%",
-                                      transform: "translate(-50%, -50%)",
-                                    }}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          position: "absolute",
-                          bottom: "4px",
-                          right: "4px",
-                          fontSize: "10px",
-                          color: "#4CAF50",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {trail.price_loops}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+            {!userId && (
+              <div className="color-picker-premium-hint">
+                Sign in to purchase premium trails
               </div>
             )}
 
@@ -1377,6 +1240,40 @@ function TrailPickerModal({
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Welcome bonus modal component
+function WelcomeBonusModal({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="welcome-bonus-modal-overlay" onClick={onClose}>
+      <div className="welcome-bonus-modal" onClick={(e) => e.stopPropagation()}>
+        <button
+          className="welcome-bonus-close-button"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ×
+        </button>
+        <div className="welcome-bonus-content">
+          <h2 className="welcome-bonus-title">{t("welcomeBonus.title")}</h2>
+          <div className="welcome-bonus-message">
+            {t("welcomeBonus.message")}
+          </div>
+          <p className="welcome-bonus-description">
+            {t("welcomeBonus.description")}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -1926,17 +1823,9 @@ function ShopModal({
             <div
               className="color-picker-modal"
               onClick={(e) => e.stopPropagation()}
+              style={{ display: "flex", flexDirection: "column" }}
             >
-              <div style={{ padding: "20px", textAlign: "center" }}>
-                <p
-                  style={{
-                    color: "#ffffff",
-                    marginBottom: "20px",
-                    fontSize: "1rem",
-                  }}
-                >
-                  Are you sure you want to purchase:
-                </p>
+              <div style={{ padding: "20px", textAlign: "center", flex: 1 }}>
                 <div
                   style={{
                     display: "flex",
@@ -2140,7 +2029,10 @@ function ShopModal({
                   )}
                 </div>
               </div>
-              <div className="color-picker-actions">
+              <div
+                className="color-picker-actions"
+                style={{ marginTop: "auto" }}
+              >
                 <button
                   className="color-picker-cancel"
                   onClick={() => setConfirmPurchaseItem(null)}
@@ -2221,6 +2113,10 @@ function App() {
     }>;
     countdown?: number;
   } | null>(null);
+  const [preGameCountdown, setPreGameCountdown] = useState<number | undefined>(
+    undefined
+  );
+  const [showPreGameOverlay, setShowPreGameOverlay] = useState<boolean>(false);
   const [showBackToMenuConfirm, setShowBackToMenuConfirm] =
     useState<boolean>(false);
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
@@ -2234,6 +2130,7 @@ function App() {
   >(undefined);
   const [showLanguageSelector, setShowLanguageSelector] =
     useState<boolean>(false);
+  const [showWelcomeBonus, setShowWelcomeBonus] = useState<boolean>(true); // TEMPORAL: Activado para ver el modal
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState<boolean>(false);
@@ -2381,6 +2278,21 @@ function App() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Verificar si se debe mostrar el modal de bienvenida
+  useEffect(() => {
+    if (user?.id && !loading) {
+      const shouldShowWelcome = localStorage.getItem("showWelcomeBonus");
+      if (shouldShowWelcome === "true") {
+        setShowWelcomeBonus(true);
+        // Limpiar la bandera para que no se muestre de nuevo
+        localStorage.removeItem("showWelcomeBonus");
+      }
+    }
+    // TEMPORAL: Forzar mostrar el modal para pruebas
+    // Descomenta la siguiente línea para ver el modal siempre
+    // setShowWelcomeBonus(true);
+  }, [user, loading]);
 
   // Cargar estadísticas del jugador desde BD
   useEffect(() => {
@@ -2785,6 +2697,26 @@ function App() {
           });
         }
 
+        // Actualizar pre-game countdown
+        if (gameState.gameStatus === "pre-game") {
+          setPreGameCountdown(gameState.preGameCountdown);
+          // Mostrar overlay opaco durante los primeros 0.3s (cuando preGameCountdown es undefined)
+          // Ocultar overlay cuando empieza el countdown (cuando preGameCountdown tiene valor)
+          const shouldShowOverlay = gameState.preGameCountdown === undefined;
+          setShowPreGameOverlay(shouldShowOverlay);
+
+          // Cerrar el modal RoundSummary cuando empieza el pre-game
+          if (roundSummaryState) {
+            setRoundSummaryState(null);
+            // Reactivar input cuando se cierra el modal
+            const inputManager = gameRef.current.getInputManager();
+            inputManager.setGameActive(true);
+          }
+        } else {
+          setPreGameCountdown(undefined);
+          setShowPreGameOverlay(false);
+        }
+
         // Detectar cuando el juego termina completamente
         if (
           (gameState.gameStatus === "finished" ||
@@ -3043,6 +2975,52 @@ function App() {
       inputManager.setGameActive(false);
     }
   }, [gameOverState, roundSummaryState]);
+
+  // Desactivar inputs durante pre-game countdown (después de los 0.3s iniciales)
+  useEffect(() => {
+    if (currentView !== "game" || !gameRef.current) return;
+
+    const checkInterval = setInterval(() => {
+      if (gameRef.current) {
+        const gameState = gameRef.current.getGameState();
+        const inputManager = gameRef.current.getInputManager();
+
+        // Si estamos en pre-game y hay countdown, desactivar inputs
+        if (
+          gameState.gameStatus === "pre-game" &&
+          gameState.preGameCountdown !== undefined &&
+          gameState.preGameCountdown > 0
+        ) {
+          inputManager.setGameActive(false);
+        } else if (
+          gameState.gameStatus === "playing" &&
+          !gameOverState &&
+          !roundSummaryState
+        ) {
+          // Reactivar inputs cuando el juego empiece
+          inputManager.setGameActive(true);
+        }
+      }
+    }, 50);
+
+    return () => clearInterval(checkInterval);
+  }, [currentView, gameOverState, roundSummaryState]);
+
+  // Cerrar modal RoundSummary cuando aparece el overlay del countdown o el overlay opaco
+  // Esto asegura que se cierre incluso si hay lag en la detección del estado 'pre-game'
+  useEffect(() => {
+    if (
+      roundSummaryState &&
+      (showPreGameOverlay ||
+        (preGameCountdown !== undefined && preGameCountdown > 0))
+    ) {
+      setRoundSummaryState(null);
+      if (gameRef.current) {
+        const inputManager = gameRef.current.getInputManager();
+        inputManager.setGameActive(true);
+      }
+    }
+  }, [roundSummaryState, showPreGameOverlay, preGameCountdown]);
 
   // Efecto separado para cerrar el modal cuando el juego vuelve a 'playing'
   useEffect(() => {
@@ -3650,7 +3628,7 @@ function App() {
                   }
                 >
                   <img
-                    src="/curveIO.png"
+                    src="/curvepw.png"
                     alt="curve.io"
                     className="logo-image"
                   />
@@ -4086,6 +4064,57 @@ function App() {
             </div>
           </>
         )}
+
+        {/* Pre-game overlay opaco (oculta canvas durante primeros 0.2s) */}
+        {currentView === "game" && showPreGameOverlay && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: "#000000",
+              zIndex: 1500,
+              pointerEvents: "none",
+            }}
+          />
+        )}
+
+        {/* Pre-game countdown overlay */}
+        {currentView === "game" &&
+          preGameCountdown !== undefined &&
+          preGameCountdown > 0 && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 2000,
+                pointerEvents: "none",
+                background: "rgba(0, 0, 0, 0.5)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "8rem",
+                  fontWeight: "bold",
+                  color: "#ffffff",
+                  textShadow:
+                    "0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 255, 255, 0.6)",
+                  fontFamily: "Roboto, Arial, sans-serif",
+                  animation: "pulse 1s ease-in-out infinite",
+                }}
+              >
+                {preGameCountdown}
+              </div>
+            </div>
+          )}
 
         {currentView === "game" && (
           <div className="game-hud">
@@ -4715,6 +4744,14 @@ function App() {
               setInitialShopTypeState("trail");
               setShowShop(true);
             }}
+          />
+        )}
+
+        {/* Welcome bonus modal */}
+        {showWelcomeBonus && (
+          <WelcomeBonusModal
+            isOpen={showWelcomeBonus}
+            onClose={() => setShowWelcomeBonus(false)}
           />
         )}
 

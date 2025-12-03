@@ -38,6 +38,12 @@ export class GameServer {
   private nextRoundCountdownInterval: NodeJS.Timeout | null = null; // Intervalo para cuenta atrás
   private nextRoundCountdown: number = 0; // Cuenta atrás actual en segundos
 
+  // Sistema de pre-juego (0.3s de dibujo inicial + 3s de pausa)
+  private preGameStartTime: number = 0; // Tiempo cuando empezó la fase de pre-juego
+  private preGameCountdown: number = 3; // Cuenta atrás de 3 segundos
+  private readonly PRE_GAME_DRAW_DURATION: number = 300; // 0.3 segundos en ms
+  private readonly PRE_GAME_COUNTDOWN_DURATION: number = 3000; // 3 segundos en ms
+
   // Sistema de gaps en trails
   private playerTrailTimers: Map<string, number> = new Map(); // playerId -> trailTimer acumulado
   private playerShouldDrawTrail: Map<string, boolean> = new Map(); // playerId -> shouldDrawTrail
@@ -86,7 +92,7 @@ export class GameServer {
     if (this.isRunning) return;
 
     this.isRunning = true;
-    this.gameState.gameStatus = "playing";
+    this.gameState.gameStatus = "pre-game";
     this.lastTickTime = Date.now();
 
     // Inicializar sistema de rondas
@@ -115,6 +121,11 @@ export class GameServer {
     // Asegurar que los jugadores estén inicializados antes de empezar
     this.initializePlayers();
 
+    // Inicializar pre-juego
+    this.preGameStartTime = Date.now();
+    this.preGameCountdown = 0; // No mostrar countdown hasta después de los 0.1s
+    this.gameState.preGameCountdown = undefined; // No mostrar countdown durante los primeros 0.1s
+
     // Si se solicita, enviar estado inicial inmediatamente
     // (normalmente se envía después de emitir GAME_START para dar tiempo a los clientes)
     if (sendInitialState) {
@@ -129,7 +140,7 @@ export class GameServer {
       this.tick();
     }, this.tickInterval);
 
-    logger.log("🎮 Game loop iniciado");
+    logger.log("🎮 Game loop iniciado (pre-game)");
   }
 
   /**
@@ -191,6 +202,54 @@ export class GameServer {
     // Si el juego está pausado (round-ended), solo enviar estado, no actualizar nada
     if (this.gameState.gameStatus === "round-ended") {
       // Solo enviar estado actualizado (para sincronizar cuenta atrás, etc.)
+      this.broadcastState();
+      return;
+    }
+
+    // Manejar estado pre-game (0.1s de dibujo inicial + 3s de pausa)
+    if (this.gameState.gameStatus === "pre-game") {
+      const elapsedTime = currentTime - this.preGameStartTime;
+
+      // Fase 1: Primeros 0.3s - permitir que el juego corra para dibujar la línea
+      if (elapsedTime < this.PRE_GAME_DRAW_DURATION) {
+        // Permitir que el juego corra normalmente para dibujar la línea inicial
+        this.processInputs();
+        this.updateAllBoosts(deltaTime);
+        this.updatePlayers(deltaTime);
+        // NO detectar colisiones durante esta fase
+        // NO verificar condición de victoria
+        // NO mostrar countdown durante esta fase
+        this.gameState.preGameCountdown = undefined;
+      } else {
+        // Fase 2: Después de 0.3s - pausar y mostrar cuenta atrás de 3 segundos
+        const countdownElapsed = elapsedTime - this.PRE_GAME_DRAW_DURATION;
+        const remainingCountdown = Math.max(
+          0,
+          this.PRE_GAME_COUNTDOWN_DURATION - countdownElapsed
+        );
+        const countdownSeconds = Math.ceil(remainingCountdown / 1000);
+
+        // Actualizar cuenta atrás solo si cambió el segundo
+        if (countdownSeconds !== this.preGameCountdown) {
+          this.preGameCountdown = countdownSeconds;
+          this.gameState.preGameCountdown = countdownSeconds;
+          logger.log(
+            `⏱️ Pre-game cuenta atrás: ${countdownSeconds} segundos`
+          );
+          // Forzar envío inmediato cuando cambia el countdown
+          this.broadcastState(true);
+        }
+
+        // Cuando termine la cuenta atrás, cambiar a 'playing'
+        if (remainingCountdown <= 0) {
+          this.gameState.gameStatus = "playing";
+          this.gameState.preGameCountdown = undefined;
+          logger.log("✅ Pre-game terminado, iniciando juego");
+        }
+        // Durante la cuenta atrás, no actualizar el juego (solo enviar estado)
+      }
+
+      // Enviar estado actualizado a todos los clientes
       this.broadcastState();
       return;
     }
@@ -357,7 +416,9 @@ export class GameServer {
       // Sistema de gaps en trails
       // Inicializar estado de gaps si no existe
       if (!this.playerTrailTimers.has(player.id)) {
-        this.playerTrailTimers.set(player.id, 0);
+        // Inicializar el timer en gapDuration para que empiece dibujando la línea directamente
+        // en lugar de empezar con un gap
+        this.playerTrailTimers.set(player.id, this.gapDuration);
         this.playerShouldDrawTrail.set(player.id, true);
         this.playerWasDrawingTrail.set(player.id, true);
       }
@@ -695,8 +756,10 @@ export class GameServer {
       }
 
       if (currentPos && newPos) {
+        // Incluir trails de todos los jugadores (vivos y muertos) excepto el propio
+        // Los jugadores muertos mantienen su trail para que otros puedan chocar con él
         const otherTrails = players
-          .filter((p) => p.id !== player.id && p.alive)
+          .filter((p) => p.id !== player.id)
           .map((p) => ({
             trail: p.trail, // Pasar trail completo con nulls - la función manejará los gaps
             playerId: p.id,
@@ -917,7 +980,7 @@ export class GameServer {
       this.currentRound = nextRound;
       this.gameState.currentRound = this.currentRound;
       this.deathOrderThisRound = [];
-      this.gameState.gameStatus = "playing";
+      this.gameState.gameStatus = "pre-game";
       this.gameState.nextRoundCountdown = undefined;
 
       // Reiniciar todos los jugadores
@@ -945,8 +1008,13 @@ export class GameServer {
         this.initializePlayerGaps(player.id);
       });
 
+      // Inicializar pre-juego
+      this.preGameStartTime = Date.now();
+      this.preGameCountdown = 0; // No mostrar countdown hasta después de los 0.1s
+      this.gameState.preGameCountdown = undefined; // No mostrar countdown durante los primeros 0.1s
+
       logger.log(
-        `✅ [startNextRound] Ronda ${this.currentRound}/${this.TOTAL_ROUNDS} iniciada correctamente`
+        `✅ [startNextRound] Ronda ${this.currentRound}/${this.TOTAL_ROUNDS} iniciada correctamente (pre-game)`
       );
       logger.log(`   Estado: ${this.gameState.gameStatus}`);
       logger.log(`   Jugadores: ${allPlayers.length}`);
@@ -1074,7 +1142,9 @@ export class GameServer {
    * Inicializa el estado de gaps para un jugador
    */
   initializePlayerGaps(playerId: string): void {
-    this.playerTrailTimers.set(playerId, 0);
+    // Inicializar el timer en gapDuration para que empiece dibujando la línea directamente
+    // en lugar de empezar con un gap
+    this.playerTrailTimers.set(playerId, this.gapDuration);
     this.playerShouldDrawTrail.set(playerId, true);
     this.playerWasDrawingTrail.set(playerId, true);
   }
@@ -1127,38 +1197,69 @@ export class GameServer {
   }
 
   /**
-   * Inicializa jugadores en posiciones iniciales
+   * Genera una posición aleatoria con margen del borde
+   * @param margin - Margen como porcentaje del ancho/alto (0.15 = 15%)
+   * @param existingPositions - Posiciones ya asignadas para evitar solapamientos
+   * @param minDistance - Distancia mínima entre jugadores
+   */
+  private generateRandomPosition(
+    margin: number = 0.15,
+    existingPositions: Position[] = [],
+    minDistance: number = 100
+  ): Position {
+    const marginX = this.canvasWidth * margin;
+    const marginY = this.canvasHeight * margin;
+    const minX = marginX;
+    const maxX = this.canvasWidth - marginX;
+    const minY = marginY;
+    const maxY = this.canvasHeight - marginY;
+
+    let position: Position;
+    let attempts = 0;
+    const maxAttempts = 100;
+
+    do {
+      position = {
+        x: minX + Math.random() * (maxX - minX),
+        y: minY + Math.random() * (maxY - minY),
+      };
+      attempts++;
+    } while (
+      attempts < maxAttempts &&
+      existingPositions.some(
+        (existing) =>
+          Math.sqrt(
+            Math.pow(position.x - existing.x, 2) +
+              Math.pow(position.y - existing.y, 2)
+          ) < minDistance
+      )
+    );
+
+    return position;
+  }
+
+  /**
+   * Inicializa jugadores en posiciones iniciales aleatorias
    */
   initializePlayers(): void {
     const players = this.playerManager.getAllPlayers();
-    const positions = [
-      { x: this.canvasWidth * 0.25, y: this.canvasHeight * 0.25 }, // Esquina superior izquierda
-      { x: this.canvasWidth * 0.75, y: this.canvasHeight * 0.25 }, // Esquina superior derecha
-      { x: this.canvasWidth * 0.25, y: this.canvasHeight * 0.75 }, // Esquina inferior izquierda
-      { x: this.canvasWidth * 0.75, y: this.canvasHeight * 0.75 }, // Esquina inferior derecha
-      { x: this.canvasWidth * 0.5, y: this.canvasHeight * 0.25 }, // Centro superior
-      { x: this.canvasWidth * 0.5, y: this.canvasHeight * 0.75 }, // Centro inferior
-      { x: this.canvasWidth * 0.25, y: this.canvasHeight * 0.5 }, // Centro izquierdo
-      { x: this.canvasWidth * 0.75, y: this.canvasHeight * 0.5 }, // Centro derecho
-    ];
-    const angles = [
-      0, // Derecha (0°)
-      Math.PI, // Izquierda (180°)
-      Math.PI / 2, // Abajo (90°)
-      -Math.PI / 2, // Arriba (270°)
-      Math.PI / 4, // Diagonal abajo-derecha (45°)
-      -Math.PI / 4, // Diagonal arriba-derecha (315°)
-      (3 * Math.PI) / 4, // Diagonal abajo-izquierda (135°)
-      (-3 * Math.PI) / 4, // Diagonal arriba-izquierda (225°)
-    ];
+    const positions: Position[] = [];
+    const angles: number[] = [];
+
+    // Generar posiciones aleatorias para cada jugador
+    players.forEach(() => {
+      const position = this.generateRandomPosition(0.15, positions, 150);
+      positions.push(position);
+      // Ángulo aleatorio entre 0 y 2π
+      angles.push(Math.random() * 2 * Math.PI);
+    });
 
     players.forEach((player, index) => {
-      const posIndex = index % positions.length;
-      player.position = { ...positions[posIndex] };
-      player.angle = angles[posIndex];
+      player.position = { ...positions[index] };
+      player.angle = angles[index];
       player.speed = 2;
       player.alive = true;
-      player.trail = [{ ...positions[posIndex] }];
+      player.trail = [{ ...positions[index] }];
 
       // IMPORTANTE: Preservar el color que el jugador ya seleccionó en el lobby
       // Solo asignar un nuevo color si:
@@ -1187,10 +1288,12 @@ export class GameServer {
       }
 
       // Inicializar estado de gaps para este jugador
-      this.playerTrailTimers.set(player.id, 0);
+      // Inicializar el timer en gapDuration para que empiece dibujando la línea directamente
+      // en lugar de empezar con un gap
+      this.playerTrailTimers.set(player.id, this.gapDuration);
       this.playerShouldDrawTrail.set(player.id, true);
       this.playerWasDrawingTrail.set(player.id, true);
-      this.playerLastPointTime.set(player.id, 0);
+      this.playerLastPointTime.set(player.id, this.gapDuration);
     });
 
     this.gameState.players = players.map((p) => ({

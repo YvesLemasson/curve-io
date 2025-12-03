@@ -289,3 +289,4 @@ private readonly inputSendInterval: number = 33.33; // 30 Hz
 
 **Estado**: ✅ **Implementación completa y funcional**
 
+

@@ -199,5 +199,17 @@ export class InterpolationBuffer {
   getBufferSize(): number {
     return this.states.length;
   }
+
+  /**
+   * Obtiene el estado más reciente del buffer sin interpolar
+   * Útil para estados críticos como 'pre-game' que necesitan actualización inmediata
+   */
+  getLatestState(): GameState | null {
+    if (this.states.length === 0) {
+      return null;
+    }
+    return this.states[this.states.length - 1].state;
+  }
 }
+
 

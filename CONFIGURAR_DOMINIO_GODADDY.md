@@ -220,3 +220,4 @@
 
 ¡Listo! 🎉 Tu dominio `curve.pw` debería estar funcionando con Netlify.
 
+

@@ -91,3 +91,4 @@ SELECT 'Función calculate_new_rating actualizada con sistema asimétrico' AS st
 
 
 
+

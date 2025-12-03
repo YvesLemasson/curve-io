@@ -31,6 +31,10 @@ export class UserModel {
     name: string,
     avatarUrl?: string
   ): Promise<User> {
+    // Verificar si el usuario ya existe
+    const existingUser = await this.getUserById(authUserId);
+    const isNewUser = !existingUser;
+
     const { data, error } = await supabase
       .from("users")
       .upsert(
@@ -51,6 +55,29 @@ export class UserModel {
     if (error) {
       logger.error("Error creating/updating user:", error);
       throw new Error(`Failed to create/update user: ${error.message}`);
+    }
+
+    // Si es un usuario nuevo, darle 200 loops de bienvenida
+    if (isNewUser) {
+      try {
+        const { error: loopsError } = await supabase.rpc("add_loops", {
+          p_user_id: authUserId,
+          p_amount: 200,
+          p_type: "reward",
+          p_source: "welcome_bonus",
+          p_description: "Bienvenida - 200 Loops de regalo",
+        });
+
+        if (loopsError) {
+          logger.error("Error dando loops de bienvenida:", loopsError);
+          // No lanzar error, solo loggear (no queremos bloquear el registro)
+        } else {
+          logger.log(`✅ 200 Loops otorgados al nuevo usuario ${authUserId}`);
+        }
+      } catch (loopsErr) {
+        logger.error("Error en try-catch al dar loops de bienvenida:", loopsErr);
+        // No lanzar error, solo loggear
+      }
     }
 
     return data;
@@ -163,6 +190,27 @@ export class UserModel {
         if (createError) {
           logger.error("Error creating user:", createError);
           // No lanzar error, solo loguear (no queremos bloquear el juego)
+        } else {
+          // Si es un usuario nuevo, darle 200 loops de bienvenida
+          try {
+            const { error: loopsError } = await supabase.rpc("add_loops", {
+              p_user_id: userId,
+              p_amount: 200,
+              p_type: "reward",
+              p_source: "welcome_bonus",
+              p_description: "Bienvenida - 200 Loops de regalo",
+            });
+
+            if (loopsError) {
+              logger.error("Error dando loops de bienvenida:", loopsError);
+              // No lanzar error, solo loggear (no queremos bloquear el juego)
+            } else {
+              logger.log(`✅ 200 Loops otorgados al nuevo usuario ${userId}`);
+            }
+          } catch (loopsErr) {
+            logger.error("Error en try-catch al dar loops de bienvenida:", loopsErr);
+            // No lanzar error, solo loggear
+          }
         }
       } else if (!existingUser.name) {
         // Usuario existe pero no tiene nombre, actualizarlo

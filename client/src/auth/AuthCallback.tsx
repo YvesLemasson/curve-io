@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../config/supabase';
+import { PremiumModel } from '../models/premiumModel';
 
 export function AuthCallback() {
   const navigate = useNavigate();
@@ -67,8 +68,19 @@ export function AuthCallback() {
     const handleSuccessfulAuth = async (session: any) => {
       try {
         // Usuario autenticado exitosamente
-        // Crear/actualizar perfil en la base de datos
         const user = session.user;
+        
+        // Verificar si el usuario ya existe antes de crear/actualizar
+        const { data: existingUser, error: checkError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', user.id)
+          .single();
+        
+        // Si no existe el usuario (error PGRST116 = no encontrado) o no hay datos, es nuevo
+        const isNewUser = !existingUser || checkError?.code === 'PGRST116';
+        
+        // Crear/actualizar perfil en la base de datos
         const { error: profileError } = await supabase
           .from('users')
           .upsert(
@@ -84,6 +96,23 @@ export function AuthCallback() {
         if (profileError) {
           console.error('Error creating/updating profile:', profileError);
           // No redirigir con error, solo loggear - el usuario está autenticado
+        } else if (isNewUser) {
+          // Si es un usuario nuevo, darle 200 loops de bienvenida
+          try {
+            await PremiumModel.addLoops(
+              user.id,
+              200,
+              'reward',
+              'welcome_bonus',
+              'Bienvenida - 200 Loops de regalo'
+            );
+            console.log('✅ 200 Loops otorgados al nuevo usuario');
+            // Marcar que se debe mostrar el modal de bienvenida
+            localStorage.setItem('showWelcomeBonus', 'true');
+          } catch (loopsError) {
+            console.error('Error dando loops de bienvenida:', loopsError);
+            // No bloquear el flujo si falla dar los loops
+          }
         }
 
         // Limpiar la URL de los parámetros de OAuth
