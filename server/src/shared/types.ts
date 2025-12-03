@@ -42,7 +42,7 @@ export interface TrailEffectConfig {
 
 export interface GameState {
   players: Player[];
-  gameStatus: 'waiting' | 'playing' | 'round-ended' | 'ended';
+  gameStatus: 'waiting' | 'pre-game' | 'playing' | 'round-ended' | 'ended';
   tick: number;
   winnerId?: string;
   currentRound?: number;
@@ -53,4 +53,5 @@ export interface GameState {
     deathOrder: Array<{ playerId: string; points: number }>;
   }>;
   nextRoundCountdown?: number; // Cuenta atrás en segundos para la siguiente ronda
+  preGameCountdown?: number; // Cuenta atrás en segundos para el inicio del juego (3 segundos)
 }
