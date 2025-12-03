@@ -319,10 +319,10 @@ export class BotAI {
     gameState: GameState
   ): 'left' | 'right' | null {
     // Evaluar 3 direcciones: izquierda, derecha, y recto
-    const directions = [
-      { name: 'left' as const, angle: bot.angle - Math.PI / 20 }, // Giro suave a la izquierda
-      { name: 'right' as const, angle: bot.angle + Math.PI / 20 }, // Giro suave a la derecha
-      { name: null as const, angle: bot.angle }, // Mantener dirección actual
+    const directions: Array<{ name: 'left' | 'right' | null; angle: number }> = [
+      { name: 'left', angle: bot.angle - Math.PI / 20 }, // Giro suave a la izquierda
+      { name: 'right', angle: bot.angle + Math.PI / 20 }, // Giro suave a la derecha
+      { name: null, angle: bot.angle }, // Mantener dirección actual
     ];
 
     const scores: Array<{ direction: 'left' | 'right' | null; score: number }> = [];

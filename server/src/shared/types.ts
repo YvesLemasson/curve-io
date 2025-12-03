@@ -21,6 +21,8 @@ export interface Player {
     charge: number;
     remaining: number;
   };
+  isBot?: boolean;  // Identifica si es un bot
+  botDifficulty?: 'easy' | 'medium' | 'hard';  // Nivel de dificultad del bot
 }
 
 // Tipos de trails premium

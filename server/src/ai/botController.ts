@@ -165,12 +165,13 @@ export class BotController {
       if (!botAI || !bot.botDifficulty) continue;
 
       const lastDecisionTime = this.botLastDecisionTime.get(bot.id) || 0;
-      const config = BOT_DIFFICULTY_CONFIGS[bot.botDifficulty];
+      const botDifficulty = bot.botDifficulty; // Type narrowing
+      const config = BOT_DIFFICULTY_CONFIGS[botDifficulty];
 
       // Verificar si es momento de tomar una nueva decisión
       if (currentTime - lastDecisionTime >= config.decisionInterval) {
         // Calcular nueva acción
-        const action = botAI.calculateAction(bot, gameState, bot.botDifficulty);
+        const action = botAI.calculateAction(bot, gameState, botDifficulty);
         
         // Aplicar acción al bot
         this.applyBotAction(room, bot, action);
@@ -181,7 +182,7 @@ export class BotController {
         this.botBoostRequested.set(bot.id, action.boost || false);
       } else {
         // Continuar con la acción actual - IMPORTANTE: siempre enviar input para mantener movimiento
-        const currentAction = this.botCurrentAction.get(bot.id);
+        const currentAction = this.botCurrentAction.get(bot.id) ?? null;
         const boostRequested = this.botBoostRequested.get(bot.id) || false;
         
         // Enviar input incluso si no hay acción (para mantener el movimiento actual)
