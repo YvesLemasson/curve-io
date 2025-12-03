@@ -75,10 +75,10 @@ export function AuthCallback() {
           .from('users')
           .select('id')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
         
-        // Si no existe el usuario (error PGRST116 = no encontrado) o no hay datos, es nuevo
-        const isNewUser = !existingUser || checkError?.code === 'PGRST116';
+        // Si no existe el usuario o hay un error (excepto PGRST116 que es "no encontrado"), es nuevo
+        const isNewUser = !existingUser || (checkError && (checkError as any).code === 'PGRST116');
         
         // Crear/actualizar perfil en la base de datos
         const { error: profileError } = await supabase
