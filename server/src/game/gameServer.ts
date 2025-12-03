@@ -5,6 +5,7 @@ import type { Player, GameState, Position } from '../shared/types.js';
 import type { GameInputMessage } from '../shared/protocol.js';
 import { PlayerManager } from './playerManager.js';
 import { checkBoundaryCollision, checkTrailCollision, checkSelfCollision } from './collision.js';
+import { logger } from '../utils/logger.js';
 
 export class GameServer {
   private playerManager: PlayerManager;
@@ -103,7 +104,7 @@ export class GameServer {
     // Si se solicita, enviar estado inicial inmediatamente
     // (normalmente se envía después de emitir GAME_START para dar tiempo a los clientes)
     if (sendInitialState) {
-      console.log(`📡 Enviando estado inicial con ${this.gameState.players.length} jugador(es)`);
+      logger.log(`📡 Enviando estado inicial con ${this.gameState.players.length} jugador(es)`);
       this.broadcastState(true); // true = forzar envío
     }
     
@@ -112,7 +113,7 @@ export class GameServer {
       this.tick();
     }, this.tickInterval);
     
-    console.log('🎮 Game loop iniciado');
+    logger.log('🎮 Game loop iniciado');
   }
   
   /**
@@ -121,7 +122,7 @@ export class GameServer {
    */
   sendInitialState(): void {
     this.initializePlayers(); // Asegurar que estén inicializados
-    console.log(`📡 Enviando estado inicial con ${this.gameState.players.length} jugador(es)`);
+    logger.log(`📡 Enviando estado inicial con ${this.gameState.players.length} jugador(es)`);
     this.broadcastState(true); // true = forzar envío
   }
 
@@ -149,7 +150,7 @@ export class GameServer {
       this.nextRoundCountdownInterval = null;
     }
     
-    console.log('🛑 Game loop detenido');
+    logger.log('🛑 Game loop detenido');
   }
 
   /**
@@ -213,7 +214,7 @@ export class GameServer {
         }
         
         if (inputs.length > 1) {
-          console.log(`📥 Procesando ${inputs.length} inputs de ${player.name}, usando el más reciente`);
+          logger.log(`📥 Procesando ${inputs.length} inputs de ${player.name}, usando el más reciente`);
         }
         
         // Limpiar la cola para este jugador
@@ -357,12 +358,12 @@ export class GameServer {
         const nullPoints = player.trail.filter(p => p === null).length;
         const lastPointTime = this.playerLastPointTime.get(player.id);
         const timeSinceLastPoint = lastPointTime !== undefined ? (normalizedTimer - lastPointTime) : 0;
-        console.log(`🔍 [${player.id.substring(0, 8)}] Tick ${this.gameState.tick} | Timer: ${normalizedTimer.toFixed(2)}ms | timeInCycle: ${timeInCycle.toFixed(2)}ms | shouldDraw: ${shouldDrawTrail} | wasDrawing: ${wasDrawingTrail}`);
-        console.log(`   Trail: ${validPoints} válidos, ${nullPoints} nulls, total: ${trailLength} | Tiempo desde último punto: ${timeSinceLastPoint.toFixed(2)}ms`);
+        logger.log(`🔍 [${player.id.substring(0, 8)}] Tick ${this.gameState.tick} | Timer: ${normalizedTimer.toFixed(2)}ms | timeInCycle: ${timeInCycle.toFixed(2)}ms | shouldDraw: ${shouldDrawTrail} | wasDrawing: ${wasDrawingTrail}`);
+        logger.log(`   Trail: ${validPoints} válidos, ${nullPoints} nulls, total: ${trailLength} | Tiempo desde último punto: ${timeSinceLastPoint.toFixed(2)}ms`);
         
         // Advertencia si el trail no está creciendo
         if (validPoints < 10 && this.gameState.tick > 300) {
-          console.warn(`   ⚠️ Trail muy corto después de ${this.gameState.tick} ticks!`);
+          logger.warn(`   ⚠️ Trail muy corto después de ${this.gameState.tick} ticks!`);
         }
       }
       
@@ -382,7 +383,7 @@ export class GameServer {
         
         // Log detallado cuando se agrega punto y el trail está cerca del máximo
         if (trailLengthBefore >= 1195 && this.gameState.tick % 60 === 0) {
-          console.log(`   ➕ [${player.id.substring(0, 8)}] Punto agregado: trail antes=${trailLengthBefore}, después=${player.trail.length}`);
+          logger.log(`   ➕ [${player.id.substring(0, 8)}] Punto agregado: trail antes=${trailLengthBefore}, después=${player.trail.length}`);
         }
       }
       
@@ -399,8 +400,8 @@ export class GameServer {
         }
         // Si han pasado más de 1 segundo sin agregar puntos (más que el gap de 500ms), hay un problema
         if (timeSinceLastPoint > 1000 && !pointAdded) {
-          console.warn(`⚠️ [${player.id.substring(0, 8)}] Timer anómalo detectado: sin puntos por ${timeSinceLastPoint.toFixed(2)}ms, timeInCycle=${timeInCycle.toFixed(2)}ms, shouldDraw=${shouldDrawTrail}, forzando dibujo`);
-          console.warn(`   Detalles: normalizedTimer=${normalizedTimer.toFixed(2)}ms, lastPointTime=${lastPointTime.toFixed(2)}ms, gapInterval=${this.gapInterval}ms, gapDuration=${this.gapDuration}ms`);
+          logger.warn(`⚠️ [${player.id.substring(0, 8)}] Timer anómalo detectado: sin puntos por ${timeSinceLastPoint.toFixed(2)}ms, timeInCycle=${timeInCycle.toFixed(2)}ms, shouldDraw=${shouldDrawTrail}, forzando dibujo`);
+          logger.warn(`   Detalles: normalizedTimer=${normalizedTimer.toFixed(2)}ms, lastPointTime=${lastPointTime.toFixed(2)}ms, gapInterval=${this.gapInterval}ms, gapDuration=${this.gapDuration}ms`);
           player.trail.push({ ...player.position });
           this.playerLastPointTime.set(player.id, normalizedTimer);
           this.playerShouldDrawTrail.set(player.id, true); // Forzar estado a true
@@ -413,7 +414,7 @@ export class GameServer {
       
       // Log de advertencia si no se agregó punto y debería haberse agregado
       if (!pointAdded && shouldDrawTrail && this.gameState.tick % 60 === 0) {
-        console.warn(`⚠️ [${player.id.substring(0, 8)}] shouldDrawTrail=true pero no se agregó punto! timeInCycle=${timeInCycle.toFixed(2)}ms`);
+        logger.warn(`⚠️ [${player.id.substring(0, 8)}] shouldDrawTrail=true pero no se agregó punto! timeInCycle=${timeInCycle.toFixed(2)}ms`);
       }
       
       // Actualizar estado anterior
@@ -439,7 +440,7 @@ export class GameServer {
       const hasValidPoints = player.trail.some(p => p !== null);
       if (!hasValidPoints) {
         // Si no hay puntos válidos (todos son null o está vacío), agregar la posición actual
-        console.warn(`⚠️ [${player.id.substring(0, 8)}] Trail sin puntos válidos! Agregando punto de emergencia. Trail length: ${player.trail.length}, shouldDraw: ${shouldDrawTrail}, timeInCycle: ${timeInCycle.toFixed(2)}ms`);
+        logger.warn(`⚠️ [${player.id.substring(0, 8)}] Trail sin puntos válidos! Agregando punto de emergencia. Trail length: ${player.trail.length}, shouldDraw: ${shouldDrawTrail}, timeInCycle: ${timeInCycle.toFixed(2)}ms`);
         player.trail.push({ ...player.position });
       }
       
@@ -454,10 +455,10 @@ export class GameServer {
           lastPointTime: lastPointTime?.toFixed(2) || 'N/A',
           timeSinceLastPoint: timeSinceLastPoint.toFixed(2)
         };
-        console.log(`📊 [${player.id.substring(0, 8)}] Tick ${this.gameState.tick} - Estado detallado:`);
-        console.log(`   Timer: ${normalizedTimer.toFixed(2)}ms | timeInCycle: ${timeInCycle.toFixed(2)}ms | shouldDraw: ${shouldDrawTrail}`);
-        console.log(`   Trail: ${trailStats.valid} válidos, ${trailStats.nulls} nulls, total: ${trailStats.total}`);
-        console.log(`   Último punto: ${trailStats.lastPointTime}ms | Tiempo desde último: ${trailStats.timeSinceLastPoint}ms`);
+        logger.log(`📊 [${player.id.substring(0, 8)}] Tick ${this.gameState.tick} - Estado detallado:`);
+        logger.log(`   Timer: ${normalizedTimer.toFixed(2)}ms | timeInCycle: ${timeInCycle.toFixed(2)}ms | shouldDraw: ${shouldDrawTrail}`);
+        logger.log(`   Trail: ${trailStats.valid} válidos, ${trailStats.nulls} nulls, total: ${trailStats.total}`);
+        logger.log(`   Último punto: ${trailStats.lastPointTime}ms | Tiempo desde último: ${trailStats.timeSinceLastPoint}ms`);
       }
     }
 
@@ -497,7 +498,7 @@ export class GameServer {
     
     // Log cada 60 ticks (aproximadamente 1 vez por segundo)
     if (this.gameState.tick % 60 === 0) {
-      console.log(`🎮 Tick ${this.gameState.tick} | Jugadores vivos: ${aliveCount}/${players.length}`);
+      logger.log(`🎮 Tick ${this.gameState.tick} | Jugadores vivos: ${aliveCount}/${players.length}`);
     }
     
     // MEDICIÓN DE RENDIMIENTO: Estadísticas de trails cada 5 segundos (300 ticks)
@@ -515,11 +516,11 @@ export class GameServer {
       const maxTrailLength = Math.max(...trailStats.map(s => s.total), 0);
       const minTrailLength = Math.min(...trailStats.map(s => s.total), 0);
       
-      console.log(`📈 RENDIMIENTO [Tick ${this.gameState.tick}] - Estadísticas de Trails:`);
-      console.log(`   Total puntos: ${totalPoints} (${totalValidPoints} válidos, ${totalPoints - totalValidPoints} nulls)`);
-      console.log(`   Promedio: ${avgTrailLength} puntos/jugador | Min: ${minTrailLength} | Max: ${maxTrailLength}`);
+      logger.performance(`📈 RENDIMIENTO [Tick ${this.gameState.tick}] - Estadísticas de Trails:`);
+      logger.performance(`   Total puntos: ${totalPoints} (${totalValidPoints} válidos, ${totalPoints - totalValidPoints} nulls)`);
+      logger.performance(`   Promedio: ${avgTrailLength} puntos/jugador | Min: ${minTrailLength} | Max: ${maxTrailLength}`);
       trailStats.forEach(s => {
-        console.log(`   [${s.id}]: ${s.total} total (${s.valid} válidos, ${s.nulls} nulls)`);
+        logger.performance(`   [${s.id}]: ${s.total} total (${s.valid} válidos, ${s.nulls} nulls)`);
       });
     }
   }
@@ -540,7 +541,7 @@ export class GameServer {
         if (!this.deathOrderThisRound.includes(player.id)) {
           this.deathOrderThisRound.push(player.id);
         }
-        console.log(`💀 Jugador ${player.name} (${player.id.substring(0, 8)}...) murió por colisión con borde en (${player.position.x.toFixed(0)}, ${player.position.y.toFixed(0)})`);
+        logger.log(`💀 Jugador ${player.name} (${player.id.substring(0, 8)}...) murió por colisión con borde en (${player.position.x.toFixed(0)}, ${player.position.y.toFixed(0)})`);
         continue;
       }
 
@@ -582,7 +583,7 @@ export class GameServer {
           if (!this.deathOrderThisRound.includes(player.id)) {
             this.deathOrderThisRound.push(player.id);
           }
-          console.log(`💀 Jugador ${player.name} murió por colisión con trail de ${trailCollision.collidedWith}`);
+          logger.log(`💀 Jugador ${player.name} murió por colisión con trail de ${trailCollision.collidedWith}`);
           continue;
         }
 
@@ -597,12 +598,12 @@ export class GameServer {
           if (!this.deathOrderThisRound.includes(player.id)) {
             this.deathOrderThisRound.push(player.id);
           }
-          console.log(`💀 Jugador ${player.name} murió por colisión consigo mismo`);
+          logger.log(`💀 Jugador ${player.name} murió por colisión consigo mismo`);
         }
         
         // Log de rendimiento de colisiones (cada 5 segundos, solo si es lento)
         if (this.gameState.tick % 300 === 0 && (trailCollisionTime > 1 || selfCollisionTime > 1)) {
-          console.log(`⏱️ [${player.id.substring(0, 8)}] Tiempo colisiones: trail=${trailCollisionTime.toFixed(3)}ms, self=${selfCollisionTime.toFixed(3)}ms`);
+          logger.performance(`⏱️ [${player.id.substring(0, 8)}] Tiempo colisiones: trail=${trailCollisionTime.toFixed(3)}ms, self=${selfCollisionTime.toFixed(3)}ms`);
         }
       }
     }
@@ -629,7 +630,7 @@ export class GameServer {
           this.gameState.gameStatus = 'round-ended';
           this.gameState.nextRoundCountdown = undefined; // Sin cuenta atrás todavía
           this.broadcastState(true); // Forzar envío del estado
-          console.log(`⏸️  Ronda ${this.currentRound} terminada. Esperando solicitud para siguiente ronda...`);
+          logger.log(`⏸️  Ronda ${this.currentRound} terminada. Esperando solicitud para siguiente ronda...`);
         }
       }
     }
@@ -678,11 +679,11 @@ export class GameServer {
     this.roundResults.push(roundResult);
     this.gameState.roundResults = [...this.roundResults];
     
-    console.log(`📊 Ronda ${this.currentRound} terminada. Puntos asignados:`);
+    logger.log(`📊 Ronda ${this.currentRound} terminada. Puntos asignados:`);
     deathOrder.forEach(({ playerId, points }) => {
       const player = allPlayers.find(p => p.id === playerId);
       const totalPoints = this.playerPoints.get(playerId) || 0;
-      console.log(`   ${player?.name || playerId}: +${points} puntos (Total: ${totalPoints})`);
+      logger.log(`   ${player?.name || playerId}: +${points} puntos (Total: ${totalPoints})`);
     });
   }
   
@@ -692,13 +693,13 @@ export class GameServer {
   requestNextRound(): void {
     // Solo permitir si estamos en estado 'round-ended'
     if (this.gameState.gameStatus !== 'round-ended') {
-      console.log(`⚠️  Intento de solicitar siguiente ronda cuando el estado es ${this.gameState.gameStatus}`);
+      logger.log(`⚠️  Intento de solicitar siguiente ronda cuando el estado es ${this.gameState.gameStatus}`);
       return;
     }
     
     // Si ya hay una cuenta atrás en curso, ignorar
     if (this.nextRoundCountdownInterval !== null) {
-      console.log(`⚠️  Ya hay una cuenta atrás en curso`);
+      logger.log(`⚠️  Ya hay una cuenta atrás en curso`);
       return;
     }
     
@@ -707,7 +708,7 @@ export class GameServer {
     this.gameState.nextRoundCountdown = 3;
     this.broadcastState(true);
     
-    console.log(`⏱️  Iniciando cuenta atrás para siguiente ronda: ${this.nextRoundCountdown} segundos`);
+    logger.log(`⏱️  Iniciando cuenta atrás para siguiente ronda: ${this.nextRoundCountdown} segundos`);
     
     this.nextRoundCountdownInterval = setInterval(() => {
       try {
@@ -715,10 +716,10 @@ export class GameServer {
         this.gameState.nextRoundCountdown = this.nextRoundCountdown;
         this.broadcastState(true); // Forzar envío para actualizar cuenta atrás
         
-        console.log(`⏱️  Cuenta atrás: ${this.nextRoundCountdown} segundos`);
+        logger.log(`⏱️  Cuenta atrás: ${this.nextRoundCountdown} segundos`);
         
         if (this.nextRoundCountdown <= 0) {
-          console.log(`✅ Cuenta atrás completada, iniciando siguiente ronda...`);
+          logger.log(`✅ Cuenta atrás completada, iniciando siguiente ronda...`);
           // Terminar cuenta atrás e iniciar siguiente ronda
           if (this.nextRoundCountdownInterval) {
             clearInterval(this.nextRoundCountdownInterval);
@@ -728,7 +729,7 @@ export class GameServer {
           this.startNextRound();
         }
       } catch (error) {
-        console.error(`❌ Error en cuenta atrás:`, error);
+        logger.error(`❌ Error en cuenta atrás:`, error);
         // Limpiar intervalo en caso de error
         if (this.nextRoundCountdownInterval) {
           clearInterval(this.nextRoundCountdownInterval);
@@ -744,7 +745,7 @@ export class GameServer {
   private startNextRound(): void {
     try {
       const nextRound = this.currentRound + 1;
-      console.log(`🔄 [startNextRound] Iniciando ronda ${nextRound}/${this.TOTAL_ROUNDS}`);
+      logger.log(`🔄 [startNextRound] Iniciando ronda ${nextRound}/${this.TOTAL_ROUNDS}`);
       
       this.currentRound = nextRound;
       this.gameState.currentRound = this.currentRound;
@@ -754,18 +755,18 @@ export class GameServer {
       
       // Reiniciar todos los jugadores
       const allPlayers = this.playerManager.getAllPlayers();
-      console.log(`   [startNextRound] Reiniciando ${allPlayers.length} jugadores...`);
+      logger.log(`   [startNextRound] Reiniciando ${allPlayers.length} jugadores...`);
       allPlayers.forEach(player => {
         player.alive = true;
         player.trail = [];
       });
       
       // Reinicializar posiciones
-      console.log(`   [startNextRound] Reinicializando posiciones...`);
+      logger.log(`   [startNextRound] Reinicializando posiciones...`);
       this.initializePlayers();
       
       // Reinicializar estados de boost y gaps
-      console.log(`   [startNextRound] Reinicializando boost y gaps...`);
+      logger.log(`   [startNextRound] Reinicializando boost y gaps...`);
       allPlayers.forEach(player => {
         this.playerBoostState.set(player.id, {
           active: false,
@@ -775,12 +776,12 @@ export class GameServer {
         this.initializePlayerGaps(player.id);
       });
       
-      console.log(`✅ [startNextRound] Ronda ${this.currentRound}/${this.TOTAL_ROUNDS} iniciada correctamente`);
-      console.log(`   Estado: ${this.gameState.gameStatus}`);
-      console.log(`   Jugadores: ${allPlayers.length}`);
+      logger.log(`✅ [startNextRound] Ronda ${this.currentRound}/${this.TOTAL_ROUNDS} iniciada correctamente`);
+      logger.log(`   Estado: ${this.gameState.gameStatus}`);
+      logger.log(`   Jugadores: ${allPlayers.length}`);
       this.broadcastState(true); // Forzar envío del estado
     } catch (error) {
-      console.error(`❌ Error en startNextRound:`, error);
+      logger.error(`❌ Error en startNextRound:`, error);
       throw error; // Re-lanzar para que se vea en los logs
     }
   }
@@ -804,13 +805,13 @@ export class GameServer {
     
     this.gameState.winnerId = winnerId;
     
-    console.log(`🏆 Juego terminado después de ${this.TOTAL_ROUNDS} rondas`);
-    console.log(`📊 Puntos finales:`);
+    logger.log(`🏆 Juego terminado después de ${this.TOTAL_ROUNDS} rondas`);
+    logger.log(`📊 Puntos finales:`);
     const allPlayers = this.playerManager.getAllPlayers();
     allPlayers.forEach(player => {
       const points = this.playerPoints.get(player.id) || 0;
       const isWinner = player.id === winnerId;
-      console.log(`   ${player.name}: ${points} puntos${isWinner ? ' 🏆' : ''}`);
+      logger.log(`   ${player.name}: ${points} puntos${isWinner ? ' 🏆' : ''}`);
     });
     
     // Enviar estado final antes de detener (forzar envío)
@@ -835,7 +836,7 @@ export class GameServer {
     // Log cada 10 inputs para no saturar
     if (queue.length % 10 === 0) {
       const player = this.playerManager.getPlayer(input.playerId);
-      console.log(`⌨️  Input recibido de ${player?.name || input.playerId}: ${input.key} (cola: ${queue.length})`);
+      logger.log(`⌨️  Input recibido de ${player?.name || input.playerId}: ${input.key} (cola: ${queue.length})`);
     }
   }
 
@@ -876,7 +877,7 @@ export class GameServer {
       // Log cada 60 ticks (aproximadamente 1 vez por segundo)
       if (this.gameState.tick % 60 === 0 || force) {
         const alivePlayers = this.gameState.players.filter(p => p.alive);
-        console.log(`📡 Broadcast estado | Tick: ${this.gameState.tick} | Jugadores: ${alivePlayers.length}/${this.gameState.players.length} | Rate: ${1000 / (this.tickInterval * this.broadcastInterval)}Hz${force ? ' (FORZADO - Estado final)' : ''}`);
+        logger.performance(`📡 Broadcast estado | Tick: ${this.gameState.tick} | Jugadores: ${alivePlayers.length}/${this.gameState.players.length} | Rate: ${1000 / (this.tickInterval * this.broadcastInterval)}Hz${force ? ' (FORZADO - Estado final)' : ''}`);
       }
     }
   }
@@ -976,10 +977,10 @@ export class GameServer {
       // Si el color actual es el por defecto (#ffffff) o está en uso, asignar uno nuevo
       if (player.color === '#ffffff' || currentColorInUse) {
         player.color = this.getAvailableColor(otherPlayers);
-        console.log(`🎨 Asignando color ${player.color} a ${player.name} (${player.id.substring(0, 8)}...)`);
+        logger.log(`🎨 Asignando color ${player.color} a ${player.name} (${player.id.substring(0, 8)}...)`);
       } else {
         // Preservar el color que el jugador seleccionó
-        console.log(`✅ Preservando color ${player.color} de ${player.name} (${player.id.substring(0, 8)}...)`);
+        logger.log(`✅ Preservando color ${player.color} de ${player.name} (${player.id.substring(0, 8)}...)`);
       }
       
       // Inicializar estado de gaps para este jugador

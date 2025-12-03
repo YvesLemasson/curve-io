@@ -13,6 +13,7 @@ import { UserModel } from './models/userModel.js';
 import { PremiumModel } from './models/premiumModel.js';
 import { supabase } from './config/supabase.js';
 import { MatchmakingManager } from './matchmaking/matchmakingManager.js';
+import { logger } from './utils/logger.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -36,7 +37,7 @@ const io = new Server(httpServer, {
       if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
         callback(null, true);
       } else {
-        console.warn(`⚠️  Origen no permitido: ${origin}`);
+        logger.warn(`⚠️  Origen no permitido: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
@@ -109,7 +110,7 @@ function getAvailableColor(existingPlayers: Player[]): string {
 async function broadcastLobbyPlayers(roomId: string): Promise<void> {
   const room = matchmakingManager.getRoom(roomId);
   if (!room) {
-    console.warn(`⚠️  Intento de broadcast a sala inexistente: ${roomId}`);
+    logger.warn(`⚠️  Intento de broadcast a sala inexistente: ${roomId}`);
     return;
   }
 
@@ -164,7 +165,7 @@ const matchmakingManager = new MatchmakingManager(io);
 async function saveGameOnEnd(roomId: string, gameState: any): Promise<void> {
   const room = matchmakingManager.getRoom(roomId);
   if (!room || !room.gameId) {
-    console.log(`⚠️  [${roomId}] No hay partida activa para guardar`);
+    logger.log(`⚠️  [${roomId}] No hay partida activa para guardar`);
     return;
   }
 
@@ -191,7 +192,7 @@ async function saveGameOnEnd(roomId: string, gameState: any): Promise<void> {
         
         // Si no hay user_id, no guardar este participante (jugador no autenticado)
         if (!userId) {
-          console.log(`⚠️  [${roomId}] Jugador ${player.name} no tiene user_id, omitiendo del guardado`);
+          logger.log(`⚠️  [${roomId}] Jugador ${player.name} no tiene user_id, omitiendo del guardado`);
           return null;
         }
 
@@ -211,12 +212,12 @@ async function saveGameOnEnd(roomId: string, gameState: any): Promise<void> {
     if (participants.length > 0) {
       const totalPlayers = allPlayers.length;
       await GameModel.endGame(room.gameId, participants, winnerUserId || null, totalPlayers);
-      console.log(`✅ [${roomId}] Partida ${room.gameId} guardada exitosamente con ${participants.length} participantes autenticados de ${totalPlayers} jugadores totales`);
+      logger.log(`✅ [${roomId}] Partida ${room.gameId} guardada exitosamente con ${participants.length} participantes autenticados de ${totalPlayers} jugadores totales`);
     } else {
-      console.log(`⚠️  [${roomId}] No hay participantes autenticados para guardar`);
+      logger.log(`⚠️  [${roomId}] No hay participantes autenticados para guardar`);
     }
   } catch (error) {
-    console.error(`❌ [${roomId}] Error al guardar partida:`, error);
+    logger.error(`❌ [${roomId}] Error al guardar partida:`, error);
   }
 }
 
@@ -227,7 +228,7 @@ matchmakingManager.setOnGameEndCallback(async (roomId: string, gameState: any) =
 
 // WebSocket connection
 io.on('connection', (socket: Socket) => {
-  console.log(`✅ Cliente conectado: ${socket.id}`);
+  logger.log(`✅ Cliente conectado: ${socket.id}`);
   
   // Nota: No enviamos lista de jugadores al conectar porque el jugador aún no está en una sala
   // Se enviará después de que se una a una sala en PLAYER_JOIN
@@ -235,12 +236,12 @@ io.on('connection', (socket: Socket) => {
   // Manejar autenticación de usuario (user_id de Supabase)
   socket.on(CLIENT_EVENTS.AUTH_USER, (message: AuthUserMessage) => {
     socketToUserId.set(socket.id, message.userId);
-    console.log(`🔐 Usuario autenticado: ${message.userId} (socket: ${socket.id})`);
+    logger.log(`🔐 Usuario autenticado: ${message.userId} (socket: ${socket.id})`);
   });
 
   // Manejar unión de jugador
   socket.on(CLIENT_EVENTS.PLAYER_JOIN, async (message: PlayerJoinMessage) => {
-    console.log(`👤 Jugador ${message.name} (${message.playerId}) intenta unirse`);
+    logger.log(`👤 Jugador ${message.name} (${message.playerId}) intenta unirse`);
     
     // Usar socket.id como ID único del jugador (más confiable que el que envía el cliente)
     const playerId = socket.id;
@@ -251,13 +252,13 @@ io.on('connection', (socket: Socket) => {
     
     // Verificar si el jugador ya existe en esta sala
     if (room.playerManager.hasPlayer(playerId)) {
-      console.log(`⚠️  [${roomId}] Jugador ${playerId} ya existe en esta sala, ignorando unión duplicada`);
+      logger.log(`⚠️  [${roomId}] Jugador ${playerId} ya existe en esta sala, ignorando unión duplicada`);
       return;
     }
     
     // Verificar límite de jugadores en esta sala
     if (room.currentPlayers >= room.maxPlayers) {
-      console.log(`⚠️  [${roomId}] Intento de unirse con ${room.maxPlayers} jugadores ya conectados`);
+      logger.log(`⚠️  [${roomId}] Intento de unirse con ${room.maxPlayers} jugadores ya conectados`);
       socket.emit(SERVER_EVENTS.ERROR, `El juego está lleno. Máximo ${room.maxPlayers} jugadores permitidos.`);
       return;
     }
@@ -270,9 +271,9 @@ io.on('connection', (socket: Socket) => {
     if (!room.gameId && room.currentPlayers === 0) {
       try {
         room.gameId = await GameModel.findOrCreateWaitingGame();
-        console.log(`📝 [${roomId}] Partida asignada para el lobby: ${room.gameId}`);
+        logger.log(`📝 [${roomId}] Partida asignada para el lobby: ${room.gameId}`);
       } catch (error) {
-        console.error(`❌ [${roomId}] Error al buscar/crear partida:`, error);
+        logger.error(`❌ [${roomId}] Error al buscar/crear partida:`, error);
         // Continuar sin partida (el juego funcionará pero no se guardará)
       }
     }
@@ -286,16 +287,16 @@ io.on('connection', (socket: Socket) => {
       const colorInUse = existingPlayers.some(p => p.color === message.preferredColor);
       if (!colorInUse) {
         initialColor = message.preferredColor;
-        console.log(`🎨 [${roomId}] Usando color preferido ${initialColor} para ${message.name}`);
+        logger.log(`🎨 [${roomId}] Usando color preferido ${initialColor} para ${message.name}`);
       } else {
         // Color preferido está en uso, asignar uno disponible
         initialColor = getAvailableColor(existingPlayers);
-        console.log(`⚠️  [${roomId}] Color preferido ${message.preferredColor} está en uso, asignando ${initialColor} a ${message.name}`);
+        logger.log(`⚠️  [${roomId}] Color preferido ${message.preferredColor} está en uso, asignando ${initialColor} a ${message.name}`);
       }
     } else {
       // No hay color preferido, asignar uno disponible
       initialColor = getAvailableColor(existingPlayers);
-      console.log(`🎨 [${roomId}] Asignando color ${initialColor} a ${message.name} (sin preferencia)`);
+      logger.log(`🎨 [${roomId}] Asignando color ${initialColor} a ${message.name} (sin preferencia)`);
     }
     
     // 5. Si el usuario está autenticado, asegurar que su nombre esté guardado en la BD
@@ -305,7 +306,7 @@ io.on('connection', (socket: Socket) => {
       try {
         await UserModel.ensureUserHasName(userId, message.name);
       } catch (error) {
-        console.error(`❌ [${roomId}] Error al guardar nombre del usuario ${userId}:`, error);
+        logger.error(`❌ [${roomId}] Error al guardar nombre del usuario ${userId}:`, error);
         // Continuar aunque falle (no queremos bloquear el juego)
       }
     }
@@ -343,7 +344,7 @@ io.on('connection', (socket: Socket) => {
           };
         }
       } catch (error) {
-        console.error(`❌ [${roomId}] Error al obtener trail equipado para ${userId}:`, error);
+        logger.error(`❌ [${roomId}] Error al obtener trail equipado para ${userId}:`, error);
         // Continuar sin trail premium si hay error
       }
     }
@@ -367,13 +368,13 @@ io.on('connection', (socket: Socket) => {
     socketToPlayerId.set(socket.id, playerId);
     matchmakingManager.incrementPlayerCount(roomId);
     
-    console.log(`✅ [${roomId}] Jugador ${message.name} (${playerId}) agregado. Total: ${room.currentPlayers}/${room.maxPlayers}`);
+    logger.log(`✅ [${roomId}] Jugador ${message.name} (${playerId}) agregado. Total: ${room.currentPlayers}/${room.maxPlayers}`);
     
     // 7. Inicializar posiciones
     if (room.currentPlayers === 1) {
       // Primer jugador de la sala
       room.gameServer.initializePlayers();
-      console.log(`🎯 [${roomId}] Primer jugador, inicializando posiciones`);
+      logger.log(`🎯 [${roomId}] Primer jugador, inicializando posiciones`);
     } else {
       // Ya hay jugadores, inicializar este jugador en una posición
       const players = room.playerManager.getAllPlayers();
@@ -408,7 +409,7 @@ io.on('connection', (socket: Socket) => {
       player.trail = [{ ...positions[posIndex] }];
       room.gameServer.initializePlayerGaps(playerId);
       
-      console.log(`📍 [${roomId}] Jugador ${message.name} posicionado en (${player.position.x.toFixed(0)}, ${player.position.y.toFixed(0)}) con color ${player.color}`);
+      logger.log(`📍 [${roomId}] Jugador ${message.name} posicionado en (${player.position.x.toFixed(0)}, ${player.position.y.toFixed(0)}) con color ${player.color}`);
     }
     
     // 8. Confirmar conexión
@@ -418,7 +419,7 @@ io.on('connection', (socket: Socket) => {
     });
     
     // 9. Enviar lista actualizada de jugadores solo a esta sala
-    broadcastLobbyPlayers(roomId).catch(err => console.error(`[${roomId}] Error broadcasting lobby players:`, err));
+    broadcastLobbyPlayers(roomId).catch(err => logger.error(`[${roomId}] Error broadcasting lobby players:`, err));
   });
 
   // Manejar solicitud de inicio del juego
@@ -426,14 +427,14 @@ io.on('connection', (socket: Socket) => {
     // Obtener sala del socket
     const roomId = socketToRoomId.get(socket.id);
     if (!roomId) {
-      console.log(`⚠️  Socket ${socket.id} no está en ninguna sala`);
+      logger.log(`⚠️  Socket ${socket.id} no está en ninguna sala`);
       socket.emit(SERVER_EVENTS.ERROR, 'No estás en una sala');
       return;
     }
 
     const room = matchmakingManager.getRoom(roomId);
     if (!room) {
-      console.log(`⚠️  [${roomId}] Sala no encontrada`);
+      logger.log(`⚠️  [${roomId}] Sala no encontrada`);
       socket.emit(SERVER_EVENTS.ERROR, 'Sala no encontrada');
       return;
     }
@@ -442,18 +443,18 @@ io.on('connection', (socket: Socket) => {
     const gameStatus = room.gameServer.getGameState().gameStatus;
     
     if (gameStatus.includes('playing')) {
-      console.log(`⚠️  [${roomId}] Intento de iniciar juego que ya está corriendo`);
+      logger.log(`⚠️  [${roomId}] Intento de iniciar juego que ya está corriendo`);
       socket.emit(SERVER_EVENTS.ERROR, 'El juego ya está en curso');
       return;
     }
     
     if (playerCount < 2) {
-      console.log(`⚠️  [${roomId}] Intento de iniciar juego con menos de 2 jugadores (${playerCount})`);
+      logger.log(`⚠️  [${roomId}] Intento de iniciar juego con menos de 2 jugadores (${playerCount})`);
       socket.emit(SERVER_EVENTS.ERROR, 'Se necesitan al menos 2 jugadores para iniciar');
       return;
     }
     
-    console.log(`🚀 [${roomId}] Iniciando juego con ${playerCount} jugadores (solicitado por ${socket.id})`);
+    logger.log(`🚀 [${roomId}] Iniciando juego con ${playerCount} jugadores (solicitado por ${socket.id})`);
     
     // Actualizar partida en Supabase a estado "playing" o crear una nueva si no existe
     const totalPlayers = room.playerManager.getPlayerCount();
@@ -461,18 +462,18 @@ io.on('connection', (socket: Socket) => {
       // Actualizar la partida existente a estado "playing"
       try {
         await GameModel.startGame(room.gameId, totalPlayers);
-        console.log(`📝 [${roomId}] Partida ${room.gameId} actualizada a "playing" con ${totalPlayers} jugadores`);
+        logger.log(`📝 [${roomId}] Partida ${room.gameId} actualizada a "playing" con ${totalPlayers} jugadores`);
         matchmakingManager.startRoom(roomId, room.gameId);
       } catch (error) {
-        console.error(`❌ [${roomId}] Error al actualizar partida:`, error);
+        logger.error(`❌ [${roomId}] Error al actualizar partida:`, error);
         // Intentar crear una nueva partida
         try {
           const newGameId = await GameModel.createGame(totalPlayers);
           room.gameId = newGameId;
           matchmakingManager.startRoom(roomId, newGameId);
-          console.log(`📝 [${roomId}] Nueva partida creada: ${newGameId} con ${totalPlayers} jugadores`);
+          logger.log(`📝 [${roomId}] Nueva partida creada: ${newGameId} con ${totalPlayers} jugadores`);
         } catch (err) {
-          console.error(`❌ [${roomId}] Error al crear partida:`, err);
+          logger.error(`❌ [${roomId}] Error al crear partida:`, err);
         }
       }
     } else {
@@ -481,9 +482,9 @@ io.on('connection', (socket: Socket) => {
         const gameId = await GameModel.createGame(totalPlayers);
         room.gameId = gameId;
         matchmakingManager.startRoom(roomId, gameId);
-        console.log(`📝 [${roomId}] Partida creada en Supabase: ${gameId} con ${totalPlayers} jugadores`);
+        logger.log(`📝 [${roomId}] Partida creada en Supabase: ${gameId} con ${totalPlayers} jugadores`);
       } catch (error) {
-        console.error(`❌ [${roomId}] Error al crear partida en Supabase:`, error);
+        logger.error(`❌ [${roomId}] Error al crear partida en Supabase:`, error);
         // Continuar con el juego aunque falle el guardado
       }
     }
@@ -493,7 +494,7 @@ io.on('connection', (socket: Socket) => {
     
     // Emitir GAME_START solo a esta sala
     io.to(roomId).emit(SERVER_EVENTS.GAME_START, {});
-    console.log(`📢 [${roomId}] GAME_START emitido a la sala`);
+    logger.log(`📢 [${roomId}] GAME_START emitido a la sala`);
     
     // Enviar el estado inicial DESPUÉS de emitir GAME_START
     setTimeout(() => {
@@ -518,18 +519,18 @@ io.on('connection', (socket: Socket) => {
     const gameState = room.gameServer.getGameState();
     const gameStatus = gameState.gameStatus;
     
-    console.log(`📥 [${roomId}] Solicitud de siguiente ronda recibida de ${socket.id}`);
-    console.log(`   Estado actual: ${gameStatus}`);
-    console.log(`   Ronda actual: ${gameState.currentRound}/${gameState.totalRounds}`);
-    console.log(`   Countdown: ${gameState.nextRoundCountdown}`);
+    logger.log(`📥 [${roomId}] Solicitud de siguiente ronda recibida de ${socket.id}`);
+    logger.log(`   Estado actual: ${gameStatus}`);
+    logger.log(`   Ronda actual: ${gameState.currentRound}/${gameState.totalRounds}`);
+    logger.log(`   Countdown: ${gameState.nextRoundCountdown}`);
     
     if (gameStatus !== 'round-ended') {
-      console.log(`⚠️  [${roomId}] Intento de solicitar siguiente ronda cuando el estado es ${gameStatus}`);
+      logger.log(`⚠️  [${roomId}] Intento de solicitar siguiente ronda cuando el estado es ${gameStatus}`);
       socket.emit(SERVER_EVENTS.ERROR, 'No se puede solicitar siguiente ronda en este momento');
       return;
     }
     
-    console.log(`⏭️  [${roomId}] Procesando solicitud de siguiente ronda...`);
+    logger.log(`⏭️  [${roomId}] Procesando solicitud de siguiente ronda...`);
     room.gameServer.requestNextRound();
   });
 
@@ -567,7 +568,7 @@ io.on('connection', (socket: Socket) => {
     
     // Verificar que el jugador existe
     if (!room.playerManager.hasPlayer(playerId)) {
-      console.log(`⚠️  [${roomId}] Intento de cambiar color de jugador inexistente: ${playerId}`);
+      logger.log(`⚠️  [${roomId}] Intento de cambiar color de jugador inexistente: ${playerId}`);
       socket.emit(SERVER_EVENTS.ERROR, 'Jugador no encontrado');
       return;
     }
@@ -583,22 +584,22 @@ io.on('connection', (socket: Socket) => {
     const colorInUse = allPlayers.some(p => p.id !== playerId && p.color === message.color);
     
     if (colorInUse) {
-      console.log(`⚠️  [${roomId}] Intento de usar color ya en uso: ${message.color} por ${playerId}`);
+      logger.log(`⚠️  [${roomId}] Intento de usar color ya en uso: ${message.color} por ${playerId}`);
       socket.emit(SERVER_EVENTS.ERROR, 'Este color ya está en uso por otro jugador');
       return;
     }
 
     // Cambiar el color del jugador
     player.color = message.color;
-    console.log(`🎨 [${roomId}] Jugador ${player.name} (${playerId}) cambió su color a ${message.color}`);
+    logger.log(`🎨 [${roomId}] Jugador ${player.name} (${playerId}) cambió su color a ${message.color}`);
     
     // Enviar lista actualizada de jugadores solo a esta sala
-    broadcastLobbyPlayers(roomId).catch(err => console.error(`[${roomId}] Error broadcasting lobby players:`, err));
+    broadcastLobbyPlayers(roomId).catch(err => logger.error(`[${roomId}] Error broadcasting lobby players:`, err));
   });
 
   // Manejar desconexión
   socket.on('disconnect', (reason) => {
-    console.log(`❌ Cliente desconectado: ${socket.id} (${reason})`);
+    logger.log(`❌ Cliente desconectado: ${socket.id} (${reason})`);
     
     const roomId = socketToRoomId.get(socket.id);
     if (!roomId) {
@@ -627,15 +628,15 @@ io.on('connection', (socket: Socket) => {
       socketToUserId.delete(socket.id);
       socketToRoomId.delete(socket.id);
       
-      console.log(`🗑️  [${roomId}] Jugador ${player?.name || playerId} removido. Total: ${room.currentPlayers}/${room.maxPlayers}`);
+      logger.log(`🗑️  [${roomId}] Jugador ${player?.name || playerId} removido. Total: ${room.currentPlayers}/${room.maxPlayers}`);
       
       // Enviar lista actualizada de jugadores solo a esta sala
-      broadcastLobbyPlayers(roomId).catch(err => console.error(`[${roomId}] Error broadcasting lobby players:`, err));
+      broadcastLobbyPlayers(roomId).catch(err => logger.error(`[${roomId}] Error broadcasting lobby players:`, err));
     }
     
     // Si no quedan jugadores en la sala, detener el juego
     if (room.currentPlayers === 0) {
-      console.log(`🛑 [${roomId}] No quedan jugadores, deteniendo juego`);
+      logger.log(`🛑 [${roomId}] No quedan jugadores, deteniendo juego`);
       room.gameServer.stop();
       room.deltaCompressor.reset();
       
@@ -646,7 +647,7 @@ io.on('connection', (socket: Socket) => {
         // Guardar partida si hay gameId
         if (room.gameId) {
           saveGameOnEnd(roomId, room.gameServer.getGameState()).catch(err => 
-            console.error(`[${roomId}] Error al guardar partida en desconexión:`, err)
+            logger.error(`[${roomId}] Error al guardar partida en desconexión:`, err)
           );
         }
       }
@@ -657,10 +658,10 @@ io.on('connection', (socket: Socket) => {
 // Escuchar en todas las interfaces (0.0.0.0) para que funcione en Railway/cloud
 // Railway asigna el puerto automáticamente, así que usamos process.env.PORT
 httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Servidor curve.io corriendo en puerto ${PORT}`);
-  console.log(`📡 WebSocket disponible en ws://0.0.0.0:${PORT} (escuchando en todas las interfaces)`);
-  console.log(`🌐 Orígenes permitidos: ${allowedOrigins.join(', ')}`);
-  console.log(`✅ Servidor listo para recibir conexiones`);
-  console.log(`🎮 Sistema de matchmaking activado - múltiples salas simultáneas`);
+  logger.log(`🚀 Servidor curve.io corriendo en puerto ${PORT}`);
+  logger.log(`📡 WebSocket disponible en ws://0.0.0.0:${PORT} (escuchando en todas las interfaces)`);
+  logger.log(`🌐 Orígenes permitidos: ${allowedOrigins.join(', ')}`);
+  logger.log(`✅ Servidor listo para recibir conexiones`);
+  logger.log(`🎮 Sistema de matchmaking activado - múltiples salas simultáneas`);
 });
 

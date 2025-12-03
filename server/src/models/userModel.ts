@@ -1,6 +1,7 @@
 // Modelo para interactuar con usuarios en Supabase
 import { supabase } from "../config/supabase.js";
 import type { Database } from "../config/supabase.js";
+import { logger } from '../utils/logger.js';
 
 type User = Database["public"]["Tables"]["users"]["Row"];
 type UserInsert = Database["public"]["Tables"]["users"]["Insert"];
@@ -48,7 +49,7 @@ export class UserModel {
       .single();
 
     if (error) {
-      console.error("Error creating/updating user:", error);
+      logger.error("Error creating/updating user:", error);
       throw new Error(`Failed to create/update user: ${error.message}`);
     }
 
@@ -70,7 +71,7 @@ export class UserModel {
         // No encontrado
         return null;
       }
-      console.error("Error fetching user:", error);
+      logger.error("Error fetching user:", error);
       throw new Error(`Failed to fetch user: ${error.message}`);
     }
 
@@ -92,7 +93,7 @@ export class UserModel {
         // No encontrado (jugador nuevo sin estadísticas)
         return null;
       }
-      console.error("Error fetching player stats:", error);
+      logger.error("Error fetching player stats:", error);
       throw new Error(`Failed to fetch player stats: ${error.message}`);
     }
 
@@ -122,7 +123,7 @@ export class UserModel {
       .single();
 
     if (error) {
-      console.error("Error updating display name:", error);
+      logger.error("Error updating display name:", error);
       throw new Error(`Failed to update display name: ${error.message}`);
     }
 
@@ -160,7 +161,7 @@ export class UserModel {
         });
 
         if (createError) {
-          console.error("Error creating user:", createError);
+          logger.error("Error creating user:", createError);
           // No lanzar error, solo loguear (no queremos bloquear el juego)
         }
       } else if (!existingUser.name) {
@@ -171,13 +172,13 @@ export class UserModel {
           .eq("id", userId);
 
         if (updateError) {
-          console.error("Error updating user name:", updateError);
+          logger.error("Error updating user name:", updateError);
           // No lanzar error, solo loguear (no queremos bloquear el juego)
         }
       }
       // Si el usuario ya tiene nombre, no hacer nada (no sobrescribir)
     } catch (error) {
-      console.error("Error in ensureUserHasName:", error);
+      logger.error("Error in ensureUserHasName:", error);
       // No lanzar error, solo loguear (no queremos bloquear el juego)
     }
   }
@@ -201,7 +202,7 @@ export class UserModel {
       .limit(limit);
 
     if (statsError) {
-      console.error("Error fetching leaderboard:", statsError);
+      logger.error("Error fetching leaderboard:", statsError);
       throw new Error(`Failed to fetch leaderboard: ${statsError.message}`);
     }
 
@@ -217,7 +218,7 @@ export class UserModel {
       .in("id", userIds);
 
     if (usersError) {
-      console.error("Error fetching users:", usersError);
+      logger.error("Error fetching users:", usersError);
       throw new Error(`Failed to fetch users: ${usersError.message}`);
     }
 

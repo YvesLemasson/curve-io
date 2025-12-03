@@ -1,6 +1,7 @@
 // Modelo para interactuar con partidas en Supabase
 import { supabase } from '../config/supabase.js';
 import type { Database } from '../config/supabase.js';
+import { logger } from '../utils/logger.js';
 
 type Game = Database['public']['Tables']['games']['Row'];
 type GameInsert = Database['public']['Tables']['games']['Insert'];
@@ -43,11 +44,11 @@ export class GameModel {
       .single();
 
     if (createError) {
-      console.error('Error creating game:', createError);
+      logger.error('Error creating game:', createError);
       throw new Error(`Failed to create game: ${createError.message}`);
     }
 
-    console.log(`✨ Nueva partida creada: ${newGame.id}`);
+    logger.log(`✨ Nueva partida creada: ${newGame.id}`);
     return newGame.id;
     
     /* Código comentado para buscar partidas existentes (para implementar en el futuro):
@@ -69,7 +70,7 @@ export class GameModel {
       for (const game of existingGames) {
         const participantCount = game.game_participants?.[0]?.count || 0;
         if (participantCount < MAX_PLAYERS) {
-          console.log(`📋 Partida existente encontrada con espacio: ${game.id} (${participantCount} jugadores)`);
+          logger.log(`📋 Partida existente encontrada con espacio: ${game.id} (${participantCount} jugadores)`);
           return game.id;
         }
       }
@@ -102,7 +103,7 @@ export class GameModel {
       .single();
 
     if (error) {
-      console.error('Error creating game:', error);
+      logger.error('Error creating game:', error);
       throw new Error(`Failed to create game: ${error.message}`);
     }
 
@@ -128,7 +129,7 @@ export class GameModel {
       .eq('id', gameId);
 
     if (error) {
-      console.error('Error starting game:', error);
+      logger.error('Error starting game:', error);
       throw new Error(`Failed to start game: ${error.message}`);
     }
   }
@@ -164,7 +165,7 @@ export class GameModel {
       .eq('id', gameId);
 
     if (gameError) {
-      console.error('Error updating game:', gameError);
+      logger.error('Error updating game:', gameError);
       throw new Error(`Failed to update game: ${gameError.message}`);
     }
 
@@ -183,22 +184,22 @@ export class GameModel {
       .select();
 
     if (participantsError) {
-      console.error('❌ Error inserting participants:', participantsError);
+      logger.error('❌ Error inserting participants:', participantsError);
       // Si es un error de conflicto único, los participantes ya existen
       if (participantsError.code === '23505') {
-        console.warn('⚠️  Participantes ya existen para esta partida (conflicto único). El trigger no se ejecutará.');
-        console.warn('⚠️  Esto puede pasar si se reutiliza el mismo game_id. Verificar que se crean nuevas partidas.');
+        logger.warn('⚠️  Participantes ya existen para esta partida (conflicto único). El trigger no se ejecutará.');
+        logger.warn('⚠️  Esto puede pasar si se reutiliza el mismo game_id. Verificar que se crean nuevas partidas.');
       }
       throw new Error(`Failed to insert participants: ${participantsError.message}`);
     }
     
     if (insertedParticipants && insertedParticipants.length > 0) {
-      console.log(`✅ ${insertedParticipants.length} participantes insertados correctamente. El trigger debería ejecutarse ahora.`);
+      logger.log(`✅ ${insertedParticipants.length} participantes insertados correctamente. El trigger debería ejecutarse ahora.`);
     } else {
-      console.warn('⚠️  No se insertaron participantes (puede ser un conflicto único)');
+      logger.warn('⚠️  No se insertaron participantes (puede ser un conflicto único)');
     }
 
-    console.log(`✅ Game ${gameId} ended and saved with ${participants.length} participants`);
+    logger.log(`✅ Game ${gameId} ended and saved with ${participants.length} participants`);
   }
 
   /**
@@ -213,7 +214,7 @@ export class GameModel {
       .limit(limit);
 
     if (error) {
-      console.error('Error fetching games:', error);
+      logger.error('Error fetching games:', error);
       throw new Error(`Failed to fetch games: ${error.message}`);
     }
 
@@ -231,7 +232,7 @@ export class GameModel {
       .order('position', { ascending: true });
 
     if (error) {
-      console.error('Error fetching participants:', error);
+      logger.error('Error fetching participants:', error);
       throw new Error(`Failed to fetch participants: ${error.message}`);
     }
 

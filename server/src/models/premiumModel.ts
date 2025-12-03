@@ -1,5 +1,6 @@
 // Modelo para interactuar con items premium en Supabase
 import { supabase } from "../config/supabase.js";
+import { logger } from '../utils/logger.js';
 
 export interface PremiumItem {
   id: string;
@@ -53,7 +54,7 @@ export class PremiumModel {
       .order("price_usd", { ascending: true });
 
     if (error) {
-      console.error("Error fetching premium items:", error);
+      logger.error("Error fetching premium items:", error);
       throw new Error(`Failed to fetch premium items: ${error.message}`);
     }
 
@@ -75,7 +76,7 @@ export class PremiumModel {
       if (error.code === "PGRST116") {
         return null;
       }
-      console.error("Error fetching premium item:", error);
+      logger.error("Error fetching premium item:", error);
       throw new Error(`Failed to fetch premium item: ${error.message}`);
     }
 
@@ -106,7 +107,7 @@ export class PremiumModel {
     const { data, error } = await query;
 
     if (error) {
-      console.error("Error fetching user inventory:", error);
+      logger.error("Error fetching user inventory:", error);
       throw new Error(`Failed to fetch user inventory: ${error.message}`);
     }
 
@@ -134,7 +135,7 @@ export class PremiumModel {
       if (error.code === "PGRST116") {
         return false;
       }
-      console.error("Error checking user item:", error);
+      logger.error("Error checking user item:", error);
       return false;
     }
 
@@ -159,7 +160,7 @@ export class PremiumModel {
       if (error.code === "23505") {
         return;
       }
-      console.error("Error adding item to inventory:", error);
+      logger.error("Error adding item to inventory:", error);
       throw new Error(`Failed to add item to inventory: ${error.message}`);
     }
   }
@@ -191,7 +192,7 @@ export class PremiumModel {
       .single();
 
     if (error) {
-      console.error("Error recording purchase:", error);
+      logger.error("Error recording purchase:", error);
       throw new Error(`Failed to record purchase: ${error.message}`);
     }
 
@@ -261,7 +262,7 @@ export class PremiumModel {
         // No se encontró ningún item equipado
         return null;
       }
-      console.error("Error fetching equipped trail:", error);
+      logger.error("Error fetching equipped trail:", error);
       return null;
     }
 
@@ -299,7 +300,7 @@ export class PremiumModel {
       .eq("item_id", itemId);
 
     if (error) {
-      console.error("Error equipping trail:", error);
+      logger.error("Error equipping trail:", error);
       throw new Error(`Failed to equip trail: ${error.message}`);
     }
   }

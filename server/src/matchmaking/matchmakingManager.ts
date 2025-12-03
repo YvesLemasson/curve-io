@@ -8,6 +8,7 @@ import { DeltaCompressor } from '../network/deltaCompression.js';
 import { SERVER_EVENTS, CLIENT_EVENTS } from '../shared/protocol.js';
 import type { GameState, Player } from '../shared/types.js';
 import type { Server, Socket } from 'socket.io';
+import { logger } from '../utils/logger.js';
 
 export interface GameRoom {
   roomId: string;           // ID único de la sala (ej: "game_room_abc123")
@@ -53,13 +54,13 @@ export class MatchmakingManager {
     for (const roomId of this.waitingRooms) {
       const room = this.rooms.get(roomId);
       if (room && room.status === 'waiting' && room.currentPlayers < room.maxPlayers) {
-        console.log(`📋 Sala disponible encontrada: ${roomId} (${room.currentPlayers}/${room.maxPlayers} jugadores)`);
+        logger.log(`📋 Sala disponible encontrada: ${roomId} (${room.currentPlayers}/${room.maxPlayers} jugadores)`);
         return room;
       }
     }
 
     // 2. No hay sala disponible, crear nueva
-    console.log(`✨ No hay salas disponibles, creando nueva sala...`);
+    logger.log(`✨ No hay salas disponibles, creando nueva sala...`);
     return this.createNewRoom();
   }
 
@@ -91,7 +92,7 @@ export class MatchmakingManager {
     this.rooms.set(roomId, room);
     this.waitingRooms.add(roomId);
 
-    console.log(`✅ Nueva sala creada: ${roomId}`);
+    logger.log(`✅ Nueva sala creada: ${roomId}`);
     return room;
   }
 
@@ -117,7 +118,7 @@ export class MatchmakingManager {
         const deltaSize = JSON.stringify(delta).length;
         const deltaSizeKB = (deltaSize / 1024).toFixed(2);
         
-        console.log(`📦 [${room.roomId}] Delta Compression | Tick: ${gameState.tick} | Full: ${isFullState} | Changes: ${playersWithChanges}/${totalPlayers} | Size: ${deltaSizeKB} KB`);
+        logger.performance(`📦 [${room.roomId}] Delta Compression | Tick: ${gameState.tick} | Full: ${isFullState} | Changes: ${playersWithChanges}/${totalPlayers} | Size: ${deltaSizeKB} KB`);
       }
     });
 
@@ -126,14 +127,14 @@ export class MatchmakingManager {
       // Marcar sala como terminada
       room.status = 'finished';
       this.waitingRooms.delete(room.roomId);
-      console.log(`🔄 [${room.roomId}] Sala marcada como terminada`);
+      logger.log(`🔄 [${room.roomId}] Sala marcada como terminada`);
       
       // Llamar al callback externo si está configurado
       if (this.onGameEndCallback) {
         try {
           await this.onGameEndCallback(room.roomId, gameState);
         } catch (error) {
-          console.error(`❌ [${room.roomId}] Error en callback de fin de juego:`, error);
+          logger.error(`❌ [${room.roomId}] Error en callback de fin de juego:`, error);
         }
       }
     });
@@ -166,7 +167,7 @@ export class MatchmakingManager {
     const room = this.rooms.get(roomId);
     if (room) {
       room.currentPlayers++;
-      console.log(`👥 [${roomId}] Jugadores: ${room.currentPlayers}/${room.maxPlayers}`);
+      logger.log(`👥 [${roomId}] Jugadores: ${room.currentPlayers}/${room.maxPlayers}`);
     }
   }
 
@@ -177,11 +178,11 @@ export class MatchmakingManager {
     const room = this.rooms.get(roomId);
     if (room) {
       room.currentPlayers = Math.max(0, room.currentPlayers - 1);
-      console.log(`👥 [${roomId}] Jugadores: ${room.currentPlayers}/${room.maxPlayers}`);
+      logger.log(`👥 [${roomId}] Jugadores: ${room.currentPlayers}/${room.maxPlayers}`);
       
       // Si la sala está vacía y en estado waiting, eliminarla
       if (room.currentPlayers === 0 && room.status === 'waiting') {
-        console.log(`🗑️  [${roomId}] Sala vacía, eliminando...`);
+        logger.log(`🗑️  [${roomId}] Sala vacía, eliminando...`);
         this.removeRoom(roomId);
       }
     }
@@ -197,7 +198,7 @@ export class MatchmakingManager {
       room.gameId = gameId;
       room.startedAt = Date.now();
       this.waitingRooms.delete(roomId);
-      console.log(`🚀 [${roomId}] Sala iniciada con partida ${gameId}`);
+      logger.log(`🚀 [${roomId}] Sala iniciada con partida ${gameId}`);
     }
   }
 
@@ -218,12 +219,12 @@ export class MatchmakingManager {
     }
 
     for (const roomId of roomsToRemove) {
-      console.log(`🧹 Limpiando sala expirada: ${roomId}`);
+      logger.log(`🧹 Limpiando sala expirada: ${roomId}`);
       this.removeRoom(roomId);
     }
 
     if (roomsToRemove.length > 0) {
-      console.log(`✅ ${roomsToRemove.length} sala(s) limpiada(s)`);
+      logger.log(`✅ ${roomsToRemove.length} sala(s) limpiada(s)`);
     }
   }
 
@@ -244,7 +245,7 @@ export class MatchmakingManager {
       this.rooms.delete(roomId);
       this.waitingRooms.delete(roomId);
       
-      console.log(`🗑️  Sala ${roomId} eliminada y recursos limpiados`);
+      logger.log(`🗑️  Sala ${roomId} eliminada y recursos limpiados`);
     }
   }
 
@@ -256,7 +257,7 @@ export class MatchmakingManager {
       this.cleanupFinishedRooms();
     }, this.CLEANUP_INTERVAL);
     
-    console.log(`🧹 Cleanup automático iniciado (cada ${this.CLEANUP_INTERVAL / 1000}s)`);
+    logger.log(`🧹 Cleanup automático iniciado (cada ${this.CLEANUP_INTERVAL / 1000}s)`);
   }
 
   /**
