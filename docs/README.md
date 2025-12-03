@@ -1,4 +1,4 @@
-# 📚 Documentación de curve.io
+# 📚 Documentación de curve.pw
 
 Índice de toda la documentación del proyecto.
 

@@ -1,4 +1,4 @@
-# 🚀 Guía de Inicio Rápido - curve.io
+# 🚀 Guía de Inicio Rápido - curve.pw
 
 ## Problema: Error de Conexión al Servidor
 
@@ -24,7 +24,7 @@ npm run dev
 
 Deberías ver un mensaje como:
 ```
-🚀 Servidor curve.io corriendo en puerto 3001
+🚀 Servidor curve.pw corriendo en puerto 3001
 📡 WebSocket disponible en ws://localhost:3001
 ```
 
@@ -32,7 +32,7 @@ Deberías ver un mensaje como:
 
 1. El servidor debe estar corriendo en **http://localhost:3001**
 2. Puedes verificar visitando: http://localhost:3001/health
-3. Deberías ver: `{"status":"ok","message":"curve.io server is running"}`
+3. Deberías ver: `{"status":"ok","message":"curve.pw server is running"}`
 
 ### Paso 5: Recargar el Cliente
 

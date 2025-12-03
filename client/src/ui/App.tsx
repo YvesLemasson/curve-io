@@ -3835,7 +3835,7 @@ function App() {
                 >
                   <img
                     src="/curvepw.png"
-                    alt="curve.io"
+                    alt="curve.pw"
                     className="logo-image"
                   />
                 </div>

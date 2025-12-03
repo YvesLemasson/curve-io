@@ -1,4 +1,4 @@
-# 💰 Plan de Monetización Freemium - curve.io
+# 💰 Plan de Monetización Freemium - curve.pw
 
 ## 🎯 Filosofía
 
@@ -382,7 +382,7 @@ CREATE TABLE virtual_currency (
 
 ### Para compradores:
 
-- "¡Gracias por apoyar curve.io!"
+- "¡Gracias por apoyar curve.pw!"
 - "Disfruta de tu nuevo look exclusivo"
 - "Comparte tu estilo único en el juego"
 

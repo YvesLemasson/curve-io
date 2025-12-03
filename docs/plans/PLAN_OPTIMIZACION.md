@@ -438,6 +438,6 @@ Con todas las optimizaciones implementadas:
 
 ---
 
-**Última actualización**: Plan de optimización para reducir lag en curve.io
+**Última actualización**: Plan de optimización para reducir lag en curve.pw
 **Prioridad**: Implementar Fase 1-2 primero para máximo impacto
 

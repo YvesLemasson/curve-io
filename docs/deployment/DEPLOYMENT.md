@@ -1,4 +1,4 @@
-# 🚀 Guía de Despliegue - curve.io
+# 🚀 Guía de Despliegue - curve.pw
 
 ## 📦 Estructura del Repositorio
 

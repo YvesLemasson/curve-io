@@ -1,4 +1,4 @@
--- Schema para curve.io en Supabase
+-- Schema para curve.pw en Supabase
 -- Ejecutar este SQL en el SQL Editor de Supabase
 
 -- Extensión para generar UUIDs

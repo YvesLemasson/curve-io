@@ -1,8 +1,8 @@
-# Arquitectura Híbrida - curve.io Client
+# Arquitectura Híbrida - curve.pw Client
 
 ## 🎯 Decisión de Arquitectura
 
-El cliente de curve.io usa una **arquitectura híbrida** que combina:
+El cliente de curve.pw usa una **arquitectura híbrida** que combina:
 - **React** para UI compleja (menús, matchmaking, gestión de usuarios)
 - **Vanilla TypeScript** para el juego (Canvas, game loop, lógica)
 

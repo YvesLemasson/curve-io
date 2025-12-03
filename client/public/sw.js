@@ -1,4 +1,4 @@
-// Service Worker para curve.io PWA
+// Service Worker para curve.pw PWA
 const CACHE_NAME = 'curve-io-v2'; // Cambiado para forzar actualización
 const urlsToCache = [
   '/',

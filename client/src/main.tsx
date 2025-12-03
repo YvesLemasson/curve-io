@@ -24,5 +24,5 @@ root.render(
   </React.StrictMode>
 );
 
-console.log('curve.io - Cliente iniciado (React UI + Vanilla TS Game)');
+console.log('curve.pw - Cliente iniciado (React UI + Vanilla TS Game)');
 

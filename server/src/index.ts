@@ -31,10 +31,28 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const io = new Server(httpServer, {
   cors: {
     origin: (origin, callback) => {
-      // Permitir requests sin origin (mobile apps, Postman, etc.)
-      if (!origin) return callback(null, true);
+      // Permitir requests sin origin (mobile apps, Postman, etc.) solo en desarrollo
+      if (!origin) {
+        if (process.env.NODE_ENV === 'production') {
+          logger.warn(`⚠️  Request sin origin rechazado en producción`);
+          return callback(new Error('Origin required in production'));
+        }
+        return callback(null, true);
+      }
       
-      if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+      // Validación estricta: comparar exactamente o validar dominio completo
+      // Esto previene ataques de subdomain (ej: evil-curveio.netlify.app)
+      const isAllowed = allowedOrigins.some(allowed => {
+        // Comparación exacta para URLs completas
+        if (origin === allowed) return true;
+        // Para desarrollo local, permitir variaciones de localhost
+        if (allowed.startsWith('http://localhost')) {
+          return origin.startsWith('http://localhost');
+        }
+        return false;
+      });
+      
+      if (isAllowed) {
         callback(null, true);
       } else {
         logger.warn(`⚠️  Origen no permitido: ${origin}`);
@@ -50,11 +68,26 @@ const io = new Server(httpServer, {
 // Servir archivos estáticos (opcional)
 app.use(express.json());
 
+// Headers de seguridad HTTP
+app.use((req, res, next) => {
+  // Prevenir clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+  // Prevenir MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Habilitar XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  // Referrer policy
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Content Security Policy básica
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';");
+  next();
+});
+
 // Ruta de salud (para verificar que el servidor está corriendo)
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    message: 'curve.io server is running',
+    message: 'curve.pw server is running',
     timestamp: new Date().toISOString(),
     port: PORT
   });
@@ -64,7 +97,7 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
-    message: 'curve.io server is running',
+    message: 'curve.pw server is running',
     endpoints: {
       health: '/health',
       websocket: `ws://0.0.0.0:${PORT}`
@@ -364,14 +397,60 @@ io.on('connection', (socket: Socket) => {
   // Se enviará después de que se una a una sala en PLAYER_JOIN
 
   // Manejar autenticación de usuario (user_id de Supabase)
-  socket.on(CLIENT_EVENTS.AUTH_USER, (message: AuthUserMessage) => {
+  socket.on(CLIENT_EVENTS.AUTH_USER, async (message: AuthUserMessage) => {
+    // Validar que el userId tenga formato válido (UUID v4)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!message.userId || !uuidRegex.test(message.userId)) {
+      logger.warn(`⚠️  Intento de autenticación con userId inválido: ${message.userId} (socket: ${socket.id})`);
+      socket.emit(SERVER_EVENTS.ERROR, 'Invalid user ID format');
+      return;
+    }
+    
+    // Validar longitud máxima para prevenir ataques
+    if (message.userId.length > 100) {
+      logger.warn(`⚠️  userId demasiado largo: ${message.userId.length} caracteres (socket: ${socket.id})`);
+      socket.emit(SERVER_EVENTS.ERROR, 'Invalid user ID');
+      return;
+    }
+    
     socketToUserId.set(socket.id, message.userId);
     logger.log(`🔐 Usuario autenticado: ${message.userId} (socket: ${socket.id})`);
   });
 
   // Manejar unión de jugador
   socket.on(CLIENT_EVENTS.PLAYER_JOIN, async (message: PlayerJoinMessage) => {
-    logger.log(`👤 Jugador ${message.name} (${message.playerId}) intenta unirse`);
+    // Validar nombre del jugador
+    if (!message.name || typeof message.name !== 'string') {
+      logger.warn(`⚠️  Intento de unirse sin nombre válido (socket: ${socket.id})`);
+      socket.emit(SERVER_EVENTS.ERROR, 'Nombre de jugador requerido');
+      return;
+    }
+    
+    // Sanitizar y validar nombre
+    const sanitizedName = message.name.trim();
+    if (sanitizedName.length === 0) {
+      logger.warn(`⚠️  Intento de unirse con nombre vacío (socket: ${socket.id})`);
+      socket.emit(SERVER_EVENTS.ERROR, 'El nombre no puede estar vacío');
+      return;
+    }
+    
+    if (sanitizedName.length > 50) {
+      logger.warn(`⚠️  Intento de unirse con nombre demasiado largo: ${sanitizedName.length} caracteres (socket: ${socket.id})`);
+      socket.emit(SERVER_EVENTS.ERROR, 'El nombre no puede tener más de 50 caracteres');
+      return;
+    }
+    
+    // Validar formato de color si se proporciona
+    if (message.preferredColor) {
+      const colorRegex = /^#[0-9A-Fa-f]{6}$/;
+      if (!colorRegex.test(message.preferredColor)) {
+        logger.warn(`⚠️  Intento de unirse con color inválido: ${message.preferredColor} (socket: ${socket.id})`);
+        socket.emit(SERVER_EVENTS.ERROR, 'Formato de color inválido');
+        return;
+      }
+    }
+    
+    logger.log(`👤 Jugador ${sanitizedName} (${message.playerId}) intenta unirse`);
     
     // Usar socket.id como ID único del jugador (más confiable que el que envía el cliente)
     const playerId = socket.id;
@@ -482,7 +561,7 @@ io.on('connection', (socket: Socket) => {
     // 7. Crear jugador
     const player: Player = {
       id: playerId,
-      name: message.name,
+      name: sanitizedName, // Usar nombre sanitizado
       color: initialColor,
       position: { x: 0, y: 0 }, // Se inicializará en initializePlayers
       angle: 0,
@@ -660,6 +739,20 @@ io.on('connection', (socket: Socket) => {
       return;
     }
 
+    // Validar formato de color
+    if (!message.color || typeof message.color !== 'string') {
+      logger.warn(`⚠️  [${roomId}] Intento de cambiar color con formato inválido (socket: ${socket.id})`);
+      socket.emit(SERVER_EVENTS.ERROR, 'Formato de color inválido');
+      return;
+    }
+    
+    const colorRegex = /^#[0-9A-Fa-f]{6}$/;
+    if (!colorRegex.test(message.color)) {
+      logger.warn(`⚠️  [${roomId}] Intento de cambiar color con formato inválido: ${message.color} (socket: ${socket.id})`);
+      socket.emit(SERVER_EVENTS.ERROR, 'Formato de color inválido. Debe ser hexadecimal (#RRGGBB)');
+      return;
+    }
+
     const playerId = socket.id; // Usar socket.id como ID del jugador (más seguro)
     
     // Verificar que el jugador existe
@@ -754,7 +847,7 @@ io.on('connection', (socket: Socket) => {
 // Escuchar en todas las interfaces (0.0.0.0) para que funcione en Railway/cloud
 // Railway asigna el puerto automáticamente, así que usamos process.env.PORT
 httpServer.listen(PORT, '0.0.0.0', () => {
-  logger.log(`🚀 Servidor curve.io corriendo en puerto ${PORT}`);
+  logger.log(`🚀 Servidor curve.pw corriendo en puerto ${PORT}`);
   logger.log(`📡 WebSocket disponible en ws://0.0.0.0:${PORT} (escuchando en todas las interfaces)`);
   logger.log(`🌐 Orígenes permitidos: ${allowedOrigins.join(', ')}`);
   logger.log(`✅ Servidor listo para recibir conexiones`);

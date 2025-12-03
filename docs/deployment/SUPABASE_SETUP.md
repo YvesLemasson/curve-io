@@ -1,4 +1,4 @@
-# Guía de Configuración de Supabase para curve.io
+# Guía de Configuración de Supabase para curve.pw
 
 Esta guía te ayudará a configurar Supabase para autenticación con Google y almacenamiento de partidas.
 
@@ -56,7 +56,7 @@ VITE_SUPABASE_ANON_KEY=tu-anon-key-aqui
 5. Si es la primera vez, configura la pantalla de consentimiento OAuth
 6. Selecciona **Web application** como tipo
 7. Configura:
-   - **Name**: curve.io (o el nombre que prefieras)
+   - **Name**: curve.pw (o el nombre que prefieras)
    - **Authorized JavaScript origins**: 
      - `http://localhost:3000` (desarrollo)
      - `https://tu-dominio.com` (producción)

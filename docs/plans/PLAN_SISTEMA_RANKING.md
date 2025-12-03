@@ -1,8 +1,8 @@
-# 🏆 Plan: Sistema de Ranking Competitivo para curve.io
+# 🏆 Plan: Sistema de Ranking Competitivo para curve.pw
 
 ## 📋 Resumen Ejecutivo
 
-Este documento propone múltiples sistemas de ranking que fomenten la competitividad y retención de jugadores en curve.io. Cada sistema puede implementarse de forma independiente o combinarse según las necesidades del juego.
+Este documento propone múltiples sistemas de ranking que fomenten la competitividad y retención de jugadores en curve.pw. Cada sistema puede implementarse de forma independiente o combinarse según las necesidades del juego.
 
 ---
 

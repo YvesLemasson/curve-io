@@ -1,10 +1,10 @@
-# curve.io
+# curve.pw
 
 Juego multijugador en tiempo real basado en "Achtung die Kurve".
 
 ## 🎮 Descripción
 
-curve.io es un juego .io donde múltiples jugadores controlan líneas que se mueven constantemente. El objetivo es ser el último en sobrevivir evitando colisiones con otras líneas y los bordes del área de juego.
+curve.pw es un juego .io donde múltiples jugadores controlan líneas que se mueven constantemente. El objetivo es ser el último en sobrevivir evitando colisiones con otras líneas y los bordes del área de juego.
 
 ## 🚀 Inicio Rápido
 

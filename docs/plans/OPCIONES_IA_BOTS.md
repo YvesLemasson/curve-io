@@ -39,7 +39,7 @@ Según los logs, los bots están:
 5. Usar boost solo cuando colisión inminente (< 30px)
 ```
 
-**Cuándo usar:** Para un juego como Curve.io, donde la simplicidad y estabilidad son más importantes que la complejidad.
+**Cuándo usar:** Para un juego como Curve.pw, donde la simplicidad y estabilidad son más importantes que la complejidad.
 
 ---
 
@@ -119,7 +119,7 @@ EXPLORING → RETREATING: cuando está cerca de borde
 - ⚠️ El mapa cambia constantemente (trails)
 - ⚠️ Overkill para este tipo de juego
 
-**Cuándo usar:** NO recomendado para Curve.io (demasiado complejo y costoso).
+**Cuándo usar:** NO recomendado para Curve.pw (demasiado complejo y costoso).
 
 ---
 
@@ -169,7 +169,7 @@ EXPLORING → RETREATING: cuando está cerca de borde
 
 ---
 
-## 🎯 Recomendación para Curve.io
+## 🎯 Recomendación para Curve.pw
 
 ### **Opción Recomendada: Reglas Simples Mejoradas** (Opción 1 mejorada)
 
@@ -177,7 +177,7 @@ EXPLORING → RETREATING: cuando está cerca de borde
 1. **Simplicidad:** Fácil de entender, depurar y ajustar
 2. **Estabilidad:** Evita oscilación y comportamiento errático
 3. **Rendimiento:** Muy eficiente computacionalmente
-4. **Suficiente:** Para un juego como Curve.io, no necesitas IA súper compleja
+4. **Suficiente:** Para un juego como Curve.pw, no necesitas IA súper compleja
 
 **Implementación Propuesta:**
 
@@ -298,7 +298,7 @@ enum BotState {
 
 1. **Empieza simple:** Reglas simples suelen ser suficientes
 2. **Itera:** Ajusta parámetros basándote en comportamiento observado
-3. **Evita over-engineering:** No necesitas IA compleja para Curve.io
+3. **Evita over-engineering:** No necesitas IA compleja para Curve.pw
 4. **Prueba frecuentemente:** Observa el comportamiento en tiempo real
 5. **Logs útiles:** Mantén logs pero no excesivos (solo decisiones importantes)
 
