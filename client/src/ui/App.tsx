@@ -537,16 +537,6 @@ function LanguageSelectorModal({
   return (
     <div className="color-picker-modal-overlay" onClick={onClose}>
       <div className="color-picker-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>{t("languageSelector.title")}</h2>
-        <p
-          style={{
-            marginBottom: "20px",
-            color: "rgba(255, 255, 255, 0.7)",
-            fontSize: "0.9rem",
-          }}
-        >
-          {t("languageSelector.selectLanguage")}
-        </p>
         <div className="language-selector-list">
           {languages.map((lang) => (
             <button
@@ -2058,15 +2048,214 @@ function ShopModal({
   );
 }
 
+// Leaderboard modal component
+function LeaderboardModal({
+  isOpen,
+  onClose,
+  user,
+  leaderboardCategory,
+  setLeaderboardCategory,
+  leaderboardPlayers,
+  loadingLeaderboard,
+  timeRemaining,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  user: any;
+  leaderboardCategory: "all-time" | "month" | "day";
+  setLeaderboardCategory: (category: "all-time" | "month" | "day") => void;
+  leaderboardPlayers: Array<{
+    user_id: string;
+    name: string | null;
+    elo_rating: number;
+    elo_change?: number;
+    total_games: number;
+    total_wins: number;
+    win_rate: number;
+  }>;
+  loadingLeaderboard: boolean;
+  timeRemaining: string | null;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="shop-modal-overlay" onClick={onClose}>
+      <div className="shop-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="shop-modal-header">
+          {/* Selector de categoría: Day, Month, All-Time */}
+          <div
+            className="shop-type-selector"
+            style={{
+              display: "flex",
+              gap: "10px",
+              justifyContent: "flex-start",
+            }}
+          >
+            <button
+              style={{
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                backgroundColor:
+                  leaderboardCategory === "day" ? "#4CAF50" : "#333",
+                color: "white",
+                fontWeight: leaderboardCategory === "day" ? "bold" : "normal",
+              }}
+              onClick={() => setLeaderboardCategory("day")}
+            >
+              {t("leaderboard.day")}
+              {leaderboardCategory === "day" && timeRemaining && (
+                <span
+                  style={{
+                    marginLeft: "8px",
+                    fontSize: "0.85rem",
+                    opacity: 0.8,
+                  }}
+                >
+                  {timeRemaining}
+                </span>
+              )}
+            </button>
+            <button
+              style={{
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                backgroundColor:
+                  leaderboardCategory === "month" ? "#4CAF50" : "#333",
+                color: "white",
+                fontWeight: leaderboardCategory === "month" ? "bold" : "normal",
+              }}
+              onClick={() => setLeaderboardCategory("month")}
+            >
+              {t("leaderboard.month")}
+              {leaderboardCategory === "month" && timeRemaining && (
+                <span
+                  style={{
+                    marginLeft: "8px",
+                    fontSize: "0.85rem",
+                    opacity: 0.8,
+                  }}
+                >
+                  {timeRemaining}
+                </span>
+              )}
+            </button>
+            <button
+              style={{
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                backgroundColor:
+                  leaderboardCategory === "all-time" ? "#4CAF50" : "#333",
+                color: "white",
+                fontWeight:
+                  leaderboardCategory === "all-time" ? "bold" : "normal",
+              }}
+              onClick={() => setLeaderboardCategory("all-time")}
+            >
+              {t("leaderboard.allTime")}
+            </button>
+          </div>
+          <h2>{t("leaderboard.title")}</h2>
+          <button
+            className="shop-close-button"
+            onClick={onClose}
+            aria-label={t("leaderboard.closeTooltip")}
+            title={t("leaderboard.close")}
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="shop-content">
+          {loadingLeaderboard ? (
+            <div className="shop-loading">{t("leaderboard.loading")}</div>
+          ) : leaderboardPlayers.length === 0 ? (
+            <div className="shop-loading">{t("leaderboard.noPlayers")}</div>
+          ) : (
+            <div className="leaderboard-table">
+              <div className="leaderboard-header">
+                <div className="leaderboard-header-rank">
+                  {t("leaderboard.rank")}
+                </div>
+                <div className="leaderboard-header-name">
+                  {t("leaderboard.player")}
+                </div>
+                <div className="leaderboard-header-elo">
+                  {leaderboardCategory === "all-time"
+                    ? t("leaderboard.elo")
+                    : t("leaderboard.eloChange")}
+                </div>
+                <div className="leaderboard-header-wr">
+                  {t("leaderboard.winRate")}
+                </div>
+              </div>
+              <div className="leaderboard-body">
+                {leaderboardPlayers.map((player, index) => {
+                  const isCurrentUser = user?.id === player.user_id;
+                  const displayValue =
+                    leaderboardCategory === "all-time"
+                      ? player.elo_rating.toLocaleString()
+                      : player.elo_change !== undefined
+                      ? `${
+                          player.elo_change > 0 ? "+" : ""
+                        }${player.elo_change.toLocaleString()}`
+                      : "0";
+                  return (
+                    <div
+                      key={player.user_id}
+                      className={`leaderboard-row ${
+                        isCurrentUser ? "leaderboard-row-current" : ""
+                      }`}
+                    >
+                      <div className="leaderboard-rank">#{index + 1}</div>
+                      <div className="leaderboard-name">
+                        {player.name || t("defaults.unknownPlayer")}
+                      </div>
+                      <div
+                        className={`leaderboard-elo ${
+                          leaderboardCategory !== "all-time" &&
+                          player.elo_change !== undefined
+                            ? player.elo_change > 0
+                              ? "elo-positive"
+                              : player.elo_change < 0
+                              ? "elo-negative"
+                              : ""
+                            : ""
+                        }`}
+                      >
+                        {displayValue}
+                      </div>
+                      <div className="leaderboard-wr">
+                        {player.total_games > 0
+                          ? `${(player.win_rate * 100).toFixed(1)}%`
+                          : "0%"}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Frases aleatorias sobre curves (cargadas desde JSON)
 const curvePhrases = curvePhrasesData.curve_phrases;
 const guestCurvePhrases = curvePhrasesData.guest_curve_phrases;
 
 function App() {
   const { user, loading, signInWithGoogle, signOut } = useAuth();
-  const [currentView, setCurrentView] = useState<
-    "menu" | "game" | "lobby" | "leaderboard"
-  >("menu");
+  const [currentView, setCurrentView] = useState<"menu" | "game" | "lobby">(
+    "menu"
+  );
   const [boostState, setBoostState] = useState<{
     active: boolean;
     charge: number;
@@ -2116,12 +2305,16 @@ function App() {
   const [preGameCountdown, setPreGameCountdown] = useState<number | undefined>(
     undefined
   );
+  const [lobbyCountdown, setLobbyCountdown] = useState<number | undefined>(
+    undefined
+  );
   const [showPreGameOverlay, setShowPreGameOverlay] = useState<boolean>(false);
   const [showBackToMenuConfirm, setShowBackToMenuConfirm] =
     useState<boolean>(false);
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [showTrailPicker, setShowTrailPicker] = useState<boolean>(false);
   const [showShop, setShowShop] = useState<boolean>(false);
+  const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false);
   const [highlightShopItemId, setHighlightShopItemId] = useState<string | null>(
     null
   );
@@ -2130,7 +2323,7 @@ function App() {
   >(undefined);
   const [showLanguageSelector, setShowLanguageSelector] =
     useState<boolean>(false);
-  const [showWelcomeBonus, setShowWelcomeBonus] = useState<boolean>(true); // TEMPORAL: Activado para ver el modal
+  const [showWelcomeBonus, setShowWelcomeBonus] = useState<boolean>(false);
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState<boolean>(false);
@@ -2279,7 +2472,7 @@ function App() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Verificar si se debe mostrar el modal de bienvenida
+  // Verificar si se debe mostrar el modal de bienvenida (solo para usuarios nuevos)
   useEffect(() => {
     if (user?.id && !loading) {
       const shouldShowWelcome = localStorage.getItem("showWelcomeBonus");
@@ -2289,9 +2482,6 @@ function App() {
         localStorage.removeItem("showWelcomeBonus");
       }
     }
-    // TEMPORAL: Forzar mostrar el modal para pruebas
-    // Descomenta la siguiente línea para ver el modal siempre
-    // setShowWelcomeBonus(true);
   }, [user, loading]);
 
   // Cargar estadísticas del jugador desde BD
@@ -2409,6 +2599,13 @@ function App() {
       return () => clearInterval(interval);
     }
   }, [user, showPlayerSidebar]);
+
+  // Cerrar el modal de cambio de color cuando la vista cambia a "game"
+  useEffect(() => {
+    if (currentView === "game" && showColorPicker) {
+      setShowColorPicker(false);
+    }
+  }, [currentView, showColorPicker]);
 
   // Cargar nombre del jugador desde BD al iniciar sesión
   useEffect(() => {
@@ -3125,7 +3322,16 @@ function App() {
       }
     });
 
+    networkClient.onLobbyCountdown((countdown: number) => {
+      setLobbyCountdown(countdown);
+    });
+
     networkClient.onGameStart(() => {
+      // Cerrar el modal de cambio de color si está abierto
+      setShowColorPicker(false);
+      // Limpiar countdown del lobby
+      setLobbyCountdown(undefined);
+
       // When the server starts the game, start the local game too
       // IMPORTANT: In network mode we DON'T call init() because players
       // se crean desde el estado del servidor en syncFromServer()
@@ -3387,7 +3593,7 @@ function App() {
 
   // Actualizar countdown
   useEffect(() => {
-    if (currentView === "leaderboard" && leaderboardCategory !== "all-time") {
+    if (showLeaderboard && leaderboardCategory !== "all-time") {
       const updateCountdown = () => {
         setTimeRemaining(getTimeRemaining(leaderboardCategory));
       };
@@ -3402,14 +3608,14 @@ function App() {
     } else {
       setTimeRemaining("");
     }
-  }, [currentView, leaderboardCategory]);
+  }, [showLeaderboard, leaderboardCategory]);
 
   // Cargar leaderboard cuando se abre la vista o cambia la categoría
   useEffect(() => {
-    if (currentView === "leaderboard") {
+    if (showLeaderboard) {
       loadLeaderboard(leaderboardCategory);
     }
-  }, [currentView, leaderboardCategory]);
+  }, [showLeaderboard, leaderboardCategory]);
 
   // Function to request game start from lobby
   const handleStartGameFromLobby = () => {
@@ -3697,7 +3903,7 @@ function App() {
                   Local Game
                 </button> */}
                 <button
-                  onClick={() => setCurrentView("leaderboard")}
+                  onClick={() => setShowLeaderboard(true)}
                   className="menu-option"
                   style={{
                     textDecorationColor: preferredColor,
@@ -3744,141 +3950,6 @@ function App() {
           </div>
         )}
 
-        {currentView === "leaderboard" && (
-          <div className="leaderboard-view">
-            <button
-              onClick={() => setCurrentView("menu")}
-              className="leaderboard-close-button"
-              aria-label={t("leaderboard.closeTooltip")}
-              title={t("leaderboard.close")}
-            >
-              ✕
-            </button>
-            <div className="leaderboard-view-content">
-              <div className="leaderboard-layout">
-                {/* Columna izquierda: Selectores de tiempo */}
-                <div className="leaderboard-sidebar">
-                  <div className="leaderboard-tabs-vertical">
-                    <button
-                      className={`leaderboard-tab-vertical ${
-                        leaderboardCategory === "day" ? "active" : ""
-                      }`}
-                      onClick={() => setLeaderboardCategory("day")}
-                    >
-                      <span>{t("leaderboard.day")}</span>
-                      {leaderboardCategory === "day" && timeRemaining && (
-                        <span className="leaderboard-countdown-inline">
-                          {timeRemaining}
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      className={`leaderboard-tab-vertical ${
-                        leaderboardCategory === "month" ? "active" : ""
-                      }`}
-                      onClick={() => setLeaderboardCategory("month")}
-                    >
-                      <span>{t("leaderboard.month")}</span>
-                      {leaderboardCategory === "month" && timeRemaining && (
-                        <span className="leaderboard-countdown-inline">
-                          {timeRemaining}
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      className={`leaderboard-tab-vertical ${
-                        leaderboardCategory === "all-time" ? "active" : ""
-                      }`}
-                      onClick={() => setLeaderboardCategory("all-time")}
-                    >
-                      {t("leaderboard.allTime")}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Columna derecha: Tabla de clasificación */}
-                <div className="leaderboard-main">
-                  {loadingLeaderboard ? (
-                    <div className="leaderboard-loading">
-                      <p>{t("leaderboard.loading")}</p>
-                    </div>
-                  ) : leaderboardPlayers.length === 0 ? (
-                    <div className="leaderboard-empty">
-                      <p>{t("leaderboard.noPlayers")}</p>
-                    </div>
-                  ) : (
-                    <div className="leaderboard-table">
-                      <div className="leaderboard-header">
-                        <div className="leaderboard-header-rank">
-                          {t("leaderboard.rank")}
-                        </div>
-                        <div className="leaderboard-header-name">
-                          {t("leaderboard.player")}
-                        </div>
-                        <div className="leaderboard-header-elo">
-                          {leaderboardCategory === "all-time"
-                            ? t("leaderboard.elo")
-                            : t("leaderboard.eloChange")}
-                        </div>
-                        <div className="leaderboard-header-wr">
-                          {t("leaderboard.winRate")}
-                        </div>
-                      </div>
-                      <div className="leaderboard-body">
-                        {leaderboardPlayers.map((player, index) => {
-                          const isCurrentUser = user?.id === player.user_id;
-                          const displayValue =
-                            leaderboardCategory === "all-time"
-                              ? player.elo_rating.toLocaleString()
-                              : player.elo_change !== undefined
-                              ? `${
-                                  player.elo_change > 0 ? "+" : ""
-                                }${player.elo_change.toLocaleString()}`
-                              : "0";
-                          return (
-                            <div
-                              key={player.user_id}
-                              className={`leaderboard-row ${
-                                isCurrentUser ? "leaderboard-row-current" : ""
-                              }`}
-                            >
-                              <div className="leaderboard-rank">
-                                #{index + 1}
-                              </div>
-                              <div className="leaderboard-name">
-                                {player.name || t("defaults.unknownPlayer")}
-                              </div>
-                              <div
-                                className={`leaderboard-elo ${
-                                  leaderboardCategory !== "all-time" &&
-                                  player.elo_change !== undefined
-                                    ? player.elo_change > 0
-                                      ? "elo-positive"
-                                      : player.elo_change < 0
-                                      ? "elo-negative"
-                                      : ""
-                                    : ""
-                                }`}
-                              >
-                                {displayValue}
-                              </div>
-                              <div className="leaderboard-wr">
-                                {player.total_games > 0
-                                  ? `${(player.win_rate * 100).toFixed(1)}%`
-                                  : "0%"}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {currentView === "lobby" && (
           <div className="lobby">
             <div className="lobby-content">
@@ -3893,20 +3964,36 @@ function App() {
                       {t("lobby.waitingForPlayers")}
                     </p>
                   ) : (
-                    lobbyPlayers.map((player) => (
-                      <div key={player.id} className="player-item">
-                        <div
-                          className="player-color-indicator"
-                          style={{ backgroundColor: player.color }}
-                        />
-                        <span className="player-name">{player.name}</span>
-                        {player.elo_rating !== undefined && (
-                          <span className="player-elo">
-                            {player.elo_rating.toLocaleString()}
-                          </span>
+                    <>
+                      {lobbyPlayers.map((player) => (
+                        <div key={player.id} className="player-item">
+                          <div
+                            className="player-color-indicator"
+                            style={{ backgroundColor: player.color }}
+                          />
+                          <span className="player-name">{player.name}</span>
+                          {player.elo_rating !== undefined && (
+                            <span className="player-elo">
+                              {player.elo_rating.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {/* Loader para indicar que se está esperando a más jugadores */}
+                      {lobbyCountdown === undefined &&
+                        lobbyPlayers.length < 8 && (
+                          <div className="players-loader">
+                            <div className="loader-dots">
+                              <span></span>
+                              <span></span>
+                              <span></span>
+                            </div>
+                            <p className="loader-text">
+                              {t("lobby.waitingForMorePlayers")}
+                            </p>
+                          </div>
                         )}
-                      </div>
-                    ))
+                    </>
                   )}
                 </div>
               </div>
@@ -3922,18 +4009,24 @@ function App() {
                     }
                   }}
                   className="change-color-button"
+                  disabled={lobbyCountdown !== undefined && lobbyCountdown > 0}
                 >
                   {t("lobby.changeColor")}
                 </button>
                 <button
                   onClick={handleStartGameFromLobby}
                   className="start-button"
-                  disabled={lobbyPlayers.length < 2}
+                  disabled={
+                    lobbyPlayers.length < 2 ||
+                    (lobbyCountdown !== undefined && lobbyCountdown > 0)
+                  }
                   style={{
                     backgroundColor: preferredColor,
                   }}
                 >
-                  {lobbyPlayers.length < 2
+                  {lobbyCountdown !== undefined && lobbyCountdown > 0
+                    ? `${t("lobby.starting")}... ${lobbyCountdown}`
+                    : lobbyPlayers.length < 2
                     ? t("lobby.waitingForMorePlayers")
                     : t("lobby.start")}
                 </button>
@@ -3952,11 +4045,44 @@ function App() {
                     setLocalPlayerId(null);
                   }}
                   className="back-button"
+                  disabled={lobbyCountdown !== undefined && lobbyCountdown > 0}
                 >
                   {t("lobby.backToMenu")}
                 </button>
               </div>
             </div>
+
+            {/* Lobby countdown overlay */}
+            {lobbyCountdown !== undefined && lobbyCountdown > 0 && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 2000,
+                  pointerEvents: "none",
+                  background: "rgba(0, 0, 0, 0.7)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "8rem",
+                    fontWeight: "bold",
+                    color: "#ffffff",
+                    textShadow:
+                      "0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 255, 255, 0.6)",
+                    fontFamily: "Genos, Roboto, Arial, sans-serif",
+                  }}
+                >
+                  {lobbyCountdown}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -4637,7 +4763,7 @@ function App() {
         )}
 
         {/* Color picker modal - Available from menu and lobby */}
-        {showColorPicker && (
+        {showColorPicker && currentView !== "game" && (
           <ColorPickerModal
             isOpen={showColorPicker}
             currentColor={
@@ -4700,6 +4826,20 @@ function App() {
               setHighlightShopItemId(null);
               // El color picker se recargará automáticamente cuando se abra de nuevo
             }}
+          />
+        )}
+
+        {/* Leaderboard modal */}
+        {showLeaderboard && (
+          <LeaderboardModal
+            isOpen={showLeaderboard}
+            onClose={() => setShowLeaderboard(false)}
+            user={user}
+            leaderboardCategory={leaderboardCategory}
+            setLeaderboardCategory={setLeaderboardCategory}
+            leaderboardPlayers={leaderboardPlayers}
+            loadingLeaderboard={loadingLeaderboard}
+            timeRemaining={timeRemaining}
           />
         )}
 

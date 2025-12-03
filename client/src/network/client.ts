@@ -32,6 +32,7 @@ export class NetworkClient {
   }) => void;
   private onLobbyPlayersCallback?: (data: LobbyPlayersMessage) => void;
   private onGameStartCallback?: () => void;
+  private onLobbyCountdownCallback?: (countdown: number) => void;
 
   // BACKPRESSURE: Sistema de cola para prevenir acumulación de mensajes
   private gameStateMessageQueue: GameStateMessage[] = [];
@@ -99,6 +100,12 @@ export class NetworkClient {
     this.socket.on(SERVER_EVENTS?.GAME_START || "game:start", () => {
       if (this.onGameStartCallback) {
         this.onGameStartCallback();
+      }
+    });
+
+    this.socket.on(SERVER_EVENTS?.LOBBY_COUNTDOWN || "lobby:countdown", (data: { countdown: number }) => {
+      if (this.onLobbyCountdownCallback) {
+        this.onLobbyCountdownCallback(data.countdown);
       }
     });
 
@@ -439,6 +446,13 @@ export class NetworkClient {
    */
   onGameStart(callback: () => void): void {
     this.onGameStartCallback = callback;
+  }
+
+  /**
+   * Callback para cuando hay un countdown en el lobby
+   */
+  onLobbyCountdown(callback: (countdown: number) => void): void {
+    this.onLobbyCountdownCallback = callback;
   }
 
   /**

@@ -65,10 +65,12 @@
     "waitingForPlayers": "Esperando jugadores...",
     "changeColor": "Cambiar Color",
     "start": "Iniciar",
+    "starting": "Iniciando",
     "waitingForMorePlayers": "Esperando más jugadores...",
     "backToMenu": "Volver al Menú"
   },
   "leaderboard": {
+    "title": "Clasificación",
     "loading": "Cargando clasificación...",
     "noPlayers": "No se encontraron jugadores",
     "rank": "Posición",

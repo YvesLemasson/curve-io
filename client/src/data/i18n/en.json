@@ -86,10 +86,12 @@
     "waitingForPlayers": "Waiting for players...",
     "changeColor": "Change Color",
     "start": "Start",
+    "starting": "Starting",
     "waitingForMorePlayers": "Waiting for more players...",
     "backToMenu": "Back to Menu"
   },
   "leaderboard": {
+    "title": "Leaderboard",
     "loading": "Loading leaderboard...",
     "noPlayers": "No players found",
     "rank": "Rank",

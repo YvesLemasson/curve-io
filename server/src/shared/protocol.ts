@@ -20,6 +20,7 @@ export const SERVER_EVENTS = {
   PLAYER_DEAD: 'player:dead',
   ERROR: 'error',
   LOBBY_PLAYERS: 'lobby:players',
+  LOBBY_COUNTDOWN: 'lobby:countdown',
 } as const;
 
 // Tipos de mensajes

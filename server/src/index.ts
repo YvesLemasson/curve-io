@@ -161,6 +161,21 @@ async function broadcastLobbyPlayers(roomId: string): Promise<void> {
 // Sistema de matchmaking - gestiona múltiples salas de juego
 const matchmakingManager = new MatchmakingManager(io);
 
+// Configurar callback para notificar cuando se añaden bots
+matchmakingManager.setOnBotsAddedCallback((roomId: string) => {
+  logger.log(`📢 [${roomId}] Notificando a clientes sobre bots añadidos`);
+  broadcastLobbyPlayers(roomId).catch(err => 
+    logger.error(`[${roomId}] Error broadcasting lobby players después de añadir bots:`, err)
+  );
+  
+  // Verificar si hay 8 jugadores y iniciar automáticamente la cuenta atrás
+  const room = matchmakingManager.getRoom(roomId);
+  if (room && room.playerManager.getPlayerCount() >= 8) {
+    logger.log(`🎯 [${roomId}] 8 jugadores alcanzados, iniciando cuenta atrás automáticamente`);
+    startLobbyCountdown(roomId);
+  }
+});
+
 // Función helper para guardar partida cuando termina
 async function saveGameOnEnd(roomId: string, gameState: any): Promise<void> {
   const room = matchmakingManager.getRoom(roomId);
@@ -225,6 +240,121 @@ async function saveGameOnEnd(roomId: string, gameState: any): Promise<void> {
 matchmakingManager.setOnGameEndCallback(async (roomId: string, gameState: any) => {
   await saveGameOnEnd(roomId, gameState);
 });
+
+// Función helper para iniciar cuenta atrás del lobby
+function startLobbyCountdown(roomId: string, requestedBy?: string): void {
+  const room = matchmakingManager.getRoom(roomId);
+  if (!room) {
+    logger.log(`⚠️  [${roomId}] Sala no encontrada para iniciar cuenta atrás`);
+    return;
+  }
+
+  const playerCount = room.playerManager.getPlayerCount();
+  const gameStatus = room.gameServer.getGameState().gameStatus;
+  
+  if (gameStatus.includes('playing')) {
+    logger.log(`⚠️  [${roomId}] Intento de iniciar cuenta atrás cuando el juego ya está corriendo`);
+    return;
+  }
+  
+  if (playerCount < 2) {
+    logger.log(`⚠️  [${roomId}] Intento de iniciar cuenta atrás con menos de 2 jugadores (${playerCount})`);
+    return;
+  }
+
+  // Si ya hay una cuenta atrás en curso, ignorar
+  if (room.lobbyCountdownInterval) {
+    logger.log(`⚠️  [${roomId}] Ya hay una cuenta atrás en curso`);
+    return;
+  }
+  
+  const requestSource = requestedBy ? `(solicitado por ${requestedBy})` : '(automático)';
+  logger.log(`🚀 [${roomId}] Iniciando cuenta atrás para juego con ${playerCount} jugadores ${requestSource}`);
+  
+  // Iniciar cuenta atrás de 3 segundos
+  room.lobbyCountdown = 3;
+  io.to(roomId).emit(SERVER_EVENTS.LOBBY_COUNTDOWN, { countdown: room.lobbyCountdown });
+  logger.log(`⏱️  [${roomId}] Cuenta atrás iniciada: ${room.lobbyCountdown} segundos`);
+
+  room.lobbyCountdownInterval = setInterval(() => {
+    try {
+      if (!room.lobbyCountdown || room.lobbyCountdown <= 0) {
+        // Terminar cuenta atrás e iniciar juego
+        if (room.lobbyCountdownInterval) {
+          clearInterval(room.lobbyCountdownInterval);
+          room.lobbyCountdownInterval = null;
+        }
+        // Emitir countdown 0 antes de limpiar
+        io.to(roomId).emit(SERVER_EVENTS.LOBBY_COUNTDOWN, { countdown: 0 });
+        room.lobbyCountdown = undefined;
+
+        // Iniciar el juego
+        startGameForRoom(roomId, room, io);
+      } else {
+        room.lobbyCountdown--;
+        io.to(roomId).emit(SERVER_EVENTS.LOBBY_COUNTDOWN, { countdown: room.lobbyCountdown });
+        logger.log(`⏱️  [${roomId}] Cuenta atrás: ${room.lobbyCountdown} segundos`);
+      }
+    } catch (error) {
+      logger.error(`❌ [${roomId}] Error en cuenta atrás:`, error);
+      if (room.lobbyCountdownInterval) {
+        clearInterval(room.lobbyCountdownInterval);
+        room.lobbyCountdownInterval = null;
+      }
+      room.lobbyCountdown = undefined;
+    }
+  }, 1000);
+}
+
+// Función auxiliar para iniciar el juego después de la cuenta atrás
+async function startGameForRoom(roomId: string, room: any, io: any) {
+  logger.log(`🚀 [${roomId}] Iniciando juego con ${room.playerManager.getPlayerCount()} jugadores`);
+  
+  // Actualizar partida en Supabase a estado "playing" o crear una nueva si no existe
+  const totalPlayers = room.playerManager.getPlayerCount();
+  if (room.gameId) {
+    // Actualizar la partida existente a estado "playing"
+    try {
+      await GameModel.startGame(room.gameId, totalPlayers);
+      logger.log(`📝 [${roomId}] Partida ${room.gameId} actualizada a "playing" con ${totalPlayers} jugadores`);
+      matchmakingManager.startRoom(roomId, room.gameId);
+    } catch (error) {
+      logger.error(`❌ [${roomId}] Error al actualizar partida:`, error);
+      // Intentar crear una nueva partida
+      try {
+        const newGameId = await GameModel.createGame(totalPlayers);
+        room.gameId = newGameId;
+        matchmakingManager.startRoom(roomId, newGameId);
+        logger.log(`📝 [${roomId}] Nueva partida creada: ${newGameId} con ${totalPlayers} jugadores`);
+      } catch (err) {
+        logger.error(`❌ [${roomId}] Error al crear partida:`, err);
+      }
+    }
+  } else {
+    // Si no hay partida, crear una nueva
+    try {
+      const gameId = await GameModel.createGame(totalPlayers);
+      room.gameId = gameId;
+      matchmakingManager.startRoom(roomId, gameId);
+      logger.log(`📝 [${roomId}] Partida creada en Supabase: ${gameId} con ${totalPlayers} jugadores`);
+    } catch (error) {
+      logger.error(`❌ [${roomId}] Error al crear partida en Supabase:`, error);
+      // Continuar con el juego aunque falle el guardado
+    }
+  }
+  
+  // Iniciar el game loop de esta sala (sin enviar estado inicial todavía)
+  room.gameServer.start(false);
+  
+  // Emitir GAME_START solo a esta sala
+  io.to(roomId).emit(SERVER_EVENTS.GAME_START, {});
+  logger.log(`📢 [${roomId}] GAME_START emitido a la sala`);
+  
+  // Enviar el estado inicial DESPUÉS de emitir GAME_START
+  setTimeout(() => {
+    room.gameServer.sendInitialState();
+  }, 100);
+}
 
 // WebSocket connection
 io.on('connection', (socket: Socket) => {
@@ -447,6 +577,12 @@ io.on('connection', (socket: Socket) => {
     
     // 9. Enviar lista actualizada de jugadores solo a esta sala
     broadcastLobbyPlayers(roomId).catch(err => logger.error(`[${roomId}] Error broadcasting lobby players:`, err));
+    
+    // 10. Verificar si hay 8 jugadores y iniciar automáticamente la cuenta atrás
+    if (room.playerManager.getPlayerCount() >= 8) {
+      logger.log(`🎯 [${roomId}] 8 jugadores alcanzados, iniciando cuenta atrás automáticamente`);
+      startLobbyCountdown(roomId);
+    }
   });
 
   // Manejar solicitud de inicio del juego
@@ -459,74 +595,7 @@ io.on('connection', (socket: Socket) => {
       return;
     }
 
-    const room = matchmakingManager.getRoom(roomId);
-    if (!room) {
-      logger.log(`⚠️  [${roomId}] Sala no encontrada`);
-      socket.emit(SERVER_EVENTS.ERROR, 'Sala no encontrada');
-      return;
-    }
-
-    const playerCount = room.playerManager.getPlayerCount();
-    const gameStatus = room.gameServer.getGameState().gameStatus;
-    
-    if (gameStatus.includes('playing')) {
-      logger.log(`⚠️  [${roomId}] Intento de iniciar juego que ya está corriendo`);
-      socket.emit(SERVER_EVENTS.ERROR, 'El juego ya está en curso');
-      return;
-    }
-    
-    if (playerCount < 2) {
-      logger.log(`⚠️  [${roomId}] Intento de iniciar juego con menos de 2 jugadores (${playerCount})`);
-      socket.emit(SERVER_EVENTS.ERROR, 'Se necesitan al menos 2 jugadores para iniciar');
-      return;
-    }
-    
-    logger.log(`🚀 [${roomId}] Iniciando juego con ${playerCount} jugadores (solicitado por ${socket.id})`);
-    
-    // Actualizar partida en Supabase a estado "playing" o crear una nueva si no existe
-    const totalPlayers = room.playerManager.getPlayerCount();
-    if (room.gameId) {
-      // Actualizar la partida existente a estado "playing"
-      try {
-        await GameModel.startGame(room.gameId, totalPlayers);
-        logger.log(`📝 [${roomId}] Partida ${room.gameId} actualizada a "playing" con ${totalPlayers} jugadores`);
-        matchmakingManager.startRoom(roomId, room.gameId);
-      } catch (error) {
-        logger.error(`❌ [${roomId}] Error al actualizar partida:`, error);
-        // Intentar crear una nueva partida
-        try {
-          const newGameId = await GameModel.createGame(totalPlayers);
-          room.gameId = newGameId;
-          matchmakingManager.startRoom(roomId, newGameId);
-          logger.log(`📝 [${roomId}] Nueva partida creada: ${newGameId} con ${totalPlayers} jugadores`);
-        } catch (err) {
-          logger.error(`❌ [${roomId}] Error al crear partida:`, err);
-        }
-      }
-    } else {
-      // Si no hay partida, crear una nueva
-      try {
-        const gameId = await GameModel.createGame(totalPlayers);
-        room.gameId = gameId;
-        matchmakingManager.startRoom(roomId, gameId);
-        logger.log(`📝 [${roomId}] Partida creada en Supabase: ${gameId} con ${totalPlayers} jugadores`);
-      } catch (error) {
-        logger.error(`❌ [${roomId}] Error al crear partida en Supabase:`, error);
-        // Continuar con el juego aunque falle el guardado
-      }
-    }
-    
-    // Iniciar el game loop de esta sala (sin enviar estado inicial todavía)
-    room.gameServer.start(false);
-    
-    // Emitir GAME_START solo a esta sala
-    io.to(roomId).emit(SERVER_EVENTS.GAME_START, {});
-    logger.log(`📢 [${roomId}] GAME_START emitido a la sala`);
-    
-    // Enviar el estado inicial DESPUÉS de emitir GAME_START
-    setTimeout(() => {
-      room.gameServer.sendInitialState();
-    }, 100);
+    startLobbyCountdown(roomId, socket.id);
   });
 
   // Manejar solicitud de siguiente ronda

@@ -65,10 +65,12 @@
     "waitingForPlayers": "Warte auf Spieler...",
     "changeColor": "Farbe Ändern",
     "start": "Starten",
+    "starting": "Startet",
     "waitingForMorePlayers": "Warte auf weitere Spieler...",
     "backToMenu": "Zurück zum Menü"
   },
   "leaderboard": {
+    "title": "Bestenliste",
     "loading": "Lade Bestenliste...",
     "noPlayers": "Keine Spieler gefunden",
     "rank": "Rang",
