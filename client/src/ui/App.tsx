@@ -4332,7 +4332,7 @@ function App() {
                   {t("gameHud.classification")}
                 </h3>
                 <div className="leaderboard-list">
-                  {leaderboardData.map((player, index) => (
+                  {leaderboardData.map((player) => (
                     <div
                       key={player.id}
                       className={`leaderboard-item ${
