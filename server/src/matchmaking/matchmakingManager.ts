@@ -215,10 +215,10 @@ export class MatchmakingManager {
         this.cancelBotFillTimer(roomId);
       }
 
-      // Solo programar bots si hay al menos un jugador real y menos de 8 jugadores totales
+      // Solo programar bots si hay al menos dos jugadores reales y menos de 8 jugadores totales
       const realPlayerCount = this.getRealPlayerCount(room);
       if (
-        realPlayerCount > 0 &&
+        realPlayerCount >= 2 &&
         room.currentPlayers < 8 &&
         room.status === "waiting"
       ) {
@@ -228,7 +228,7 @@ export class MatchmakingManager {
         this.scheduleBotFill(roomId);
       } else {
         logger.log(
-          `⏸️  [${roomId}] No se programa rellenado de bots (jugadores reales: ${realPlayerCount}, totales: ${room.currentPlayers}, status: ${room.status})`
+          `⏸️  [${roomId}] No se programa rellenado de bots (jugadores reales: ${realPlayerCount}, totales: ${room.currentPlayers}, status: ${room.status}) - se requieren al menos 2 jugadores humanos`
         );
       }
     } else {
@@ -352,7 +352,7 @@ export class MatchmakingManager {
   /**
    * Programa el rellenado de bots después de ~5 segundos (con variabilidad)
    * Añade bots continuamente cada ~5 segundos hasta llegar a 8 jugadores
-   * Solo se ejecuta si hay al menos un jugador real en la sala
+   * Solo se ejecuta si hay al menos dos jugadores reales en la sala
    */
   private scheduleBotFill(roomId: string): void {
     // Cancelar timer existente si hay uno
@@ -389,11 +389,11 @@ export class MatchmakingManager {
         return;
       }
 
-      // Verificar si hay jugadores reales - si no hay, no añadir bots
+      // Verificar si hay al menos 2 jugadores reales - si no hay suficientes, no añadir bots
       const realPlayerCount = this.getRealPlayerCount(room);
-      if (realPlayerCount === 0) {
+      if (realPlayerCount < 2) {
         logger.log(
-          `⏸️  [${roomId}] No hay jugadores reales en la sala, cancelando rellenado de bots`
+          `⏸️  [${roomId}] No hay suficientes jugadores reales en la sala (${realPlayerCount} < 2), cancelando rellenado de bots`
         );
         this.botFillTimers.delete(roomId);
         return;
@@ -431,17 +431,17 @@ export class MatchmakingManager {
           );
           this.cancelBotFillTimer(roomId);
         } else {
-          // Verificar si aún hay jugadores reales antes de programar siguiente rellenado
+          // Verificar si aún hay al menos 2 jugadores reales antes de programar siguiente rellenado
           const realPlayerCount = this.getRealPlayerCount(room);
-          if (realPlayerCount > 0) {
-            // Si aún no hay 8 jugadores y hay jugadores reales, programar otro rellenado
+          if (realPlayerCount >= 2) {
+            // Si aún no hay 8 jugadores y hay suficientes jugadores reales, programar otro rellenado
             logger.log(
               `🔄 [${roomId}] Aún faltan jugadores (${playersAfterBots} < 8, ${realPlayerCount} jugador(es) real(es)), programando siguiente rellenado...`
             );
             this.scheduleBotFill(roomId);
           } else {
             logger.log(
-              `⏸️  [${roomId}] No hay jugadores reales, cancelando rellenado de bots`
+              `⏸️  [${roomId}] No hay suficientes jugadores reales (${realPlayerCount} < 2), cancelando rellenado de bots`
             );
             this.cancelBotFillTimer(roomId);
           }
@@ -460,17 +460,17 @@ export class MatchmakingManager {
         logger.log(
           `⏸️  [${roomId}] No se necesitan bots (${currentPlayers} jugadores, ${room.maxPlayers} máximo)`
         );
-        // Si no se necesitan bots pero aún no hay 8 jugadores y hay jugadores reales, programar otro intento
+        // Si no se necesitan bots pero aún no hay 8 jugadores y hay suficientes jugadores reales, programar otro intento
         const realPlayerCount = this.getRealPlayerCount(room);
         if (
           currentPlayers < 8 &&
           room.status === "waiting" &&
-          realPlayerCount > 0
+          realPlayerCount >= 2
         ) {
           this.scheduleBotFill(roomId);
-        } else if (realPlayerCount === 0) {
+        } else if (realPlayerCount < 2) {
           logger.log(
-            `⏸️  [${roomId}] No hay jugadores reales, cancelando rellenado de bots`
+            `⏸️  [${roomId}] No hay suficientes jugadores reales (${realPlayerCount} < 2), cancelando rellenado de bots`
           );
           this.cancelBotFillTimer(roomId);
         }

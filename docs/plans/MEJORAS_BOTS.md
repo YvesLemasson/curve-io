@@ -300,3 +300,5 @@
 - **Mantener rendimiento** - no sacrificar FPS por inteligencia
 - **Iterar según feedback** - ajustar parámetros según comportamiento observado
 
+
+
