@@ -38,3 +38,4 @@ export function generateBotName(): string {
   const number = Math.floor(Math.random() * 1000);
   return `${name}${number}`;
 }
+

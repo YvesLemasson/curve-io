@@ -88,3 +88,4 @@ Para una instalación nueva:
 - Siempre verifica el contenido de los scripts antes de ejecutarlos
 - Haz backup de tu base de datos antes de ejecutar migraciones importantes
 
+

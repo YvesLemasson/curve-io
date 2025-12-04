@@ -4254,28 +4254,33 @@ function App() {
                 right: "10px",
                 zIndex: 1000,
                 pointerEvents: "auto",
-                background: "#ffffff",
-                color: "#000000",
-                border: "2px solid #ffffff",
+                background: "transparent",
+                color: "#ffffff",
+                border: "none",
                 borderRadius: "8px",
-                padding: "10px 20px",
-                fontSize: "0.9rem",
+                padding: "8px",
+                fontSize: "1.5rem",
                 fontWeight: 600,
                 cursor: "pointer",
                 fontFamily: "Roboto, Arial, sans-serif",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                boxShadow: "none",
                 transition: "all 0.3s",
+                width: "32px",
+                height: "32px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.8";
-                e.currentTarget.style.transform = "scale(1.05)";
+                e.currentTarget.style.opacity = "0.7";
+                e.currentTarget.style.transform = "scale(1.1)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.opacity = "1";
                 e.currentTarget.style.transform = "scale(1)";
               }}
             >
-              Back to main
+              ×
             </button>
 
             {/* Panel izquierdo: Info del juego */}
@@ -4323,7 +4328,7 @@ function App() {
               }}
             >
               <div className="leaderboard">
-                <h3 className="leaderboard-title">
+                <h3 className="leaderboard-title" style={{ marginTop: "30px", textAlign: "left" }}>
                   {t("gameHud.classification")}
                 </h3>
                 <div className="leaderboard-list">
@@ -4334,7 +4339,6 @@ function App() {
                         !player.alive ? "eliminated" : ""
                       }`}
                     >
-                      <div className="leaderboard-rank">#{index + 1}</div>
                       <div
                         className="leaderboard-name"
                         style={{ color: player.color }}

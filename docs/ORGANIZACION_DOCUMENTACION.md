@@ -115,3 +115,4 @@ curve-io/
 - Si `package-lock.json` es del monorepo, mantenerlo en la raíz
 - Crear un `docs/README.md` con índice de toda la documentación
 
+

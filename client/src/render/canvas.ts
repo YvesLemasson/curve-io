@@ -67,7 +67,7 @@ export class CanvasRenderer {
     this.ctx.fillStyle = "#000000";
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Dibujar borde blanco
+    // Dibujar borde gris oscuro
     this.drawBorder();
   }
 
@@ -76,7 +76,7 @@ export class CanvasRenderer {
    */
   private drawBorder(): void {
     const borderWidth = 4;
-    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.strokeStyle = "#000000";
     this.ctx.lineWidth = borderWidth;
     this.ctx.strokeRect(
       borderWidth / 2,

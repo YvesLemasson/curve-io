@@ -1,7 +1,7 @@
 // Sistema de detección de colisiones
 // Detecta colisiones con bordes y con trails
 
-import type { Position } from '@shared/types';
+import type { Position } from "@shared/types";
 
 /**
  * Verifica si un punto está dentro de los límites del canvas
@@ -106,18 +106,18 @@ export function checkTrailCollision(
 ): { collided: boolean; collidedWith?: string } {
   // FASE 1: Calcular distancia máxima para considerar un trail (early exit)
   const MAX_DISTANCE_THRESHOLD = 200; // Píxeles - solo verificar trails dentro de este radio
-  
+
   // Calcular posición media del nuevo segmento
   const midX = (currentPos.x + newPos.x) / 2;
   const midY = (currentPos.y + newPos.y) / 2;
-  
+
   // Ordenar trails por distancia (más cercanos primero) para early exit
   const trailsWithDistance = trails
     .filter(({ playerId }) => !excludePlayerId || playerId !== excludePlayerId)
     .map(({ trail, playerId }) => {
       // Calcular distancia mínima del trail al segmento del jugador
       let minDistance = Infinity;
-      
+
       for (const point of trail) {
         if (!point) continue; // Saltar nulls
         const dx = point.x - midX;
@@ -127,12 +127,12 @@ export function checkTrailCollision(
           minDistance = distance;
         }
       }
-      
+
       return { trail, playerId, minDistance };
     })
     .filter(({ minDistance }) => minDistance <= MAX_DISTANCE_THRESHOLD) // Early exit: saltar trails muy lejanos
     .sort((a, b) => a.minDistance - b.minDistance); // Ordenar por distancia (cercanos primero)
-  
+
   // Verificar colisión con trails cercanos primero (early exit cuando se encuentra colisión)
   for (const { trail, playerId } of trailsWithDistance) {
     // Verificar colisión con cada segmento del trail (saltando breaks/null)
@@ -147,12 +147,7 @@ export function checkTrailCollision(
 
       // Verificar si el nuevo segmento intersecta con este segmento del trail
       if (
-        checkLineLineCollision(
-          currentPos,
-          newPos,
-          segmentStart,
-          segmentEnd
-        )
+        checkLineLineCollision(currentPos, newPos, segmentStart, segmentEnd)
       ) {
         return { collided: true, collidedWith: playerId };
       }
@@ -177,7 +172,7 @@ export function checkSelfCollision(
 
   // Verificar colisión con el trail propio (saltando los últimos puntos)
   const skipPoints = 5; // Saltar los últimos N puntos para evitar colisiones inmediatas
-  
+
   for (let i = 0; i < ownTrail.length - skipPoints - 1; i++) {
     const segmentStart = ownTrail[i];
     const segmentEnd = ownTrail[i + 1];
@@ -187,18 +182,10 @@ export function checkSelfCollision(
       continue;
     }
 
-    if (
-      checkLineLineCollision(
-        currentPos,
-        newPos,
-        segmentStart,
-        segmentEnd
-      )
-    ) {
+    if (checkLineLineCollision(currentPos, newPos, segmentStart, segmentEnd)) {
       return true;
     }
   }
 
   return false;
 }
-

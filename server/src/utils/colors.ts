@@ -33,3 +33,4 @@ export function getRandomColor(usedColors?: Set<string>): string {
   return BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)];
 }
 
+
