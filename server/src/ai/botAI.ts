@@ -20,7 +20,7 @@ export interface BotAction {
  */
 export class BotAI {
   private difficulty: BotDifficulty;
-  private readonly LOOK_AHEAD_DISTANCE = 120; // Píxeles a verificar adelante
+  private readonly LOOK_AHEAD_DISTANCE = 180; // Píxeles a verificar adelante (aumentado 50% para compensar velocidad mayor: 120 * 1.5 = 180)
   
   // Dimensiones del mapa (deben coincidir con GameServer)
   private readonly MAP_WIDTH = 1920;
@@ -129,8 +129,8 @@ export class BotAI {
 
       // Verificar proximidad al propio trail
       const ownTrailDistance = this.findNearestTrailDistance(bot, ownTrail);
-      if (ownTrailDistance < 50) {
-        // Muy cerca del propio trail - evadir
+      if (ownTrailDistance < 75) {
+        // Muy cerca del propio trail - evadir (aumentado 50% para velocidad mayor: 50 * 1.5 = 75)
         return {
           direction: this.getSafeDirection(bot, gameState),
           boost: false,
@@ -144,8 +144,8 @@ export class BotAI {
     // Determinar qué borde está más cerca
     const closestBoundary = this.getClosestBoundary(boundaryDistances);
 
-    // Aumentado a 200px para activarse antes y evitar que se acerquen demasiado
-    const BOUNDARY_AVOIDANCE_DISTANCE = 200;
+    // Aumentado a 300px para activarse antes con velocidad 50% mayor (200 * 1.5 = 300)
+    const BOUNDARY_AVOIDANCE_DISTANCE = 300;
     
     if (minDistToBoundary < BOUNDARY_AVOIDANCE_DISTANCE) {
       // Cerca de un borde - alejarse activamente hacia el centro
@@ -170,8 +170,8 @@ export class BotAI {
     // Ahora se ejecuta DESPUÉS de verificar bordes, para que los bordes tengan prioridad
     // Buscar trails cercanos en un radio alrededor del bot
     const nearbyTrailDistance = this.findNearestTrailDistance(bot, otherTrails);
-    if (nearbyTrailDistance < 60) {
-      // Trail muy cercano - empezar a evadir preventivamente
+    if (nearbyTrailDistance < 90) {
+      // Trail muy cercano - empezar a evadir preventivamente (aumentado 50% para velocidad mayor: 60 * 1.5 = 90)
       return {
         direction: this.getSafeDirection(bot, gameState),
         boost: false,
@@ -438,10 +438,10 @@ export class BotAI {
 
       const nearestTrailDist = this.getDistanceToNearestTrail(checkPos, otherTrails);
       
-      if (nearestTrailDist < 40) {
-        score -= 25; // Muy cerca de un trail
-      } else if (nearestTrailDist < 80) {
-        score -= 10; // Cerca de un trail
+      if (nearestTrailDist < 60) {
+        score -= 25; // Muy cerca de un trail (aumentado 50%: 40 * 1.5 = 60)
+      } else if (nearestTrailDist < 120) {
+        score -= 10; // Cerca de un trail (aumentado 50%: 80 * 1.5 = 120)
       } else if (nearestTrailDist > 150) {
         score += 5; // Lejos de trails (bonus)
       }
@@ -527,7 +527,7 @@ export class BotAI {
     trails: Array<{ trail: Array<Position | null>; playerId: string }>,
     futurePos: Position
   ): { gapStart: Position; gapEnd: Position; gapCenter: Position; distance: number } | null {
-    const MAX_GAP_DISTANCE = 120; // Buscar gaps dentro de 120px (reducido para ser más conservador)
+    const MAX_GAP_DISTANCE = 180; // Buscar gaps dentro de 180px (aumentado 50% para velocidad mayor: 120 * 1.5 = 180)
     const MIN_GAP_SIZE = 60; // El gap debe tener al menos 60px de ancho (aumentado para evitar colisiones)
 
     let bestGap: { gapStart: Position; gapEnd: Position; gapCenter: Position; distance: number } | null = null;
@@ -636,8 +636,8 @@ export class BotAI {
       return null; // Gap está muy atrás
     }
 
-    // Si el gap está muy cerca (< 50px), ser más conservador
-    if (gap.distance < 50) {
+    // Si el gap está muy cerca (< 75px), ser más conservador (aumentado 50%: 50 * 1.5 = 75)
+    if (gap.distance < 75) {
       // Solo intentar si el gap está directamente adelante o ligeramente a los lados
       if (normalizedDiff > Math.PI / 3 && normalizedDiff < (5 * Math.PI) / 3) {
         return null; // Gap muy cerca pero no en buena posición

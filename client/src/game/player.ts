@@ -39,7 +39,7 @@ export class Player {
     color: string,
     startPosition: Position,
     startAngle: number = 0,
-    speed: number = 0.5
+    speed: number = 0.75 // Aumentado 50% (0.5 * 1.5 = 0.75)
   ) {
     this.id = id;
     this.name = name;

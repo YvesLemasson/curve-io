@@ -1,29 +1,35 @@
 // Punto de entrada del servidor
 // Cargar variables de entorno primero
-import 'dotenv/config';
+import "dotenv/config";
 
-import express from 'express';
-import { createServer } from 'http';
-import { Server, Socket } from 'socket.io';
-import { CLIENT_EVENTS, SERVER_EVENTS } from './shared/protocol.js';
-import type { PlayerJoinMessage, GameInputMessage, GameStateMessage, LobbyPlayersMessage, AuthUserMessage } from './shared/protocol.js';
-import type { Player, TrailType } from './shared/types.js';
-import { GameModel } from './models/gameModel.js';
-import { UserModel } from './models/userModel.js';
-import { PremiumModel } from './models/premiumModel.js';
-import { supabase } from './config/supabase.js';
-import { MatchmakingManager } from './matchmaking/matchmakingManager.js';
-import { logger } from './utils/logger.js';
+import express from "express";
+import { createServer } from "http";
+import { Server, Socket } from "socket.io";
+import { CLIENT_EVENTS, SERVER_EVENTS } from "./shared/protocol.js";
+import type {
+  PlayerJoinMessage,
+  GameInputMessage,
+  GameStateMessage,
+  LobbyPlayersMessage,
+  AuthUserMessage,
+} from "./shared/protocol.js";
+import type { Player, TrailType } from "./shared/types.js";
+import { GameModel } from "./models/gameModel.js";
+import { UserModel } from "./models/userModel.js";
+import { PremiumModel } from "./models/premiumModel.js";
+import { supabase } from "./config/supabase.js";
+import { MatchmakingManager } from "./matchmaking/matchmakingManager.js";
+import { logger } from "./utils/logger.js";
 
 const app = express();
 const httpServer = createServer(app);
 
 // Configurar CORS para permitir múltiples orígenes
 const allowedOrigins: string[] = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
-  'https://curveio.netlify.app',
-  'http://localhost:3000',
-  'http://localhost:3001',
+  process.env.FRONTEND_URL || "http://localhost:3000",
+  "https://curveio.netlify.app",
+  "http://localhost:3000",
+  "http://localhost:3001",
 ];
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
@@ -33,36 +39,36 @@ const io = new Server(httpServer, {
     origin: (origin, callback) => {
       // Permitir requests sin origin (mobile apps, Postman, etc.) solo en desarrollo
       if (!origin) {
-        if (process.env.NODE_ENV === 'production') {
+        if (process.env.NODE_ENV === "production") {
           logger.warn(`⚠️  Request sin origin rechazado en producción`);
-          return callback(new Error('Origin required in production'));
+          return callback(new Error("Origin required in production"));
         }
         return callback(null, true);
       }
-      
+
       // Validación estricta: comparar exactamente o validar dominio completo
       // Esto previene ataques de subdomain (ej: evil-curveio.netlify.app)
-      const isAllowed = allowedOrigins.some(allowed => {
+      const isAllowed = allowedOrigins.some((allowed) => {
         // Comparación exacta para URLs completas
         if (origin === allowed) return true;
         // Para desarrollo local, permitir variaciones de localhost
-        if (allowed.startsWith('http://localhost')) {
-          return origin.startsWith('http://localhost');
+        if (allowed.startsWith("http://localhost")) {
+          return origin.startsWith("http://localhost");
         }
         return false;
       });
-      
+
       if (isAllowed) {
         callback(null, true);
       } else {
         logger.warn(`⚠️  Origen no permitido: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error("Not allowed by CORS"));
       }
     },
-    methods: ['GET', 'POST'],
+    methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ['websocket', 'polling'], // Permitir ambos transportes
+  transports: ["websocket", "polling"], // Permitir ambos transportes
 });
 
 // Servir archivos estáticos (opcional)
@@ -71,37 +77,40 @@ app.use(express.json());
 // Headers de seguridad HTTP
 app.use((req, res, next) => {
   // Prevenir clickjacking
-  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader("X-Frame-Options", "DENY");
   // Prevenir MIME type sniffing
-  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader("X-Content-Type-Options", "nosniff");
   // Habilitar XSS protection
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader("X-XSS-Protection", "1; mode=block");
   // Referrer policy
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   // Content Security Policy básica
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+  );
   next();
 });
 
 // Ruta de salud (para verificar que el servidor está corriendo)
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'curve.pw server is running',
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "curve.pw server is running",
     timestamp: new Date().toISOString(),
-    port: PORT
+    port: PORT,
   });
 });
 
 // Ruta raíz también responde (útil para Railway health checks)
-app.get('/', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'curve.pw server is running',
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "curve.pw server is running",
     endpoints: {
-      health: '/health',
-      websocket: `ws://0.0.0.0:${PORT}`
-    }
+      health: "/health",
+      websocket: `ws://0.0.0.0:${PORT}`,
+    },
   });
 });
 
@@ -116,24 +125,24 @@ const socketToRoomId: Map<string, string> = new Map();
 // Solo usa los 8 colores básicos gratuitos (el resto se compra)
 function getAvailableColor(existingPlayers: Player[]): string {
   const availableColors = [
-    '#ff0000', // Rojo
-    '#00ff00', // Verde
-    '#0000ff', // Azul
-    '#ffff00', // Amarillo
-    '#ff00ff', // Magenta
-    '#00ffff', // Cyan
-    '#ff8000', // Naranja
-    '#8000ff', // Morado
+    "#ff0000", // Rojo
+    "#00ff00", // Verde
+    "#0000ff", // Azul
+    "#ffff00", // Amarillo
+    "#ff00ff", // Magenta
+    "#00ffff", // Cyan
+    "#ff8000", // Naranja
+    "#8000ff", // Morado
   ];
-  const usedColors = new Set(existingPlayers.map(p => p.color));
-  
+  const usedColors = new Set(existingPlayers.map((p) => p.color));
+
   // Buscar el primer color disponible que no esté en uso
   for (const color of availableColors) {
     if (!usedColors.has(color)) {
       return color;
     }
   }
-  
+
   // Si todos los 8 colores básicos están en uso, usar el primero (puede haber duplicados)
   // En este caso, el jugador debería comprar más colores
   return availableColors[0];
@@ -148,24 +157,25 @@ async function broadcastLobbyPlayers(roomId: string): Promise<void> {
   }
 
   const players = room.playerManager.getAllPlayers();
-  
+
   // Obtener ELO de cada jugador autenticado
   const playersWithElo = await Promise.all(
     players.map(async (p) => {
       // Buscar socketId del playerId
-      const socketId = Array.from(socketToPlayerId.entries())
-        .find(([_, pid]) => pid === p.id)?.[0];
+      const socketId = Array.from(socketToPlayerId.entries()).find(
+        ([_, pid]) => pid === p.id
+      )?.[0];
       const userId = socketId ? socketToUserId.get(socketId) : undefined;
       let elo_rating: number | undefined = undefined;
-      
+
       if (userId) {
         try {
           const { data, error } = await supabase
-            .from('player_stats')
-            .select('elo_rating')
-            .eq('user_id', userId)
+            .from("player_stats")
+            .select("elo_rating")
+            .eq("user_id", userId)
             .single();
-          
+
           if (!error && data) {
             elo_rating = data.elo_rating ?? 1000;
           }
@@ -173,7 +183,7 @@ async function broadcastLobbyPlayers(roomId: string): Promise<void> {
           // Si hay error, no incluir ELO
         }
       }
-      
+
       return {
         id: p.id,
         name: p.name,
@@ -182,11 +192,11 @@ async function broadcastLobbyPlayers(roomId: string): Promise<void> {
       };
     })
   );
-  
+
   const lobbyPlayers: LobbyPlayersMessage = {
     players: playersWithElo,
   };
-  
+
   // Broadcast solo a esta sala
   io.to(roomId).emit(SERVER_EVENTS.LOBBY_PLAYERS, lobbyPlayers);
 }
@@ -197,14 +207,19 @@ const matchmakingManager = new MatchmakingManager(io);
 // Configurar callback para notificar cuando se añaden bots
 matchmakingManager.setOnBotsAddedCallback((roomId: string) => {
   logger.log(`📢 [${roomId}] Notificando a clientes sobre bots añadidos`);
-  broadcastLobbyPlayers(roomId).catch(err => 
-    logger.error(`[${roomId}] Error broadcasting lobby players después de añadir bots:`, err)
+  broadcastLobbyPlayers(roomId).catch((err) =>
+    logger.error(
+      `[${roomId}] Error broadcasting lobby players después de añadir bots:`,
+      err
+    )
   );
-  
+
   // Verificar si hay 8 jugadores y iniciar automáticamente la cuenta atrás
   const room = matchmakingManager.getRoom(roomId);
   if (room && room.playerManager.getPlayerCount() >= 8) {
-    logger.log(`🎯 [${roomId}] 8 jugadores alcanzados, iniciando cuenta atrás automáticamente`);
+    logger.log(
+      `🎯 [${roomId}] 8 jugadores alcanzados, iniciando cuenta atrás automáticamente`
+    );
     startLobbyCountdown(roomId);
   }
 });
@@ -221,7 +236,7 @@ async function saveGameOnEnd(roomId: string, gameState: any): Promise<void> {
     // Obtener todos los jugadores ordenados por si están vivos (ganador primero)
     const allPlayers = room.playerManager.getAllPlayers();
     const winnerId = gameState.winnerId;
-    
+
     // Ordenar jugadores: ganador primero, luego los eliminados
     const sortedPlayers = allPlayers.sort((a, b) => {
       if (a.id === winnerId) return -1;
@@ -234,13 +249,16 @@ async function saveGameOnEnd(roomId: string, gameState: any): Promise<void> {
     // Mapear jugadores a participantes con user_id
     const participants = sortedPlayers
       .map((player, originalIndex) => {
-        const socketId = Array.from(socketToPlayerId.entries())
-          .find(([_, pid]) => pid === player.id)?.[0];
+        const socketId = Array.from(socketToPlayerId.entries()).find(
+          ([_, pid]) => pid === player.id
+        )?.[0];
         const userId = socketId ? socketToUserId.get(socketId) : null;
-        
+
         // Si no hay user_id, no guardar este participante (jugador no autenticado)
         if (!userId) {
-          logger.log(`⚠️  [${roomId}] Jugador ${player.name} no tiene user_id, omitiendo del guardado`);
+          logger.log(
+            `⚠️  [${roomId}] Jugador ${player.name} no tiene user_id, omitiendo del guardado`
+          );
           return null;
         }
 
@@ -250,19 +268,34 @@ async function saveGameOnEnd(roomId: string, gameState: any): Promise<void> {
           position: originalIndex + 1,
         };
       })
-      .filter((p): p is { userId: string; score: number; position: number } => p !== null);
+      .filter(
+        (p): p is { userId: string; score: number; position: number } =>
+          p !== null
+      );
 
     // Obtener user_id del ganador
-    const winnerSocketId = Array.from(socketToPlayerId.entries())
-      .find(([_, pid]) => pid === winnerId)?.[0];
-    const winnerUserId = winnerSocketId ? socketToUserId.get(winnerSocketId) : null;
+    const winnerSocketId = Array.from(socketToPlayerId.entries()).find(
+      ([_, pid]) => pid === winnerId
+    )?.[0];
+    const winnerUserId = winnerSocketId
+      ? socketToUserId.get(winnerSocketId)
+      : null;
 
     if (participants.length > 0) {
       const totalPlayers = allPlayers.length;
-      await GameModel.endGame(room.gameId, participants, winnerUserId || null, totalPlayers);
-      logger.log(`✅ [${roomId}] Partida ${room.gameId} guardada exitosamente con ${participants.length} participantes autenticados de ${totalPlayers} jugadores totales`);
+      await GameModel.endGame(
+        room.gameId,
+        participants,
+        winnerUserId || null,
+        totalPlayers
+      );
+      logger.log(
+        `✅ [${roomId}] Partida ${room.gameId} guardada exitosamente con ${participants.length} participantes autenticados de ${totalPlayers} jugadores totales`
+      );
     } else {
-      logger.log(`⚠️  [${roomId}] No hay participantes autenticados para guardar`);
+      logger.log(
+        `⚠️  [${roomId}] No hay participantes autenticados para guardar`
+      );
     }
   } catch (error) {
     logger.error(`❌ [${roomId}] Error al guardar partida:`, error);
@@ -270,9 +303,11 @@ async function saveGameOnEnd(roomId: string, gameState: any): Promise<void> {
 }
 
 // Configurar callback para guardar partidas cuando terminan
-matchmakingManager.setOnGameEndCallback(async (roomId: string, gameState: any) => {
-  await saveGameOnEnd(roomId, gameState);
-});
+matchmakingManager.setOnGameEndCallback(
+  async (roomId: string, gameState: any) => {
+    await saveGameOnEnd(roomId, gameState);
+  }
+);
 
 // Función helper para iniciar cuenta atrás del lobby
 function startLobbyCountdown(roomId: string, requestedBy?: string): void {
@@ -284,14 +319,18 @@ function startLobbyCountdown(roomId: string, requestedBy?: string): void {
 
   const playerCount = room.playerManager.getPlayerCount();
   const gameStatus = room.gameServer.getGameState().gameStatus;
-  
-  if (gameStatus.includes('playing')) {
-    logger.log(`⚠️  [${roomId}] Intento de iniciar cuenta atrás cuando el juego ya está corriendo`);
+
+  if (gameStatus.includes("playing")) {
+    logger.log(
+      `⚠️  [${roomId}] Intento de iniciar cuenta atrás cuando el juego ya está corriendo`
+    );
     return;
   }
-  
+
   if (playerCount < 2) {
-    logger.log(`⚠️  [${roomId}] Intento de iniciar cuenta atrás con menos de 2 jugadores (${playerCount})`);
+    logger.log(
+      `⚠️  [${roomId}] Intento de iniciar cuenta atrás con menos de 2 jugadores (${playerCount})`
+    );
     return;
   }
 
@@ -300,14 +339,22 @@ function startLobbyCountdown(roomId: string, requestedBy?: string): void {
     logger.log(`⚠️  [${roomId}] Ya hay una cuenta atrás en curso`);
     return;
   }
-  
-  const requestSource = requestedBy ? `(solicitado por ${requestedBy})` : '(automático)';
-  logger.log(`🚀 [${roomId}] Iniciando cuenta atrás para juego con ${playerCount} jugadores ${requestSource}`);
-  
+
+  const requestSource = requestedBy
+    ? `(solicitado por ${requestedBy})`
+    : "(automático)";
+  logger.log(
+    `🚀 [${roomId}] Iniciando cuenta atrás para juego con ${playerCount} jugadores ${requestSource}`
+  );
+
   // Iniciar cuenta atrás de 3 segundos
   room.lobbyCountdown = 3;
-  io.to(roomId).emit(SERVER_EVENTS.LOBBY_COUNTDOWN, { countdown: room.lobbyCountdown });
-  logger.log(`⏱️  [${roomId}] Cuenta atrás iniciada: ${room.lobbyCountdown} segundos`);
+  io.to(roomId).emit(SERVER_EVENTS.LOBBY_COUNTDOWN, {
+    countdown: room.lobbyCountdown,
+  });
+  logger.log(
+    `⏱️  [${roomId}] Cuenta atrás iniciada: ${room.lobbyCountdown} segundos`
+  );
 
   room.lobbyCountdownInterval = setInterval(() => {
     try {
@@ -325,8 +372,12 @@ function startLobbyCountdown(roomId: string, requestedBy?: string): void {
         startGameForRoom(roomId, room, io);
       } else {
         room.lobbyCountdown--;
-        io.to(roomId).emit(SERVER_EVENTS.LOBBY_COUNTDOWN, { countdown: room.lobbyCountdown });
-        logger.log(`⏱️  [${roomId}] Cuenta atrás: ${room.lobbyCountdown} segundos`);
+        io.to(roomId).emit(SERVER_EVENTS.LOBBY_COUNTDOWN, {
+          countdown: room.lobbyCountdown,
+        });
+        logger.log(
+          `⏱️  [${roomId}] Cuenta atrás: ${room.lobbyCountdown} segundos`
+        );
       }
     } catch (error) {
       logger.error(`❌ [${roomId}] Error en cuenta atrás:`, error);
@@ -341,15 +392,19 @@ function startLobbyCountdown(roomId: string, requestedBy?: string): void {
 
 // Función auxiliar para iniciar el juego después de la cuenta atrás
 async function startGameForRoom(roomId: string, room: any, io: any) {
-  logger.log(`🚀 [${roomId}] Iniciando juego con ${room.playerManager.getPlayerCount()} jugadores`);
-  
+  logger.log(
+    `🚀 [${roomId}] Iniciando juego con ${room.playerManager.getPlayerCount()} jugadores`
+  );
+
   // Actualizar partida en Supabase a estado "playing" o crear una nueva si no existe
   const totalPlayers = room.playerManager.getPlayerCount();
   if (room.gameId) {
     // Actualizar la partida existente a estado "playing"
     try {
       await GameModel.startGame(room.gameId, totalPlayers);
-      logger.log(`📝 [${roomId}] Partida ${room.gameId} actualizada a "playing" con ${totalPlayers} jugadores`);
+      logger.log(
+        `📝 [${roomId}] Partida ${room.gameId} actualizada a "playing" con ${totalPlayers} jugadores`
+      );
       matchmakingManager.startRoom(roomId, room.gameId);
     } catch (error) {
       logger.error(`❌ [${roomId}] Error al actualizar partida:`, error);
@@ -358,7 +413,9 @@ async function startGameForRoom(roomId: string, room: any, io: any) {
         const newGameId = await GameModel.createGame(totalPlayers);
         room.gameId = newGameId;
         matchmakingManager.startRoom(roomId, newGameId);
-        logger.log(`📝 [${roomId}] Nueva partida creada: ${newGameId} con ${totalPlayers} jugadores`);
+        logger.log(
+          `📝 [${roomId}] Nueva partida creada: ${newGameId} con ${totalPlayers} jugadores`
+        );
       } catch (err) {
         logger.error(`❌ [${roomId}] Error al crear partida:`, err);
       }
@@ -369,20 +426,22 @@ async function startGameForRoom(roomId: string, room: any, io: any) {
       const gameId = await GameModel.createGame(totalPlayers);
       room.gameId = gameId;
       matchmakingManager.startRoom(roomId, gameId);
-      logger.log(`📝 [${roomId}] Partida creada en Supabase: ${gameId} con ${totalPlayers} jugadores`);
+      logger.log(
+        `📝 [${roomId}] Partida creada en Supabase: ${gameId} con ${totalPlayers} jugadores`
+      );
     } catch (error) {
       logger.error(`❌ [${roomId}] Error al crear partida en Supabase:`, error);
       // Continuar con el juego aunque falle el guardado
     }
   }
-  
+
   // Iniciar el game loop de esta sala (sin enviar estado inicial todavía)
   room.gameServer.start(false);
-  
+
   // Emitir GAME_START solo a esta sala
   io.to(roomId).emit(SERVER_EVENTS.GAME_START, {});
   logger.log(`📢 [${roomId}] GAME_START emitido a la sala`);
-  
+
   // Enviar el estado inicial DESPUÉS de emitir GAME_START
   setTimeout(() => {
     room.gameServer.sendInitialState();
@@ -390,124 +449,161 @@ async function startGameForRoom(roomId: string, room: any, io: any) {
 }
 
 // WebSocket connection
-io.on('connection', (socket: Socket) => {
+io.on("connection", (socket: Socket) => {
   logger.log(`✅ Cliente conectado: ${socket.id}`);
-  
+
   // Nota: No enviamos lista de jugadores al conectar porque el jugador aún no está en una sala
   // Se enviará después de que se una a una sala en PLAYER_JOIN
 
   // Manejar autenticación de usuario (user_id de Supabase)
   socket.on(CLIENT_EVENTS.AUTH_USER, async (message: AuthUserMessage) => {
     // Validar que el userId tenga formato válido (UUID v4)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!message.userId || !uuidRegex.test(message.userId)) {
-      logger.warn(`⚠️  Intento de autenticación con userId inválido: ${message.userId} (socket: ${socket.id})`);
-      socket.emit(SERVER_EVENTS.ERROR, 'Invalid user ID format');
+      logger.warn(
+        `⚠️  Intento de autenticación con userId inválido: ${message.userId} (socket: ${socket.id})`
+      );
+      socket.emit(SERVER_EVENTS.ERROR, "Invalid user ID format");
       return;
     }
-    
+
     // Validar longitud máxima para prevenir ataques
     if (message.userId.length > 100) {
-      logger.warn(`⚠️  userId demasiado largo: ${message.userId.length} caracteres (socket: ${socket.id})`);
-      socket.emit(SERVER_EVENTS.ERROR, 'Invalid user ID');
+      logger.warn(
+        `⚠️  userId demasiado largo: ${message.userId.length} caracteres (socket: ${socket.id})`
+      );
+      socket.emit(SERVER_EVENTS.ERROR, "Invalid user ID");
       return;
     }
-    
+
     socketToUserId.set(socket.id, message.userId);
-    logger.log(`🔐 Usuario autenticado: ${message.userId} (socket: ${socket.id})`);
+    logger.log(
+      `🔐 Usuario autenticado: ${message.userId} (socket: ${socket.id})`
+    );
   });
 
   // Manejar unión de jugador
   socket.on(CLIENT_EVENTS.PLAYER_JOIN, async (message: PlayerJoinMessage) => {
     // Validar nombre del jugador
-    if (!message.name || typeof message.name !== 'string') {
-      logger.warn(`⚠️  Intento de unirse sin nombre válido (socket: ${socket.id})`);
-      socket.emit(SERVER_EVENTS.ERROR, 'Nombre de jugador requerido');
+    if (!message.name || typeof message.name !== "string") {
+      logger.warn(
+        `⚠️  Intento de unirse sin nombre válido (socket: ${socket.id})`
+      );
+      socket.emit(SERVER_EVENTS.ERROR, "Nombre de jugador requerido");
       return;
     }
-    
+
     // Sanitizar y validar nombre
     const sanitizedName = message.name.trim();
     if (sanitizedName.length === 0) {
-      logger.warn(`⚠️  Intento de unirse con nombre vacío (socket: ${socket.id})`);
-      socket.emit(SERVER_EVENTS.ERROR, 'El nombre no puede estar vacío');
+      logger.warn(
+        `⚠️  Intento de unirse con nombre vacío (socket: ${socket.id})`
+      );
+      socket.emit(SERVER_EVENTS.ERROR, "El nombre no puede estar vacío");
       return;
     }
-    
+
     if (sanitizedName.length > 50) {
-      logger.warn(`⚠️  Intento de unirse con nombre demasiado largo: ${sanitizedName.length} caracteres (socket: ${socket.id})`);
-      socket.emit(SERVER_EVENTS.ERROR, 'El nombre no puede tener más de 50 caracteres');
+      logger.warn(
+        `⚠️  Intento de unirse con nombre demasiado largo: ${sanitizedName.length} caracteres (socket: ${socket.id})`
+      );
+      socket.emit(
+        SERVER_EVENTS.ERROR,
+        "El nombre no puede tener más de 50 caracteres"
+      );
       return;
     }
-    
+
     // Validar formato de color si se proporciona
     if (message.preferredColor) {
       const colorRegex = /^#[0-9A-Fa-f]{6}$/;
       if (!colorRegex.test(message.preferredColor)) {
-        logger.warn(`⚠️  Intento de unirse con color inválido: ${message.preferredColor} (socket: ${socket.id})`);
-        socket.emit(SERVER_EVENTS.ERROR, 'Formato de color inválido');
+        logger.warn(
+          `⚠️  Intento de unirse con color inválido: ${message.preferredColor} (socket: ${socket.id})`
+        );
+        socket.emit(SERVER_EVENTS.ERROR, "Formato de color inválido");
         return;
       }
     }
-    
-    logger.log(`👤 Jugador ${sanitizedName} (${message.playerId}) intenta unirse`);
-    
+
+    logger.log(
+      `👤 Jugador ${sanitizedName} (${message.playerId}) intenta unirse`
+    );
+
     // Usar socket.id como ID único del jugador (más confiable que el que envía el cliente)
     const playerId = socket.id;
-    
+
     // 1. Buscar o crear sala disponible
     const room = matchmakingManager.findOrCreateRoom();
     const roomId = room.roomId;
-    
+
     // Verificar si el jugador ya existe en esta sala
     if (room.playerManager.hasPlayer(playerId)) {
-      logger.log(`⚠️  [${roomId}] Jugador ${playerId} ya existe en esta sala, ignorando unión duplicada`);
+      logger.log(
+        `⚠️  [${roomId}] Jugador ${playerId} ya existe en esta sala, ignorando unión duplicada`
+      );
       return;
     }
-    
+
     // Verificar límite de jugadores en esta sala
     if (room.currentPlayers >= room.maxPlayers) {
-      logger.log(`⚠️  [${roomId}] Intento de unirse con ${room.maxPlayers} jugadores ya conectados`);
-      socket.emit(SERVER_EVENTS.ERROR, `El juego está lleno. Máximo ${room.maxPlayers} jugadores permitidos.`);
+      logger.log(
+        `⚠️  [${roomId}] Intento de unirse con ${room.maxPlayers} jugadores ya conectados`
+      );
+      socket.emit(
+        SERVER_EVENTS.ERROR,
+        `El juego está lleno. Máximo ${room.maxPlayers} jugadores permitidos.`
+      );
       return;
     }
-    
+
     // 2. Unir socket al room de Socket.IO
     socket.join(roomId);
     socketToRoomId.set(socket.id, roomId);
-    
+
     // 3. Crear partida en Supabase si es el primer jugador de la sala
     if (!room.gameId && room.currentPlayers === 0) {
       try {
         room.gameId = await GameModel.findOrCreateWaitingGame();
-        logger.log(`📝 [${roomId}] Partida asignada para el lobby: ${room.gameId}`);
+        logger.log(
+          `📝 [${roomId}] Partida asignada para el lobby: ${room.gameId}`
+        );
       } catch (error) {
         logger.error(`❌ [${roomId}] Error al buscar/crear partida:`, error);
         // Continuar sin partida (el juego funcionará pero no se guardará)
       }
     }
-    
+
     // 4. Obtener color preferido del mensaje o asignar uno disponible
     const existingPlayers = room.playerManager.getAllPlayers();
-    let initialColor = '#ffffff';
-    
+    let initialColor = "#ffffff";
+
     if (message.preferredColor) {
       // Verificar si el color preferido está disponible
-      const colorInUse = existingPlayers.some(p => p.color === message.preferredColor);
+      const colorInUse = existingPlayers.some(
+        (p) => p.color === message.preferredColor
+      );
       if (!colorInUse) {
         initialColor = message.preferredColor;
-        logger.log(`🎨 [${roomId}] Usando color preferido ${initialColor} para ${message.name}`);
+        logger.log(
+          `🎨 [${roomId}] Usando color preferido ${initialColor} para ${message.name}`
+        );
       } else {
         // Color preferido está en uso, asignar uno disponible
         initialColor = getAvailableColor(existingPlayers);
-        logger.log(`⚠️  [${roomId}] Color preferido ${message.preferredColor} está en uso, asignando ${initialColor} a ${message.name}`);
+        logger.log(
+          `⚠️  [${roomId}] Color preferido ${message.preferredColor} está en uso, asignando ${initialColor} a ${message.name}`
+        );
       }
     } else {
       // No hay color preferido, asignar uno disponible
       initialColor = getAvailableColor(existingPlayers);
-      logger.log(`🎨 [${roomId}] Asignando color ${initialColor} a ${message.name} (sin preferencia)`);
+      logger.log(
+        `🎨 [${roomId}] Asignando color ${initialColor} a ${message.name} (sin preferencia)`
+      );
     }
-    
+
     // 5. Si el usuario está autenticado, asegurar que su nombre esté guardado en la BD
     const userId = socketToUserId.get(socket.id);
     if (userId && message.name) {
@@ -515,11 +611,14 @@ io.on('connection', (socket: Socket) => {
       try {
         await UserModel.ensureUserHasName(userId, message.name);
       } catch (error) {
-        logger.error(`❌ [${roomId}] Error al guardar nombre del usuario ${userId}:`, error);
+        logger.error(
+          `❌ [${roomId}] Error al guardar nombre del usuario ${userId}:`,
+          error
+        );
         // Continuar aunque falle (no queremos bloquear el juego)
       }
     }
-    
+
     // 6. Obtener trail equipado del usuario (si está autenticado)
     let equippedTrail: { trailType: TrailType; trailEffect: any } | null = null;
     if (userId) {
@@ -528,18 +627,22 @@ io.on('connection', (socket: Socket) => {
         if (trail) {
           // Determinar el tipo de trail basado en el nombre
           const trailName = trail.name.toLowerCase();
-          let trailType: TrailType = 'normal';
+          let trailType: TrailType = "normal";
           let trailEffect: any = {};
 
-          if (trailName.includes('fire') || trailName.includes('inferno') || trailName.includes('hellfire')) {
+          if (
+            trailName.includes("fire") ||
+            trailName.includes("inferno") ||
+            trailName.includes("hellfire")
+          ) {
             // Trail de fuego
-            trailType = 'fire';
+            trailType = "fire";
             trailEffect = {
               glowIntensity: 4, // Resplandor del fuego
             };
-          } else if (trailName.includes('particle')) {
+          } else if (trailName.includes("particle")) {
             // Trail de partículas
-            trailType = 'particles';
+            trailType = "particles";
             trailEffect = {
               particleCount: 20, // Espaciado entre partículas en píxeles
               particleSize: 3,
@@ -553,7 +656,10 @@ io.on('connection', (socket: Socket) => {
           };
         }
       } catch (error) {
-        logger.error(`❌ [${roomId}] Error al obtener trail equipado para ${userId}:`, error);
+        logger.error(
+          `❌ [${roomId}] Error al obtener trail equipado para ${userId}:`,
+          error
+        );
         // Continuar sin trail premium si hay error
       }
     }
@@ -565,20 +671,22 @@ io.on('connection', (socket: Socket) => {
       color: initialColor,
       position: { x: 0, y: 0 }, // Se inicializará en initializePlayers
       angle: 0,
-      speed: 2,
+      speed: 3, // Aumentado 50% (2 * 1.5 = 3)
       alive: true,
       trail: [],
-      trailType: equippedTrail?.trailType || 'normal', // Usar trail equipado o normal por defecto
+      trailType: equippedTrail?.trailType || "normal", // Usar trail equipado o normal por defecto
       trailEffect: equippedTrail?.trailEffect,
     };
-    
+
     // 7. Agregar jugador a la sala
     room.playerManager.addPlayer(player);
     socketToPlayerId.set(socket.id, playerId);
     matchmakingManager.incrementPlayerCount(roomId);
-    
-    logger.log(`✅ [${roomId}] Jugador ${message.name} (${playerId}) agregado. Total: ${room.currentPlayers}/${room.maxPlayers}`);
-    
+
+    logger.log(
+      `✅ [${roomId}] Jugador ${message.name} (${playerId}) agregado. Total: ${room.currentPlayers}/${room.maxPlayers}`
+    );
+
     // 7. Inicializar posiciones
     if (room.currentPlayers === 1) {
       // Primer jugador de la sala
@@ -587,31 +695,31 @@ io.on('connection', (socket: Socket) => {
     } else {
       // Ya hay jugadores, inicializar este jugador en una posición aleatoria
       const players = room.playerManager.getAllPlayers();
-      const existingPlayersForColor = players.filter(p => p.id !== playerId);
-      
+      const existingPlayersForColor = players.filter((p) => p.id !== playerId);
+
       // Generar posición aleatoria con margen del borde
       const canvasWidth = 1920;
       const canvasHeight = 1280;
       const margin = 0.15; // 15% de margen
       const minDistance = 150; // Distancia mínima entre jugadores
-      
+
       const marginX = canvasWidth * margin;
       const marginY = canvasHeight * margin;
       const minX = marginX;
       const maxX = canvasWidth - marginX;
       const minY = marginY;
       const maxY = canvasHeight - marginY;
-      
+
       // Obtener posiciones de jugadores existentes
       const existingPositions = players
-        .filter(p => p.id !== playerId)
-        .map(p => p.position);
-      
+        .filter((p) => p.id !== playerId)
+        .map((p) => p.position);
+
       // Generar posición aleatoria que no esté demasiado cerca de otros jugadores
       let position: { x: number; y: number };
       let attempts = 0;
       const maxAttempts = 100;
-      
+
       do {
         position = {
           x: minX + Math.random() * (maxX - minX),
@@ -628,38 +736,51 @@ io.on('connection', (socket: Socket) => {
             ) < minDistance
         )
       );
-      
+
       // Ángulo aleatorio
       const angle = Math.random() * 2 * Math.PI;
-      
+
       player.position = position;
       player.angle = angle;
-      
+
       // Asegurar color correcto
-      if (message.preferredColor && !existingPlayersForColor.some(p => p.color === message.preferredColor)) {
+      if (
+        message.preferredColor &&
+        !existingPlayersForColor.some((p) => p.color === message.preferredColor)
+      ) {
         player.color = message.preferredColor;
       } else {
         player.color = getAvailableColor(existingPlayersForColor);
       }
-      
+
       player.trail = [{ ...position }];
       room.gameServer.initializePlayerGaps(playerId);
-      
-      logger.log(`📍 [${roomId}] Jugador ${message.name} posicionado en (${player.position.x.toFixed(0)}, ${player.position.y.toFixed(0)}) con color ${player.color}`);
+
+      logger.log(
+        `📍 [${roomId}] Jugador ${
+          message.name
+        } posicionado en (${player.position.x.toFixed(
+          0
+        )}, ${player.position.y.toFixed(0)}) con color ${player.color}`
+      );
     }
-    
+
     // 8. Confirmar conexión
     socket.emit(SERVER_EVENTS.PLAYER_JOINED, {
       playerId: playerId,
       socketId: socket.id,
     });
-    
+
     // 9. Enviar lista actualizada de jugadores solo a esta sala
-    broadcastLobbyPlayers(roomId).catch(err => logger.error(`[${roomId}] Error broadcasting lobby players:`, err));
-    
+    broadcastLobbyPlayers(roomId).catch((err) =>
+      logger.error(`[${roomId}] Error broadcasting lobby players:`, err)
+    );
+
     // 10. Verificar si hay 8 jugadores y iniciar automáticamente la cuenta atrás
     if (room.playerManager.getPlayerCount() >= 8) {
-      logger.log(`🎯 [${roomId}] 8 jugadores alcanzados, iniciando cuenta atrás automáticamente`);
+      logger.log(
+        `🎯 [${roomId}] 8 jugadores alcanzados, iniciando cuenta atrás automáticamente`
+      );
       startLobbyCountdown(roomId);
     }
   });
@@ -670,7 +791,7 @@ io.on('connection', (socket: Socket) => {
     const roomId = socketToRoomId.get(socket.id);
     if (!roomId) {
       logger.log(`⚠️  Socket ${socket.id} no está en ninguna sala`);
-      socket.emit(SERVER_EVENTS.ERROR, 'No estás en una sala');
+      socket.emit(SERVER_EVENTS.ERROR, "No estás en una sala");
       return;
     }
 
@@ -681,30 +802,39 @@ io.on('connection', (socket: Socket) => {
   socket.on(CLIENT_EVENTS.REQUEST_NEXT_ROUND, () => {
     const roomId = socketToRoomId.get(socket.id);
     if (!roomId) {
-      socket.emit(SERVER_EVENTS.ERROR, 'No estás en una sala');
+      socket.emit(SERVER_EVENTS.ERROR, "No estás en una sala");
       return;
     }
 
     const room = matchmakingManager.getRoom(roomId);
     if (!room) {
-      socket.emit(SERVER_EVENTS.ERROR, 'Sala no encontrada');
+      socket.emit(SERVER_EVENTS.ERROR, "Sala no encontrada");
       return;
     }
 
     const gameState = room.gameServer.getGameState();
     const gameStatus = gameState.gameStatus;
-    
-    logger.log(`📥 [${roomId}] Solicitud de siguiente ronda recibida de ${socket.id}`);
+
+    logger.log(
+      `📥 [${roomId}] Solicitud de siguiente ronda recibida de ${socket.id}`
+    );
     logger.log(`   Estado actual: ${gameStatus}`);
-    logger.log(`   Ronda actual: ${gameState.currentRound}/${gameState.totalRounds}`);
+    logger.log(
+      `   Ronda actual: ${gameState.currentRound}/${gameState.totalRounds}`
+    );
     logger.log(`   Countdown: ${gameState.nextRoundCountdown}`);
-    
-    if (gameStatus !== 'round-ended') {
-      logger.log(`⚠️  [${roomId}] Intento de solicitar siguiente ronda cuando el estado es ${gameStatus}`);
-      socket.emit(SERVER_EVENTS.ERROR, 'No se puede solicitar siguiente ronda en este momento');
+
+    if (gameStatus !== "round-ended") {
+      logger.log(
+        `⚠️  [${roomId}] Intento de solicitar siguiente ronda cuando el estado es ${gameStatus}`
+      );
+      socket.emit(
+        SERVER_EVENTS.ERROR,
+        "No se puede solicitar siguiente ronda en este momento"
+      );
       return;
     }
-    
+
     logger.log(`⏭️  [${roomId}] Procesando solicitud de siguiente ronda...`);
     room.gameServer.requestNextRound();
   });
@@ -726,70 +856,93 @@ io.on('connection', (socket: Socket) => {
   });
 
   // Manejar cambio de color del jugador
-  socket.on(CLIENT_EVENTS.CHANGE_COLOR, (message: { playerId: string; color: string }) => {
-    const roomId = socketToRoomId.get(socket.id);
-    if (!roomId) {
-      socket.emit(SERVER_EVENTS.ERROR, 'No estás en una sala');
-      return;
-    }
+  socket.on(
+    CLIENT_EVENTS.CHANGE_COLOR,
+    (message: { playerId: string; color: string }) => {
+      const roomId = socketToRoomId.get(socket.id);
+      if (!roomId) {
+        socket.emit(SERVER_EVENTS.ERROR, "No estás en una sala");
+        return;
+      }
 
-    const room = matchmakingManager.getRoom(roomId);
-    if (!room) {
-      socket.emit(SERVER_EVENTS.ERROR, 'Sala no encontrada');
-      return;
-    }
+      const room = matchmakingManager.getRoom(roomId);
+      if (!room) {
+        socket.emit(SERVER_EVENTS.ERROR, "Sala no encontrada");
+        return;
+      }
 
-    // Validar formato de color
-    if (!message.color || typeof message.color !== 'string') {
-      logger.warn(`⚠️  [${roomId}] Intento de cambiar color con formato inválido (socket: ${socket.id})`);
-      socket.emit(SERVER_EVENTS.ERROR, 'Formato de color inválido');
-      return;
-    }
-    
-    const colorRegex = /^#[0-9A-Fa-f]{6}$/;
-    if (!colorRegex.test(message.color)) {
-      logger.warn(`⚠️  [${roomId}] Intento de cambiar color con formato inválido: ${message.color} (socket: ${socket.id})`);
-      socket.emit(SERVER_EVENTS.ERROR, 'Formato de color inválido. Debe ser hexadecimal (#RRGGBB)');
-      return;
-    }
+      // Validar formato de color
+      if (!message.color || typeof message.color !== "string") {
+        logger.warn(
+          `⚠️  [${roomId}] Intento de cambiar color con formato inválido (socket: ${socket.id})`
+        );
+        socket.emit(SERVER_EVENTS.ERROR, "Formato de color inválido");
+        return;
+      }
 
-    const playerId = socket.id; // Usar socket.id como ID del jugador (más seguro)
-    
-    // Verificar que el jugador existe
-    if (!room.playerManager.hasPlayer(playerId)) {
-      logger.log(`⚠️  [${roomId}] Intento de cambiar color de jugador inexistente: ${playerId}`);
-      socket.emit(SERVER_EVENTS.ERROR, 'Jugador no encontrado');
-      return;
-    }
+      const colorRegex = /^#[0-9A-Fa-f]{6}$/;
+      if (!colorRegex.test(message.color)) {
+        logger.warn(
+          `⚠️  [${roomId}] Intento de cambiar color con formato inválido: ${message.color} (socket: ${socket.id})`
+        );
+        socket.emit(
+          SERVER_EVENTS.ERROR,
+          "Formato de color inválido. Debe ser hexadecimal (#RRGGBB)"
+        );
+        return;
+      }
 
-    const player = room.playerManager.getPlayer(playerId);
-    if (!player) {
-      socket.emit(SERVER_EVENTS.ERROR, 'Jugador no encontrado');
-      return;
-    }
+      const playerId = socket.id; // Usar socket.id como ID del jugador (más seguro)
 
-    // Verificar que el color no esté en uso por otro jugador en esta sala
-    const allPlayers = room.playerManager.getAllPlayers();
-    const colorInUse = allPlayers.some(p => p.id !== playerId && p.color === message.color);
-    
-    if (colorInUse) {
-      logger.log(`⚠️  [${roomId}] Intento de usar color ya en uso: ${message.color} por ${playerId}`);
-      socket.emit(SERVER_EVENTS.ERROR, 'Este color ya está en uso por otro jugador');
-      return;
-    }
+      // Verificar que el jugador existe
+      if (!room.playerManager.hasPlayer(playerId)) {
+        logger.log(
+          `⚠️  [${roomId}] Intento de cambiar color de jugador inexistente: ${playerId}`
+        );
+        socket.emit(SERVER_EVENTS.ERROR, "Jugador no encontrado");
+        return;
+      }
 
-    // Cambiar el color del jugador
-    player.color = message.color;
-    logger.log(`🎨 [${roomId}] Jugador ${player.name} (${playerId}) cambió su color a ${message.color}`);
-    
-    // Enviar lista actualizada de jugadores solo a esta sala
-    broadcastLobbyPlayers(roomId).catch(err => logger.error(`[${roomId}] Error broadcasting lobby players:`, err));
-  });
+      const player = room.playerManager.getPlayer(playerId);
+      if (!player) {
+        socket.emit(SERVER_EVENTS.ERROR, "Jugador no encontrado");
+        return;
+      }
+
+      // Verificar que el color no esté en uso por otro jugador en esta sala
+      const allPlayers = room.playerManager.getAllPlayers();
+      const colorInUse = allPlayers.some(
+        (p) => p.id !== playerId && p.color === message.color
+      );
+
+      if (colorInUse) {
+        logger.log(
+          `⚠️  [${roomId}] Intento de usar color ya en uso: ${message.color} por ${playerId}`
+        );
+        socket.emit(
+          SERVER_EVENTS.ERROR,
+          "Este color ya está en uso por otro jugador"
+        );
+        return;
+      }
+
+      // Cambiar el color del jugador
+      player.color = message.color;
+      logger.log(
+        `🎨 [${roomId}] Jugador ${player.name} (${playerId}) cambió su color a ${message.color}`
+      );
+
+      // Enviar lista actualizada de jugadores solo a esta sala
+      broadcastLobbyPlayers(roomId).catch((err) =>
+        logger.error(`[${roomId}] Error broadcasting lobby players:`, err)
+      );
+    }
+  );
 
   // Manejar desconexión
-  socket.on('disconnect', (reason) => {
+  socket.on("disconnect", (reason) => {
     logger.log(`❌ Cliente desconectado: ${socket.id} (${reason})`);
-    
+
     const roomId = socketToRoomId.get(socket.id);
     if (!roomId) {
       // Socket no estaba en ninguna sala, solo limpiar mapas
@@ -806,7 +959,7 @@ io.on('connection', (socket: Socket) => {
       socketToRoomId.delete(socket.id);
       return;
     }
-    
+
     // Remover jugador de la sala
     const playerId = socketToPlayerId.get(socket.id);
     if (playerId) {
@@ -816,27 +969,36 @@ io.on('connection', (socket: Socket) => {
       socketToPlayerId.delete(socket.id);
       socketToUserId.delete(socket.id);
       socketToRoomId.delete(socket.id);
-      
-      logger.log(`🗑️  [${roomId}] Jugador ${player?.name || playerId} removido. Total: ${room.currentPlayers}/${room.maxPlayers}`);
-      
+
+      logger.log(
+        `🗑️  [${roomId}] Jugador ${player?.name || playerId} removido. Total: ${
+          room.currentPlayers
+        }/${room.maxPlayers}`
+      );
+
       // Enviar lista actualizada de jugadores solo a esta sala
-      broadcastLobbyPlayers(roomId).catch(err => logger.error(`[${roomId}] Error broadcasting lobby players:`, err));
+      broadcastLobbyPlayers(roomId).catch((err) =>
+        logger.error(`[${roomId}] Error broadcasting lobby players:`, err)
+      );
     }
-    
+
     // Si no quedan jugadores en la sala, detener el juego
     if (room.currentPlayers === 0) {
       logger.log(`🛑 [${roomId}] No quedan jugadores, deteniendo juego`);
       room.gameServer.stop();
       room.deltaCompressor.reset();
-      
+
       // Si la sala está en estado waiting, se eliminará automáticamente
       // Si está en playing, se marcará como finished y se limpiará después
-      if (room.status === 'playing') {
-        room.status = 'finished';
+      if (room.status === "playing") {
+        room.status = "finished";
         // Guardar partida si hay gameId
         if (room.gameId) {
-          saveGameOnEnd(roomId, room.gameServer.getGameState()).catch(err => 
-            logger.error(`[${roomId}] Error al guardar partida en desconexión:`, err)
+          saveGameOnEnd(roomId, room.gameServer.getGameState()).catch((err) =>
+            logger.error(
+              `[${roomId}] Error al guardar partida en desconexión:`,
+              err
+            )
           );
         }
       }
@@ -846,11 +1008,14 @@ io.on('connection', (socket: Socket) => {
 
 // Escuchar en todas las interfaces (0.0.0.0) para que funcione en Railway/cloud
 // Railway asigna el puerto automáticamente, así que usamos process.env.PORT
-httpServer.listen(PORT, '0.0.0.0', () => {
+httpServer.listen(PORT, "0.0.0.0", () => {
   logger.log(`🚀 Servidor curve.pw corriendo en puerto ${PORT}`);
-  logger.log(`📡 WebSocket disponible en ws://0.0.0.0:${PORT} (escuchando en todas las interfaces)`);
-  logger.log(`🌐 Orígenes permitidos: ${allowedOrigins.join(', ')}`);
+  logger.log(
+    `📡 WebSocket disponible en ws://0.0.0.0:${PORT} (escuchando en todas las interfaces)`
+  );
+  logger.log(`🌐 Orígenes permitidos: ${allowedOrigins.join(", ")}`);
   logger.log(`✅ Servidor listo para recibir conexiones`);
-  logger.log(`🎮 Sistema de matchmaking activado - múltiples salas simultáneas`);
+  logger.log(
+    `🎮 Sistema de matchmaking activado - múltiples salas simultáneas`
+  );
 });
-

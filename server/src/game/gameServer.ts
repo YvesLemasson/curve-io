@@ -233,9 +233,7 @@ export class GameServer {
         if (countdownSeconds !== this.preGameCountdown) {
           this.preGameCountdown = countdownSeconds;
           this.gameState.preGameCountdown = countdownSeconds;
-          logger.log(
-            `⏱️ Pre-game cuenta atrás: ${countdownSeconds} segundos`
-          );
+          logger.log(`⏱️ Pre-game cuenta atrás: ${countdownSeconds} segundos`);
           // Forzar envío inmediato cuando cambia el countdown
           this.broadcastState(true);
         }
@@ -842,10 +840,52 @@ export class GameServer {
         if (this.currentRound >= this.TOTAL_ROUNDS) {
           this.endGame();
         } else {
-          // Cambiar a estado 'round-ended' y esperar a que alguien presione "Next Round"
+          // Cambiar a estado 'round-ended' e iniciar cuenta atrás automáticamente
           this.gameState.gameStatus = "round-ended";
-          this.gameState.nextRoundCountdown = undefined; // Sin cuenta atrás todavía
+          // Iniciar cuenta atrás automáticamente de 5 segundos
+          this.nextRoundCountdown = 5;
+          this.gameState.nextRoundCountdown = 5;
           this.broadcastState(true); // Forzar envío del estado
+
+          // Iniciar el intervalo de cuenta atrás automáticamente
+          if (this.nextRoundCountdownInterval === null) {
+            logger.log(
+              `⏱️  Iniciando cuenta atrás automática para siguiente ronda: ${this.nextRoundCountdown} segundos`
+            );
+
+            this.nextRoundCountdownInterval = setInterval(() => {
+              try {
+                this.nextRoundCountdown--;
+                this.gameState.nextRoundCountdown = this.nextRoundCountdown;
+                this.broadcastState(true); // Forzar envío para actualizar cuenta atrás
+
+                logger.log(
+                  `⏱️  Cuenta atrás: ${this.nextRoundCountdown} segundos`
+                );
+
+                if (this.nextRoundCountdown <= 0) {
+                  logger.log(
+                    `✅ Cuenta atrás completada, iniciando siguiente ronda...`
+                  );
+                  // Terminar cuenta atrás e iniciar siguiente ronda
+                  if (this.nextRoundCountdownInterval) {
+                    clearInterval(this.nextRoundCountdownInterval);
+                    this.nextRoundCountdownInterval = null;
+                  }
+                  this.gameState.nextRoundCountdown = undefined;
+                  this.startNextRound();
+                }
+              } catch (error) {
+                logger.error(`❌ Error en cuenta atrás:`, error);
+                // Limpiar intervalo en caso de error
+                if (this.nextRoundCountdownInterval) {
+                  clearInterval(this.nextRoundCountdownInterval);
+                  this.nextRoundCountdownInterval = null;
+                }
+              }
+            }, 1000); // Actualizar cada segundo
+          }
+
           logger.log(
             `⏸️  Ronda ${this.currentRound} terminada. Esperando solicitud para siguiente ronda...`
           );
@@ -927,9 +967,9 @@ export class GameServer {
       return;
     }
 
-    // Iniciar cuenta atrás de 3 segundos
-    this.nextRoundCountdown = 3;
-    this.gameState.nextRoundCountdown = 3;
+    // Iniciar cuenta atrás de 5 segundos
+    this.nextRoundCountdown = 5;
+    this.gameState.nextRoundCountdown = 5;
     this.broadcastState(true);
 
     logger.log(
@@ -1257,7 +1297,7 @@ export class GameServer {
     players.forEach((player, index) => {
       player.position = { ...positions[index] };
       player.angle = angles[index];
-      player.speed = 2;
+      player.speed = 3; // Aumentado 50% (2 * 1.5 = 3)
       player.alive = true;
       player.trail = [{ ...positions[index] }];
 
